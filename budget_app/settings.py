@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
@@ -10,7 +11,7 @@ STATIC_ROOT = str(BASE_DIR / 'staticfiles')
 
 # collectstatic 時に参照するディレクトリ（存在する場合のみ）
 STATICFILES_DIRS = [
-    str(BASE_DIR / 'static'),  # 存在しない場合は削除してもOK
+    str(BASE_DIR / 'static'),  # 存在しない場合は削除してOK
 ]
 
 # WhiteNoise 設定
@@ -21,3 +22,10 @@ MIDDLEWARE = [
 ]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Heroku用 ALLOWED_HOSTS
+ALLOWED_HOSTS = [
+    'future-budget-simulator-b9ef5003e4b5.herokuapp.com',
+    'localhost',
+    '127.0.0.1',
+]
