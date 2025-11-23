@@ -1,0 +1,111 @@
+{% load humanize budget_filters %}
+
+{% if summary_data %}
+    <div class="space-y-6">
+        {% for ym, cards in summary_data.items %}
+            <div class="border rounded">
+            {% comment %}
+            ymが"2026-01_bonus"のような形式の場合、"_bonus"を除いた年月を取得
+            また、ボーナス払いセクションかどうかを判定
+            {% endcomment %}
+            {% if '_bonus' in ym %}
+                {% with real_ym=ym|slice:":-6" %}
+                <div class="bg-gray-100 px-4 py-2 font-semibold flex justify-between items-center">
+                    <span>{{ real_ym|format_year_month }}（ボーナス払い）</span>
+                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reflect">
+                        <input type="hidden" name="year_month" value="{{ real_ym }}">
+                        <input type="hidden" name="reflect_type" value="bonus">
+                        <button type="submit" class="bg-green-500 text-white text-sm px-4 py-1 rounded hover:bg-green-600">
+                            月次計画に反映
+                        </button>
+                    </form>
+                </div>
+                {% endwith %}
+            {% else %}
+            <div class="bg-gray-100 px-4 py-2 font-semibold flex justify-between items-center">
+                <span>{{ ym|format_year_month }}</span>
+                <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reflect">
+                    <input type="hidden" name="year_month" value="{{ ym }}">
+                    <input type="hidden" name="reflect_type" value="normal">
+                    <button type="submit" class="bg-green-500 text-white text-sm px-4 py-1 rounded hover:bg-green-600">
+                        月次計画に反映
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+            <div class="p-4 overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-3 py-2 text-left w-28">請求日</th>
+                            <th class="px-3 py-2 text-left">内容</th>
+                            <th class="px-3 py-2 text-center w-20">分割</th>
+                            <th class="px-3 py-2 text-right w-32">金額</th>
+                            <th class="px-3 py-2 text-center w-32">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for card_type, data in cards.items %}
+                            <tr class="bg-blue-50 font-semibold">
+                                <td class="px-3 py-2 font-bold" colspan="3">{{ data.label }}</td>
+                                <td class="px-3 py-2 text-right">{{ data.total|yen }}</td>
+                                <td class="px-3 py-2 text-center"></td>
+                            </tr>
+                            {% for item in data.entries %}
+                            <tr class="border-b {% if item.is_default %}bg-gray-50{% endif %}">
+                                <td class="px-3 py-2">
+                                    {% if item.is_default %}
+                                        {# 定期デフォルト項目は日付を表示しない #}
+                                    {% elif item.due_date %}
+                                        {{ item.due_date|date:'Y-m-d' }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-2">
+                                    {{ item.description|default:'-' }}
+                                    {% if item.is_default %}
+                                        <span class="text-xs text-gray-400 ml-1">(定期)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-2 text-center">
+                                    {% if item.is_split_payment %}✓{% else %}-{% endif %}
+                                </td>
+                                <td class="px-3 py-2 text-right">
+                                    {{ item.amount|yen }}
+                                </td>
+                                <td class="px-3 py-2 text-center">
+                                    {% if not item.is_default %}
+                                        <button type="button" data-pk="{{ item.pk }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.amount }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" class="edit-btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1">編集</button>
+                                        <form method="post" action="{% url 'budget_app:credit_estimate_delete' item.pk %}" class="inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs">削除</button>
+                                        </form>
+                                    {% else %}
+                                        <button type="button" data-default-id="{{ item.default_id }}" data-label="{{ item.description }}" data-amount="{{ item.amount }}" data-card-type="{{ item.card_type }}" data-year-month="{{ item.year_month }}" class="default-edit-btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1">編集</button>
+                                        {# 定期項目をこの月だけ非表示にするための削除フォーム #}
+                                        <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline delete-default-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_default_for_month">
+                                            <input type="hidden" name="default_id" value="{{ item.default_id }}">
+                                            <input type="hidden" name="year_month" value="{{ item.year_month }}">
+                                            <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs">削除</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-gray-600">{{ title }}の見積もりは登録されていません。</p>
+{% endif %}

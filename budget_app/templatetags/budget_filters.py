@@ -1,0 +1,50 @@
+from django import template
+from django.contrib.humanize.templatetags.humanize import intcomma
+
+register = template.Library()
+
+
+@register.filter
+def format_year_month(value):
+    """Convert 'YYYY-MM' into 'YYYY年M月'."""
+    if not value:
+        return ''
+    try:
+        year_str, month_str = str(value).split('-', 1)
+        year = int(year_str)
+        month = int(month_str.split(':')[0])  # guard against potential suffixes
+    except (ValueError, AttributeError):
+        return value
+    return f'{year}年{month}月'
+
+
+@register.filter
+def yen(value):
+    """Format integer currency with comma separators and leading yen symbol."""
+    if value in ('', None):
+        amount = 0
+    else:
+        try:
+            amount = int(value)
+        except (TypeError, ValueError):
+            return value
+    return f'¥{intcomma(amount)}'
+
+
+@register.filter
+def get_item(mapping, key):
+    """辞書からキーで値を取り出す（テンプレート用）"""
+    try:
+        return mapping.get(key)
+    except Exception:
+        return None
+
+
+@register.filter
+def attr(obj, name):
+    """オブジェクトの属性を取得（テンプレート用）"""
+    try:
+        return getattr(obj, name)
+    except Exception:
+        return None
+

@@ -1,0 +1,72 @@
+{% extends 'budget_app/base.html' %}
+{% load humanize budget_filters %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-3xl font-bold mb-4">ようこそ</h2>
+    <p class="text-gray-700 mb-4">月ごとの収支を入力して、将来の口座残高を確認しましょう。</p>
+
+    {% if config %}
+        <div class="bg-blue-50 p-4 rounded mb-4">
+            <h3 class="font-bold text-lg mb-2">現在の設定</h3>
+            <ul class="list-disc list-inside">
+                <li>初期残高: {{ config.initial_balance|yen }}</li>
+                <li>開始日: {{ config.start_date }}</li>
+            </ul>
+        </div>
+    {% else %}
+        <div class="bg-yellow-50 p-4 rounded mb-4">
+            <p class="text-yellow-800">シミュレーション設定がありません。</p>
+            <a href="{% url 'budget_app:config' %}" class="text-blue-600 hover:underline">設定を作成</a>
+        </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <a href="{% url 'budget_app:config' %}" class="bg-blue-500 text-white p-4 rounded hover:bg-blue-600 text-center">
+            シミュレーション設定
+        </a>
+        <a href="{% url 'budget_app:plan_list' %}" class="bg-green-500 text-white p-4 rounded hover:bg-green-600 text-center">
+            月次計画管理
+        </a>
+    </div>
+
+    {% if has_plans %}
+        <form method="post" action="{% url 'budget_app:simulate' %}" class="mt-6">
+            {% csrf_token %}
+            <button type="submit" class="w-full bg-red-500 text-white p-4 rounded hover:bg-red-600 text-lg font-bold">
+                シミュレーション実行
+            </button>
+        </form>
+    {% endif %}
+</div>
+
+{% if plans %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h3 class="text-2xl font-bold mb-4">最新の月次計画</h3>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="p-2 text-left">年月</th>
+                    <th class="p-2 text-right">給与</th>
+                    <th class="p-2 text-right">ボーナス</th>
+                    <th class="p-2 text-center">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for plan in plans %}
+                <tr class="border-t">
+                    <td class="p-2">{{ plan.year_month|format_year_month }}</td>
+                    <td class="p-2 text-right">{{ plan.salary|yen }}</td>
+                    <td class="p-2 text-right">{{ plan.bonus|yen }}</td>
+                    <td class="p-2 text-center">
+                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:underline">編集</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

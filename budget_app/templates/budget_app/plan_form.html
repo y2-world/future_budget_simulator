@@ -1,0 +1,208 @@
+{% extends 'budget_app/base.html' %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
+    <h2 class="text-2xl font-bold mb-6">{{ title }}</h2>
+
+    <form method="post" id="planForm">
+        {% csrf_token %}
+
+        <div class="mb-6 grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">{{ form.year.label }}</label>
+                {{ form.year }}
+                {% if form.year.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.year.errors.0 }}</p>
+                {% endif %}
+            </div>
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">{{ form.month.label }}</label>
+                {{ form.month }}
+                {% if form.month.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.month.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {{ form.year_month }}
+            {% if form.year_month.errors %}
+                <p class="text-red-500 text-sm mt-1 col-span-2">{{ form.year_month.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <script>
+            function toggleBonusField() {
+                const monthSelect = document.querySelector('select[name="month"]');
+                const bonusWrapper = document.getElementById('bonus-field-wrapper');
+
+                if (!monthSelect || !bonusWrapper) return;
+
+                const selectedMonth = monthSelect.value;
+                if (selectedMonth === '6' || selectedMonth === '12') {
+                    bonusWrapper.style.display = 'block';
+                } else {
+                    bonusWrapper.style.display = 'none';
+                }
+            }
+
+            function getLastDay(year, month) {
+                return new Date(year, month, 0).getDate();
+            }
+            
+            function updateLabels() {
+                const yearSelect = document.querySelector('select[name="year"]');
+                const monthSelect = document.querySelector('select[name="month"]');
+
+                if (!yearSelect || !monthSelect) return;
+
+                const year = parseInt(yearSelect.value);
+                const month = parseInt(monthSelect.value);
+
+                if (!year || !month) return;
+
+                const monthNames = ['', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                const monthName = monthNames[month];
+
+                // 前月を計算
+                let prevYear = year;
+                let prevMonth = month - 1;
+                if (prevMonth === 0) {
+                    prevMonth = 12;
+                    prevYear = year - 1;
+                }
+                const prevMonthName = monthNames[prevMonth];
+
+                // 末日を計算
+                const lastDay = getLastDay(year, month);
+
+                // ラベルを更新
+                const labels = {
+                    'bonus': `ボーナス（${year}年${monthName}）`,
+                    'salary': `給与（${year}年${monthName}25日）`,
+                    'food': `食費（${year}年${monthName}1日）`,
+                    'rent': `家賃（${year}年${monthName}27日）`,
+                    'lake': `レイク返済（${year}年${monthName}27日）`,
+                    'view_card': `VIEWカード（${year}年${monthName}4日）`,
+                    'rakuten_card': `楽天カード（${year}年${monthName}27日）`,
+                    'paypay_card': `PayPayカード（${year}年${monthName}27日）`,
+                    'vermillion_card': `VERMILLION CARD（${year}年${monthName}4日）`,
+                    'amazon_card': `Amazonカード（${year}年${monthName}26日）`,
+                    'loan': `マネーアシスト返済（${year}年${monthName}${lastDay}日）`
+                };
+
+                // 1月と8月の場合、ボーナス払いフィールドのラベルも更新
+                if (month === 1 || month === 8) {
+                    labels['view_card_bonus'] = `VIEWボーナス払い（${year}年${monthName}4日）`;
+                }
+
+                // 各フィールドのラベルを更新
+                Object.keys(labels).forEach(fieldName => {
+                    // ラッパー要素を取得
+                    const wrapper = document.getElementById(`${fieldName}-field-wrapper`);
+                    if (!wrapper) return;
+
+                    const label = wrapper.querySelector('label');
+                    if (label && labels[fieldName]) {
+                        label.textContent = labels[fieldName];
+                    }
+                });
+            }
+            
+            function updateYearMonth() {
+                // 支出項目も動的にラベルを更新するため、ここで呼び出す
+                // updateLabels();
+                // ただし、現状では支出項目は固定なので、呼び出しは不要
+                // もし支出項目も年月でラベルが変わるなら、このコメントを外す
+
+                // view_card_bonus フィールドの表示/非表示を切り替える
+                const monthSelectForBonus = document.querySelector('select[name="month"]');
+                const viewCardBonusWrapper = document.getElementById('view_card_bonus-field-wrapper');
+
+                const yearSelect = document.querySelector('select[name="year"]');
+                const monthSelect = document.querySelector('select[name="month"]');
+                const yearMonthInput = document.querySelector('input[name="year_month"]');
+
+                if (yearSelect && monthSelect && yearMonthInput) {
+                    const year = yearSelect.value;
+                    const month = monthSelect.value;
+                    yearMonthInput.value = `${year}-${month}`;
+                }
+
+                if (viewCardBonusWrapper) {
+                    const month = monthSelectForBonus ? monthSelectForBonus.value : null;
+                    const shouldShow = month === '1' || month === '8';
+                    viewCardBonusWrapper.style.display = shouldShow ? 'block' : 'none';
+                }
+
+            }
+
+            // ページ読み込み時と年・月の選択変更時にラベルを更新
+            document.addEventListener('DOMContentLoaded', function() {
+                updateLabels();
+                updateYearMonth();
+                toggleBonusField(); // ページ読み込み時にボーナス表示を更新
+
+                const yearSelect = document.querySelector('select[name="year"]');
+                const monthSelect = document.querySelector('select[name="month"]');
+
+                if (yearSelect) {
+                    yearSelect.addEventListener('change', function() {
+                        updateLabels();
+                        updateYearMonth();
+                        toggleBonusField(); // 年変更時にもボーナス表示を更新
+                    });
+                }
+
+                if (monthSelect) {
+                    monthSelect.addEventListener('change', function() {
+                        updateLabels();
+                        updateYearMonth();
+                        toggleBonusField(); // 月変更時にボーナス表示を更新
+                    });
+                }
+
+                // フォーム送信前にyear_monthを更新
+                const form = document.getElementById('planForm');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        updateYearMonth();
+                    });
+                }
+            });
+        </script>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-green-50 p-4 rounded">
+                <h3 class="font-bold text-lg mb-4 text-green-800">収入</h3>
+                {% for field in form %}
+                    {% if field.name == 'salary' or field.name == 'bonus' %}
+                        <div class="mb-4" id="{{ field.name }}-field-wrapper">
+                            <label class="block text-gray-700 font-bold mb-2" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="bg-red-50 p-4 rounded">
+                <h3 class="font-bold text-lg mb-4 text-red-800">支出</h3>
+                {% for field in form %}
+                    {% if field.name != 'year_month' and field.name != 'salary' and field.name != 'bonus' and field.name != 'year' and field.name != 'month' %}
+                        <div class="mb-4" id="{{ field.name }}-field-wrapper">
+                            <label class="block text-gray-700 font-bold mb-2" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mt-6 flex space-x-4">
+            <button type="submit" class="flex-1 bg-blue-500 text-white p-3 rounded hover:bg-blue-600 font-bold">
+                保存
+            </button>
+            <a href="{% url 'budget_app:plan_list' %}" class="flex-1 bg-gray-500 text-white p-3 rounded hover:bg-gray-600 font-bold text-center">
+                キャンセル
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends 'budget_app/base.html' %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold mb-6">シミュレーション設定</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">{{ form.initial_balance.label }}</label>
+            {{ form.initial_balance }}
+            {% if form.initial_balance.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.initial_balance.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">{{ form.default_salary.label }}</label>
+            {{ form.default_salary }}
+            {% if form.default_salary.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.default_salary.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">{{ form.default_food.label }}</label>
+            {{ form.default_food }}
+            {% if form.default_food.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.default_food.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">{{ form.default_view_card.label }}</label>
+            {{ form.default_view_card }}
+            {% if form.default_view_card.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.default_view_card.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <div class="flex items-center mb-4">
+                {{ form.savings_enabled }}
+                <label class="ml-2 text-gray-700 font-bold">{{ form.savings_enabled.label }}</label>
+            </div>
+            {% if form.savings_enabled.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.savings_enabled.errors.0 }}</p>
+            {% endif %}
+
+            <div id="savings_fields" class="ml-6">
+                <div class="mb-2">
+                    <label class="block text-gray-600 text-sm mb-1">{{ form.savings_amount.label }}</label>
+                    {{ form.savings_amount }}
+                    {% if form.savings_amount.errors %}
+                        <p class="text-red-500 text-sm mt-1">{{ form.savings_amount.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-600 text-sm mb-1">{{ form.savings_year.label }}</label>
+                        {{ form.savings_year }}
+                        {% if form.savings_year.errors %}
+                            <p class="text-red-500 text-sm mt-1">{{ form.savings_year.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 text-sm mb-1">{{ form.savings_month.label }}</label>
+                        {{ form.savings_month }}
+                        {% if form.savings_month.errors %}
+                            <p class="text-red-500 text-sm mt-1">{{ form.savings_month.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {{ form.savings_start_month }}
+                {% if form.savings_start_month.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.savings_start_month.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-500 text-white p-3 rounded hover:bg-blue-600 font-bold">
+            保存
+        </button>
+    </form>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const savingsEnabledCheckbox = document.getElementById('savings_enabled_checkbox');
+        const savingsFields = document.getElementById('savings_fields');
+        const savingsAmountField = document.getElementById('savings_amount_field');
+        const savingsYearSelect = document.querySelector('select[name="savings_year"]');
+        const savingsMonthSelect = document.querySelector('select[name="savings_month"]');
+
+        function toggleSavingsFields() {
+            const isEnabled = savingsEnabledCheckbox.checked;
+
+            // 見た目を変更
+            if (isEnabled) {
+                savingsFields.classList.remove('opacity-50');
+            } else {
+                savingsFields.classList.add('opacity-50');
+                // 無効時はフィールドの値をクリア
+                savingsAmountField.value = '0';
+                if (savingsYearSelect) savingsYearSelect.value = '';
+                if (savingsMonthSelect) savingsMonthSelect.value = '';
+            }
+        }
+
+        // 初期状態を設定
+        toggleSavingsFields();
+
+        // チェックボックスの変更を監視
+        savingsEnabledCheckbox.addEventListener('change', toggleSavingsFields);
+    });
+</script>
+{% endblock %}

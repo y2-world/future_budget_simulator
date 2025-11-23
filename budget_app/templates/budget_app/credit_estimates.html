@@ -1,0 +1,562 @@
+{% extends 'budget_app/base.html' %}
+{% load humanize budget_filters %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto">
+    <h2 class="text-2xl font-bold mb-6">クレカ請求見積り</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div>
+            <h3 class="text-lg font-bold mb-4">新規追加</h3>
+            <form id="createEstimateForm" method="post" class="space-y-4" data-year-month-form>
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_estimate">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">{{ form.year.label }}</label>
+                        {{ form.year }}
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">{{ form.month.label }}</label>
+                        {{ form.month }}
+                    </div>
+                    {{ form.year_month }}
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">{{ form.card_type.label }}</label>
+                    {{ form.card_type }}
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">{{ form.description.label }}</label>
+                    {{ form.description }}
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">{{ form.amount.label }}</label>
+                    {{ form.amount }}
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">{{ form.due_date.label }}</label>
+                    {{ form.due_date }}
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        {{ form.is_split_payment }}
+                        <label class="ml-2 text-gray-700">{{ form.is_split_payment.label }}</label>
+                    </div>
+                    <div class="flex items-center" id="create_bonus_payment_wrapper">
+                        {{ form.is_bonus_payment }}
+                        <label class="ml-2 text-gray-700">{{ form.is_bonus_payment.label }}</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-500 text-white p-3 rounded hover:bg-blue-600 font-bold">
+                    見積りを追加
+                </button>
+            </form>
+        </div>
+
+        <div>
+            <h3 class="text-lg font-bold mb-4">一覧</h3>
+            <p class="text-sm text-gray-600 mb-3">
+                定期的な金額の初期値は、別ページの「定期デフォルト」で管理します。<br>
+                分割2回払いにチェックを入れると、10の位を切り上げて当月に含め、残りを次月に自動追加します。
+            </p>
+        </div>
+    </div>
+
+    <div class="mt-10">
+        {% comment %} 登録済み見積もりを「今月」「未来」「過去」に分けて表示 {% endcomment %}
+
+        <div class="space-y-8">
+            <div>
+                <h3 class="text-xl font-bold mb-4">今月の見積もり（{{ current_month_str|format_year_month }}）</h3>
+                {% include 'budget_app/_summary_section.html' with summary_data=current_month_summary title='今月' %}
+            </div>
+
+            <div>
+                <h3 class="text-xl font-bold mb-4">未来の見積もり</h3>
+                {% include 'budget_app/_summary_section.html' with summary_data=future_summary title='未来' %}
+            </div>
+
+            <div class="mt-8">
+                <details class="group">
+                    <summary class="text-xl font-bold cursor-pointer list-none flex items-center">
+                        <span class="group-open:rotate-90 transition-transform duration-200 mr-2">▶</span>
+                        過去の見積もり（アーカイブ）
+                    </summary>
+                    <div class="mt-4 pl-6">
+                        {% include 'budget_app/_summary_section.html' with summary_data=past_summary title='過去' %}
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        {% if not current_month_summary and not future_summary and not past_summary %}
+            <p class="text-gray-600">まだクレカ見積りは登録されていません。</p>
+        {% else %}
+        {% endif %}
+    </div>
+
+    <p class="text-xs text-gray-500 mt-6">
+        ※ VIEWカードは毎月4日、楽天/PayPayカードは27日、VERMILLION CARDは4日、Amazonカードは26日に設定されています。
+    </p>
+</div>
+
+<!-- 編集モーダル -->
+<div id="editModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-bold mb-4">見積り編集</h3>
+            <form id="editForm" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="year_month" id="edit_year_month_hidden">
+                <div class="mb-4 grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">請求年</label>
+                        <select name="year" id="edit_year" class="w-full p-2 border rounded">
+                            {% for value, label in form.year.field.choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">請求月</label>
+                        <select name="month" id="edit_month" class="w-full p-2 border rounded">
+                            {% for value, label in form.month.field.choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">カード種別</label>
+                    {{ form.card_type.as_widget }}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">内容</label>
+                    <input type="text" name="description" id="edit_description" class="w-full p-2 border rounded">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">金額（円）</label>
+                    <input type="number" name="amount" id="edit_amount" class="w-full p-2 border rounded" min="0">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">請求日</label>
+                    <input type="date" name="due_date" id="edit_due_date" class="w-full p-2 border rounded">
+                </div>
+                <div class="mb-4 flex items-center">
+                    <input type="checkbox" name="is_split_payment" id="edit_is_split_payment" class="rounded">
+                    <label class="ml-2 text-gray-700">分割2回払い</label>
+                </div>
+                <div class="mb-4 flex items-center" id="edit_bonus_payment_wrapper">
+                    <input type="checkbox" name="is_bonus_payment" id="edit_is_bonus_payment" class="rounded">
+                    <label class="ml-2 text-gray-700">ボーナス払い</label>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">キャンセル</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- デフォルト項目編集モーダル -->
+<div id="defaultEditModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-bold mb-4">定期デフォルト編集</h3>
+            <form id="defaultEditForm" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="edit_default">
+                <input type="hidden" name="id" id="default_edit_id">
+                <input type="hidden" name="label" id="default_edit_hidden_label">
+                <input type="hidden" name="year_month" id="default_edit_year_month">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">項目名</label>
+                    <input type="text" id="default_edit_label" class="w-full p-2 border rounded bg-gray-100" readonly>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">{{ default_edit_form.card_type.label }}</label>
+                    {{ default_edit_form.card_type }}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">{{ default_edit_form.amount.label }}</label>
+                    <input type="number" name="amount" id="default_edit_amount" class="w-full p-2 border rounded" min="0">
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeDefaultEditModal()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">キャンセル</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // モーダル制御関数
+    function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, isSplitPayment, isBonusPayment) {
+        const modal = document.getElementById('editModal');
+        const form = document.getElementById('editForm');
+
+        form.action = `/credit-estimates/${pk}/edit/`;
+
+        // 年月を分割して設定
+        const [year, month] = yearMonth.split('-');
+        document.getElementById('edit_year').value = year;
+        document.getElementById('edit_month').value = month;
+        document.getElementById('edit_year_month_hidden').value = yearMonth;
+
+        document.getElementById('edit_card_type').value = cardType;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('edit_amount').value = amount;
+        document.getElementById('edit_due_date').value = dueDate;
+        document.getElementById('edit_is_split_payment').checked = isSplitPayment;
+        document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
+
+        // ボーナス払いチェックボックスの表示を更新
+        const editBonusWrapper = document.getElementById('edit_bonus_payment_wrapper');
+        if (editBonusWrapper) {
+            editBonusWrapper.style.display = cardType === 'view' ? 'flex' : 'none';
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+    }
+
+    function openDefaultEditModal(id, label, amount, cardType, yearMonth) {
+        const modal = document.getElementById('defaultEditModal');
+
+        // フォームのフィールドに値を設定
+        document.getElementById('default_edit_id').value = id;
+        document.getElementById('default_edit_label').value = label;
+        document.getElementById('default_edit_year_month').value = yearMonth;
+        document.getElementById('default_edit_hidden_label').value = label; // hiddenフィールドにも値を設定
+        document.getElementById('default_edit_amount').value = amount;
+        document.getElementById('default_edit_card_type').value = cardType;
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeDefaultEditModal() {
+        document.getElementById('defaultEditModal').classList.add('hidden');
+    }
+
+    // 背景クリックでモーダルを閉じる
+    document.getElementById('editModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+
+    document.getElementById('defaultEditModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeDefaultEditModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // CSRFトークンを取得
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // ボーナス払いチェックボックスの表示制御（新規追加フォーム）
+        const createCardTypeSelect = document.getElementById('id_card_type');
+        const createBonusWrapper = document.getElementById('create_bonus_payment_wrapper');
+        const createBonusCheckbox = document.getElementById('id_is_bonus_payment');
+
+        function toggleCreateBonusPayment() {
+            const isViewCard = createCardTypeSelect.value === 'view';
+            if (createBonusWrapper) {
+                createBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
+                if (!isViewCard && createBonusCheckbox) {
+                    createBonusCheckbox.checked = false;
+                }
+            }
+        }
+
+        if (createCardTypeSelect) {
+            createCardTypeSelect.addEventListener('change', toggleCreateBonusPayment);
+            toggleCreateBonusPayment(); // 初期状態を設定
+        }
+
+        // 分割2回払いとボーナス払いの排他制御（新規追加フォーム）
+        const createSplitCheckbox = document.getElementById('id_is_split_payment');
+        if (createSplitCheckbox && createBonusCheckbox) {
+            createSplitCheckbox.addEventListener('change', function() {
+                if (this.checked && createBonusCheckbox.checked) {
+                    createBonusCheckbox.checked = false;
+                }
+            });
+            createBonusCheckbox.addEventListener('change', function() {
+                if (this.checked && createSplitCheckbox.checked) {
+                    createSplitCheckbox.checked = false;
+                }
+            });
+        }
+
+        // ボーナス払いチェックボックスの表示制御（編集モーダル）
+        const editCardTypeSelect = document.getElementById('edit_card_type');
+        const editBonusWrapper = document.getElementById('edit_bonus_payment_wrapper');
+        const editBonusCheckbox = document.getElementById('edit_is_bonus_payment');
+
+        function toggleEditBonusPayment() {
+            const isViewCard = editCardTypeSelect.value === 'view';
+            if (editBonusWrapper) {
+                editBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
+                if (!isViewCard && editBonusCheckbox) {
+                    editBonusCheckbox.checked = false;
+                }
+            }
+        }
+
+        if (editCardTypeSelect) {
+            editCardTypeSelect.addEventListener('change', toggleEditBonusPayment);
+        }
+
+        // 分割2回払いとボーナス払いの排他制御（編集モーダル）
+        const editSplitCheckbox = document.getElementById('edit_is_split_payment');
+        if (editSplitCheckbox && editBonusCheckbox) {
+            editSplitCheckbox.addEventListener('change', function() {
+                if (this.checked && editBonusCheckbox.checked) {
+                    editBonusCheckbox.checked = false;
+                }
+            });
+            editBonusCheckbox.addEventListener('change', function() {
+                if (this.checked && editSplitCheckbox.checked) {
+                    editSplitCheckbox.checked = false;
+                }
+            });
+        }
+
+        // 編集ボタンのイベントリスナーを修正
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const pk = this.dataset.pk;
+                const yearMonth = this.dataset.yearMonth;
+                const cardType = this.dataset.cardType;
+                const description = this.dataset.description;
+                const amount = this.dataset.amount;
+                const dueDate = this.dataset.dueDate;
+                const isSplit = this.dataset.split === 'true';
+                const isBonus = this.dataset.bonus === 'true';
+
+                openEditModal(pk, yearMonth, cardType, description, amount, dueDate, isSplit, isBonus);
+            });
+        });
+        
+        // デフォルト編集ボタンのイベントリスナー
+        document.querySelectorAll('.default-edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.defaultId;
+                const label = this.dataset.label;
+                const amount = this.dataset.amount;
+                const cardType = this.dataset.cardType;
+                const yearMonth = this.dataset.yearMonth;
+
+                openDefaultEditModal(id, label, amount, cardType, yearMonth);
+            });
+        });
+
+        // --- 新規追加フォームの非同期処理 ---
+        const createForm = document.getElementById('createEstimateForm');
+        createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(createForm);
+
+            try {
+                const response = await fetch("{% url 'budget_app:credit_estimates' %}", {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData,
+                });
+                const data = await response.json();
+                window.handleAjaxResponse(data);
+            } catch (error) {
+                console.error('Error:', error);
+                Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+            }
+        });
+
+        // --- 見積り編集モーダルフォームの非同期処理 ---
+        const editForm = document.getElementById('editForm');
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(editForm);
+            // yearとmonthからyear_monthを再構築し、フォームデータに追加
+            const year = formData.get('year');
+            const month = formData.get('month');
+            formData.append('year_month', `${year}-${month}`);
+
+            try {
+                const response = await fetch(editForm.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData,
+                });
+                const data = await response.json();
+                window.handleAjaxResponse(data);
+            } catch (error) {
+                console.error('Error:', error);
+                Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+            }
+        });
+
+        // --- 定期デフォルト編集モーダルフォームの非同期処理 ---
+        const defaultEditForm = document.getElementById('defaultEditForm');
+        defaultEditForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(defaultEditForm);
+            try {
+                const response = await fetch("{% url 'budget_app:credit_estimates' %}", {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData,
+                });
+                const data = await response.json();
+                window.handleAjaxResponse(data);
+            } catch (error) {
+                console.error('Error:', error);
+                Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+            }
+        });
+
+        // --- カードごとの反映ボタンの非同期処理 ---
+        document.querySelectorAll('.reflect-card-form').forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!confirm('このカードの合計額を月次計画に反映しますか？')) return;
+
+                const formData = new FormData(form);
+                try {
+                    const response = await fetch("{% url 'budget_app:credit_estimates' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData,
+                    });
+                    // 正常なレスポンスでもリダイレクトを伴うため、ここではjson()を呼ばずにページをリロード
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        // エラーレスポンスの場合はjsonを解析してメッセージ表示
+                        const data = await response.json();
+                        window.handleAjaxResponse(data);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                }
+            });
+        });
+
+        // --- 月ごとの反映ボタンの処理 ---
+        document.querySelectorAll('.reflect-month-form').forEach(form => {
+            form.addEventListener('submit', (e) => {
+                if (!confirm('この月の全ての見積もりを月次計画に反映しますか？')) {
+                    e.preventDefault();
+                }
+            });
+        });
+        // --- 削除ボタンの非同期処理 ---
+        document.querySelectorAll('form[action*="/credit-estimates/delete/"]').forEach(deleteForm => {
+            deleteForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const isRecurring = deleteForm.closest('tr').dataset.recurring === 'true';
+                let confirmed = false;
+                let deleteType = 'single';
+
+                if (isRecurring) {
+                    const choice = prompt("この項目は定期的な見積もりです。削除方法を選択してください。\n\n1: この月の見積もりのみ削除\n2: 定期設定と全ての関連見積もりを削除\n\n(番号を入力してください)");
+                    if (choice === '1') {
+                        confirmed = true;
+                        deleteType = 'single';
+                    } else if (choice === '2') {
+                        confirmed = confirm('本当に定期設定と全ての関連見積もりを削除しますか？これは元に戻せません。');
+                        if (confirmed) {
+                            deleteType = 'all';
+                        }
+                    }
+                } else {
+                    confirmed = confirm('本当に削除しますか？');
+                }
+
+                if (!confirmed) return;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('delete_type', deleteType);
+
+                    const response = await fetch(deleteForm.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                    const data = await response.json();
+                    window.handleAjaxResponse(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                    Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                }
+            });
+        });
+
+        // 年月フォームの同期
+        document.querySelectorAll('[data-year-month-form]').forEach(form => {
+            const yearSelect = form.querySelector('[data-year-select]');
+            const monthSelect = form.querySelector('[data-month-select]');
+            const target = form.querySelector('[data-year-month]');
+
+            const sync = () => {
+                if (yearSelect && monthSelect && target) {
+                    target.value = `${yearSelect.value}-${monthSelect.value}`;
+                }
+            };
+
+            sync();
+            yearSelect?.addEventListener('change', sync);
+            monthSelect?.addEventListener('change', sync);
+        });
+    });
+</script>
+
+{% block extra_js %}
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Djangoのmessagesフレームワークからのメッセージをトーストで表示
+    {% for message in messages %}
+    Toastify({
+        text: "{{ message|escapejs }}",
+        duration: 5000,
+        close: true,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "{% if message.tags == 'success' %}#4CAF50{% elif message.tags == 'error' %}#f44336{% else %}#2196F3{% endif %}",
+        stopOnFocus: true,
+    }).showToast();
+    {% endfor %}
+
+    // Ajaxフォームの成功/エラーをトーストで表示する共通関数
+    window.handleAjaxResponse = function(response) {
+        const message = response.message || (response.status === 'success' ? '処理が完了しました。' : 'エラーが発生しました。');
+        const isSuccess = response.status === 'success';
+
+        Toastify({
+            text: message,
+            duration: isSuccess ? 3000 : 5000,
+            close: !isSuccess,
+            gravity: "top",
+            position: "right",
+            backgroundColor: isSuccess ? "#4CAF50" : "#f44336",
+        }).showToast();
+
+        if (isSuccess) {
+            setTimeout(() => window.location.reload(), 1500);
+        }
+    };
+});
+</script>
+{% endblock %}
+{% endblock %}

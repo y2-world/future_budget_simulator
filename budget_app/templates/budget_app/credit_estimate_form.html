@@ -1,0 +1,90 @@
+{% extends 'budget_app/base.html' %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold mb-6">{{ title }}</h2>
+
+    <form method="post" data-year-month-form>
+        {% csrf_token %}
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">{{ form.year.label }}</label>
+                {{ form.year }}
+                {% if form.year.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.year.errors.0 }}</p>
+                {% endif %}
+            </div>
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">{{ form.month.label }}</label>
+                {{ form.month }}
+                {% if form.month.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.month.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {{ form.year_month }}
+            {% if form.year_month.errors %}
+                <p class="text-red-500 text-sm mt-1 col-span-2">{{ form.year_month.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">{{ form.card_type.label }}</label>
+            {{ form.card_type }}
+            {% if form.card_type.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.card_type.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">{{ form.description.label }}</label>
+            {{ form.description }}
+            {% if form.description.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.description.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">{{ form.amount.label }}</label>
+            {{ form.amount }}
+            {% if form.amount.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.amount.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">{{ form.due_day.label }}</label>
+            {{ form.due_day }}
+            {% if form.due_day.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ form.due_day.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="flex space-x-4">
+            <button type="submit" class="flex-1 bg-blue-500 text-white p-3 rounded hover:bg-blue-600 font-bold">
+                保存
+            </button>
+            <a href="{% url 'budget_app:credit_estimates' %}" class="flex-1 bg-gray-300 text-gray-700 p-3 rounded hover:bg-gray-400 font-bold text-center">
+                キャンセル
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.querySelector('[data-year-month-form]');
+        const yearSelect = form.querySelector('[data-year-select]');
+        const monthSelect = form.querySelector('[data-month-select]');
+        const target = form.querySelector('[data-year-month]');
+        const sync = () => {
+            if (yearSelect && monthSelect && target) {
+                target.value = `${yearSelect.value}-${monthSelect.value}`;
+            }
+        };
+        sync();
+        yearSelect?.addEventListener('change', sync);
+        monthSelect?.addEventListener('change', sync);
+    });
+</script>
+{% endblock %}

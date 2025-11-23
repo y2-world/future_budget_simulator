@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py makemigrations:*)",
+      "Bash(python3 manage.py makemigrations:*)",
+      "Bash(python3 manage.py:*)",
+      "Bash(/usr/local/bin/python3:*)",
+      "Bash(pip3 list:*)",
+      "Bash(venv/bin/python manage.py:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
