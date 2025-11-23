@@ -8,3 +8,11 @@ STATIC_URL = '/static/'
 
 # collectstatic がまとめるディレクトリ（Heroku では必須）
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # …（既存のミドルウェア）
+]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
