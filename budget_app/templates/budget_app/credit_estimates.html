@@ -5,69 +5,63 @@
 <div class="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto">
     <h2 class="text-2xl font-bold mb-6">クレカ請求見積り</h2>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div>
-            <h3 class="text-lg font-bold mb-4">新規追加</h3>
-            <form id="createEstimateForm" method="post" class="space-y-4" data-year-month-form>
-                {% csrf_token %}
-                <input type="hidden" name="action" value="create_estimate">
+    <!-- 新規追加フォーム -->
+    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-sm p-6 mb-8">
+        <h3 class="text-xl font-bold mb-4 text-gray-800 flex items-center">
+            <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">+</span>
+            新規追加
+        </h3>
+        <form id="createEstimateForm" method="post" class="space-y-4" data-year-month-form>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_estimate">
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">{{ form.year.label }}</label>
-                        {{ form.year }}
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">{{ form.month.label }}</label>
-                        {{ form.month }}
-                    </div>
-                    {{ form.year_month }}
-                </div>
-
+            <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-gray-700 font-bold mb-2">{{ form.card_type.label }}</label>
-                    {{ form.card_type }}
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.year.label }}</label>
+                    {{ form.year }}
                 </div>
-
                 <div>
-                    <label class="block text-gray-700 font-bold mb-2">{{ form.description.label }}</label>
-                    {{ form.description }}
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.month.label }}</label>
+                    {{ form.month }}
                 </div>
+                {{ form.year_month }}
+            </div>
 
-                <div>
-                    <label class="block text-gray-700 font-bold mb-2">{{ form.amount.label }}</label>
-                    {{ form.amount }}
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.card_type.label }}</label>
+                {{ form.card_type }}
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.description.label }}</label>
+                {{ form.description }}
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.amount.label }}</label>
+                {{ form.amount }}
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.due_date.label }}</label>
+                {{ form.due_date }}
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-3 sm:space-y-0">
+                <div class="flex items-center">
+                    {{ form.is_split_payment }}
+                    <label class="ml-2 text-gray-700 text-sm">{{ form.is_split_payment.label }}</label>
                 </div>
-
-                <div>
-                    <label class="block text-gray-700 font-bold mb-2">{{ form.due_date.label }}</label>
-                    {{ form.due_date }}
+                <div class="flex items-center" id="create_bonus_payment_wrapper">
+                    {{ form.is_bonus_payment }}
+                    <label class="ml-2 text-gray-700 text-sm">{{ form.is_bonus_payment.label }}</label>
                 </div>
+            </div>
 
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center">
-                        {{ form.is_split_payment }}
-                        <label class="ml-2 text-gray-700">{{ form.is_split_payment.label }}</label>
-                    </div>
-                    <div class="flex items-center" id="create_bonus_payment_wrapper">
-                        {{ form.is_bonus_payment }}
-                        <label class="ml-2 text-gray-700">{{ form.is_bonus_payment.label }}</label>
-                    </div>
-                </div>
-
-                <button type="submit" class="w-full bg-blue-500 text-white p-3 rounded hover:bg-blue-600 font-bold">
-                    見積りを追加
-                </button>
-            </form>
-        </div>
-
-        <div>
-            <h3 class="text-lg font-bold mb-4">一覧</h3>
-            <p class="text-sm text-gray-600 mb-3">
-                定期的な金額の初期値は、別ページの「定期デフォルト」で管理します。<br>
-                分割2回払いにチェックを入れると、10の位を切り上げて当月に含め、残りを次月に自動追加します。
-            </p>
-        </div>
+            <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 rounded-lg hover:from-blue-600 hover:to-blue-700 font-bold shadow-md transition transform hover:scale-[1.02]">
+                見積りを追加
+            </button>
+        </form>
     </div>
 
     <div class="mt-10">
@@ -80,7 +74,7 @@
             </div>
 
             <div>
-                <h3 class="text-xl font-bold mb-4">未来の見積もり</h3>
+                <h3 class="text-xl font-bold mb-4">今後の見積もり</h3>
                 {% include 'budget_app/_summary_section.html' with summary_data=future_summary title='未来' %}
             </div>
 
@@ -268,12 +262,18 @@
         const createCardTypeSelect = document.getElementById('id_card_type');
         const createBonusWrapper = document.getElementById('create_bonus_payment_wrapper');
         const createBonusCheckbox = document.getElementById('id_is_bonus_payment');
+        const createMonthSelect = document.getElementById('id_month');
 
         function toggleCreateBonusPayment() {
             const isViewCard = createCardTypeSelect.value === 'view';
+            // ボーナス払い月（8月、1月）かどうかをチェック
+            const selectedMonth = createMonthSelect ? parseInt(createMonthSelect.value) : 0;
+            const isBonusPaymentMonth = selectedMonth === 8 || selectedMonth === 1;
+
             if (createBonusWrapper) {
-                createBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
-                if (!isViewCard && createBonusCheckbox) {
+                // VIEWカードかつボーナス払い月の場合のみ表示
+                createBonusWrapper.style.display = (isViewCard && isBonusPaymentMonth) ? 'flex' : 'none';
+                if ((!isViewCard || !isBonusPaymentMonth) && createBonusCheckbox) {
                     createBonusCheckbox.checked = false;
                 }
             }
@@ -282,6 +282,10 @@
         if (createCardTypeSelect) {
             createCardTypeSelect.addEventListener('change', toggleCreateBonusPayment);
             toggleCreateBonusPayment(); // 初期状態を設定
+        }
+
+        if (createMonthSelect) {
+            createMonthSelect.addEventListener('change', toggleCreateBonusPayment);
         }
 
         // 分割2回払いとボーナス払いの排他制御（新規追加フォーム）
@@ -438,14 +442,8 @@
                         headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
                         body: formData,
                     });
-                    // 正常なレスポンスでもリダイレクトを伴うため、ここではjson()を呼ばずにページをリロード
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        // エラーレスポンスの場合はjsonを解析してメッセージ表示
-                        const data = await response.json();
-                        window.handleAjaxResponse(data);
-                    }
+                    const data = await response.json();
+                    window.handleAjaxResponse(data);
                 } catch (error) {
                     console.error('Error:', error);
                     Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
@@ -492,6 +490,29 @@
                     formData.append('delete_type', deleteType);
 
                     const response = await fetch(deleteForm.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                    const data = await response.json();
+                    window.handleAjaxResponse(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                    Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                }
+            });
+        });
+
+        // --- 定期デフォルト項目の削除フォームの非同期処理 ---
+        document.querySelectorAll('.delete-default-form').forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                if (!confirm('この月の定期項目を削除しますか？')) return;
+
+                const formData = new FormData(form);
+                try {
+                    const response = await fetch("{% url 'budget_app:credit_estimates' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData,
+                    });
                     const data = await response.json();
                     window.handleAjaxResponse(data);
                 } catch (error) {

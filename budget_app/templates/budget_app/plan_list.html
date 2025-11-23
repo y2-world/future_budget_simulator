@@ -2,29 +2,33 @@
 {% load humanize budget_filters %}
 
 {% block content %}
-<div class="bg-white rounded-lg shadow-md p-6">
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold">月次計画一覧</h2>
-        <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-                <span class="text-sm font-medium">初期残高:</span>
-                <span id="initial-balance-display" class="font-bold text-lg">{{ initial_balance|yen }}</span>
-                <button onclick="toggleInitialBalanceEdit()" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">編集</button>
-            </div>
-            <a href="{% url 'budget_app:plan_create' %}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+<div class="bg-white rounded-lg shadow-md p-4 md:p-6">
+    <div class="mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl md:text-2xl font-bold">月次計画一覧</h2>
+            <a href="{% url 'budget_app:plan_create' %}" class="bg-green-500 text-white px-3 py-2 md:px-4 md:py-2 rounded hover:bg-green-600 text-sm md:text-base">
                 新規作成
             </a>
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-xs md:text-sm font-medium">初期残高:</span>
+            <span id="initial-balance-display" class="font-bold text-base md:text-lg">{{ initial_balance|yen }}</span>
+            <button onclick="toggleInitialBalanceEdit()" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">編集</button>
         </div>
     </div>
 
     <!-- 初期残高編集フォーム -->
     <div id="initial-balance-edit" class="hidden mb-6 p-4 bg-blue-50 rounded border border-blue-200">
-        <form method="post" action="{% url 'budget_app:update_initial_balance' %}" class="flex items-center space-x-4">
+        <form method="post" action="{% url 'budget_app:update_initial_balance' %}" class="space-y-3">
             {% csrf_token %}
-            <label class="font-medium">初期残高:</label>
-            <input type="number" name="initial_balance" value="{{ initial_balance }}" class="p-2 border rounded w-48">
-            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">保存</button>
-            <button type="button" onclick="toggleInitialBalanceEdit()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">キャンセル</button>
+            <div>
+                <label class="block font-medium mb-2 text-sm">初期残高:</label>
+                <input type="number" name="initial_balance" value="{{ initial_balance }}" class="p-2 border rounded w-full">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm">保存</button>
+                <button type="button" onclick="toggleInitialBalanceEdit()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm">キャンセル</button>
+            </div>
         </form>
     </div>
 
@@ -32,37 +36,61 @@
         {% for plan in plans %}
         <div class="mb-8 border rounded-lg overflow-hidden" id="plan-{{ plan.pk }}">
             <!-- 計画ヘッダー -->
-            <div class="bg-gray-100 p-4 flex justify-between items-center">
-                <div>
-                    <h3 class="text-xl font-bold">{{ plan.year_month|format_year_month }}</h3>
-                    <div class="text-sm text-gray-600 mt-1">
-                        <span class="text-green-600 font-semibold">収入: {{ plan.total_income|yen }}</span>
-                        <span class="mx-2">|</span>
-                        <span class="text-red-600 font-semibold">支出: {{ plan.total_expenses|yen }}</span>
-                        {% if plan.has_savings %}
-                            <span class="mx-2">|</span>
-                            <span class="text-blue-600 font-semibold">定期預金: {{ plan.savings_amount_display|yen }}</span>
-                        {% endif %}
-                        <span class="mx-2">|</span>
-                        <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
-                            純収支: {{ plan.net_income|yen }}
-                        </span>
+            <div class="bg-gray-100 p-3 md:p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-lg md:text-xl font-bold">{{ plan.year_month|format_year_month }}</h3>
+                    <div class="flex gap-2">
+                        <button onclick="toggleEdit{{ plan.pk }}()" class="bg-blue-500 text-white px-2 md:px-3 py-1 rounded hover:bg-blue-600 text-xs md:text-sm">編集</button>
+                        <form method="post" action="{% url 'budget_app:plan_delete' plan.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？')">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-red-500 text-white px-2 md:px-3 py-1 rounded hover:bg-red-600 text-xs md:text-sm">削除</button>
+                        </form>
                     </div>
                 </div>
-                <div class="space-x-2">
-                    <button onclick="toggleEdit{{ plan.pk }}()" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">編集</button>
-                    <form method="post" action="{% url 'budget_app:plan_delete' plan.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？')">
-                        {% csrf_token %}
-                        <button type="submit" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">削除</button>
-                    </form>
+
+                <!-- デスクトップ: 1行表示 -->
+                <div class="hidden md:block text-sm text-gray-600">
+                    <span class="text-green-600 font-semibold">収入: {{ plan.total_income|yen }}</span>
+                    <span class="mx-2">|</span>
+                    <span class="text-red-600 font-semibold">支出: {{ plan.total_expenses|yen }}</span>
+                    {% if plan.has_savings %}
+                        <span class="mx-2">|</span>
+                        <span class="text-blue-600 font-semibold">定期預金: {{ plan.savings_amount_display|yen }}</span>
+                    {% endif %}
+                    <span class="mx-2">|</span>
+                    <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
+                        純収支: {{ plan.net_income|yen }}
+                    </span>
+                </div>
+
+                <!-- モバイル: グリッド表示 -->
+                <div class="md:hidden grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-gray-600">収入:</span>
+                        <span class="text-green-600 font-semibold ml-1">{{ plan.total_income|yen }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">支出:</span>
+                        <span class="text-red-600 font-semibold ml-1">{{ plan.total_expenses|yen }}</span>
+                    </div>
+                    {% if plan.has_savings %}
+                    <div>
+                        <span class="text-gray-600">定期預金:</span>
+                        <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <span class="text-gray-600">純収支:</span>
+                        <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold ml-1">{{ plan.net_income|yen }}</span>
+                    </div>
                 </div>
             </div>
 
             <!-- インライン編集フォーム -->
-            <div id="edit-form-{{ plan.pk }}" class="hidden p-4 bg-yellow-50 border-b">
+            <div id="edit-form-{{ plan.pk }}" class="hidden p-3 md:p-4 bg-yellow-50 border-b">
                 <form class="inline-edit-form" method="post" action="{% url 'budget_app:plan_edit' plan.pk %}">
                     {% csrf_token %}
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4">
                         <div>
                             <label class="block text-sm font-medium mb-1">給与</label>
                             <input type="number" name="salary" value="{{ plan.salary }}" class="w-full p-2 border rounded">
@@ -83,10 +111,14 @@
                             <label class="block text-sm font-medium mb-1">家賃</label>
                             <input type="number" name="rent" value="{{ plan.rent }}" class="w-full p-2 border rounded">
                         </div>
+                        {% with year_str=plan.year_month|slice:":4" month_str=plan.year_month|slice:"5:7" %}
+                        {% if year_str|add:"0" < 2026 or year_str == "2026" and month_str|add:"0" < 6 %}
                         <div>
                             <label class="block text-sm font-medium mb-1">レイク返済</label>
                             <input type="number" name="lake" value="{{ plan.lake }}" class="w-full p-2 border rounded">
                         </div>
+                        {% endif %}
+                        {% endwith %}
                         <div>
                             <label class="block text-sm font-medium mb-1">VIEWカード</label>
                             <input type="number" name="view_card" value="{{ plan.view_card }}" class="w-full p-2 border rounded">
@@ -129,9 +161,9 @@
                     <input type="hidden" name="year" value="{{ plan.year_month|slice:':4' }}">
                     <input type="hidden" name="month" value="{{ plan.year_month|slice:'5:7' }}">
                     <input type="hidden" name="year_month" value="{{ plan.year_month }}">
-                    <div class="flex space-x-2">
-                        <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">保存</button>
-                        <button type="button" onclick="toggleEdit{{ plan.pk }}()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">キャンセル</button>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm">保存</button>
+                        <button type="button" onclick="toggleEdit{{ plan.pk }}()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm">キャンセル</button>
                     </div>
                 </form>
             </div>
@@ -144,14 +176,15 @@
             </script>
 
             <!-- タイムライン -->
-            <div class="p-4">
-                <h4 class="font-bold mb-3 text-gray-700">残高推移タイムライン</h4>
+            <div class="p-3 md:p-4">
+                <h4 class="font-bold mb-3 text-gray-700 text-sm md:text-base">残高推移タイムライン</h4>
                 <div class="bg-blue-50 p-2 mb-2 rounded">
-                    <span class="text-sm font-semibold">月初残高: {{ plan.start_balance|yen }}</span>
+                    <span class="text-xs md:text-sm font-semibold">月初残高: {{ plan.start_balance|yen }}</span>
                 </div>
                 <div class="space-y-2">
                     {% for item in plan.timeline %}
-                    <div class="flex items-center justify-between p-3 bg-white border rounded hover:bg-gray-50">
+                    <!-- デスクトップ表示 -->
+                    <div class="hidden md:flex items-center justify-between p-3 bg-white border rounded hover:bg-gray-50">
                         <div class="flex items-center space-x-3 flex-1">
                             {% if item.date %}
                             <span class="text-sm text-gray-600 w-20">{{ item.date|date:"m/d（D）" }}</span>
@@ -170,10 +203,33 @@
                             </span>
                         </div>
                     </div>
+
+                    <!-- モバイル表示 -->
+                    <div class="md:hidden p-3 bg-white border rounded">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex-1">
+                                {% if item.date %}
+                                <div class="text-xs text-gray-500 mb-1">{{ item.date|date:"m/d（D）" }}</div>
+                                {% endif %}
+                                <div class="font-medium text-sm">{{ item.name }}</div>
+                            </div>
+                            <div class="text-right ml-2">
+                                <div class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold text-sm">
+                                    {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right pt-2 border-t border-gray-100">
+                            <span class="text-xs text-gray-500">残高: </span>
+                            <span class="font-bold text-sm {% if item.balance < 0 %}text-red-600{% else %}text-gray-800{% endif %}">
+                                {{ item.balance|yen }}
+                            </span>
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
                 <div class="bg-green-50 p-2 mt-2 rounded">
-                    <span class="text-sm font-semibold">月末残高: {{ plan.final_balance|yen }}</span>
+                    <span class="text-xs md:text-sm font-semibold">月末残高: {{ plan.final_balance|yen }}</span>
                 </div>
             </div>
         </div>

@@ -37,7 +37,8 @@
                 </form>
             </div>
             {% endif %}
-            <div class="p-4 overflow-x-auto">
+            <!-- デスクトップ表示：テーブル -->
+            <div class="hidden md:block p-4 overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="bg-gray-50">
@@ -53,7 +54,15 @@
                             <tr class="bg-blue-50 font-semibold">
                                 <td class="px-3 py-2 font-bold" colspan="3">{{ data.label }}</td>
                                 <td class="px-3 py-2 text-right">{{ data.total|yen }}</td>
-                                <td class="px-3 py-2 text-center"></td>
+                                <td class="px-3 py-2 text-center">
+                                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline reflect-card-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="reflect_card">
+                                        <input type="hidden" name="year_month" value="{% if '_bonus' in ym %}{{ ym|slice:':-6' }}{% else %}{{ ym }}{% endif %}">
+                                        <input type="hidden" name="card_type" value="{{ card_type }}">
+                                        <button type="submit" class="bg-green-500 text-white text-xs px-3 py-1 rounded hover:bg-green-600">反映</button>
+                                    </form>
+                                </td>
                             </tr>
                             {% for item in data.entries %}
                             <tr class="border-b {% if item.is_default %}bg-gray-50{% endif %}">
@@ -102,6 +111,84 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <!-- モバイル表示：カード形式 -->
+            <div class="md:hidden p-4 space-y-6">
+                {% for card_type, data in cards.items %}
+                    <!-- カード種別ヘッダー -->
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-bold text-lg">{{ data.label }}</h4>
+                            <span class="text-2xl font-bold">{{ data.total|yen }}</span>
+                        </div>
+                        <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="reflect-card-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="reflect_card">
+                            <input type="hidden" name="year_month" value="{% if '_bonus' in ym %}{{ ym|slice:':-6' }}{% else %}{{ ym }}{% endif %}">
+                            <input type="hidden" name="card_type" value="{{ card_type }}">
+                            <button type="submit" class="w-full bg-white text-blue-600 text-sm px-4 py-2 rounded-md font-semibold hover:bg-blue-50 transition">
+                                月次計画に反映
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 個別項目 -->
+                    <div class="space-y-3 ml-2">
+                        {% for item in data.entries %}
+                        <div class="border-l-4 {% if item.is_default %}border-gray-400 bg-gray-50{% else %}border-blue-300 bg-white{% endif %} rounded-r-lg shadow-sm p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex-1">
+                                    <div class="font-semibold text-base mb-1">
+                                        {{ item.description|default:'-' }}
+                                        {% if item.is_default %}
+                                            <span class="text-xs text-gray-500 ml-1">(定期)</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-sm text-gray-600 space-y-1">
+                                        {% if not item.is_default and item.due_date %}
+                                            <div>📅 {{ item.due_date|date:'Y年m月d日' }}</div>
+                                        {% endif %}
+                                        {% if item.is_split_payment %}
+                                            <div><span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">分割2回払い</span></div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="text-right ml-3">
+                                    <div class="text-xl font-bold text-blue-600">{{ item.amount|yen }}</div>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2 mt-3">
+                                {% if not item.is_default %}
+                                    <button type="button" data-pk="{{ item.pk }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.amount }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" class="edit-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2 rounded-md hover:bg-blue-600 font-medium">
+                                        編集
+                                    </button>
+                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' item.pk %}" class="flex-1">
+                                        {% csrf_token %}
+                                        <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2 rounded-md hover:bg-red-600 font-medium">
+                                            削除
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <button type="button" data-default-id="{{ item.default_id }}" data-label="{{ item.description }}" data-amount="{{ item.amount }}" data-card-type="{{ item.card_type }}" data-year-month="{{ item.year_month }}" class="default-edit-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2 rounded-md hover:bg-blue-600 font-medium">
+                                        編集
+                                    </button>
+                                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="delete-default-form flex-1">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_default_for_month">
+                                        <input type="hidden" name="default_id" value="{{ item.default_id }}">
+                                        <input type="hidden" name="year_month" value="{{ item.year_month }}">
+                                        <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2 rounded-md hover:bg-red-600 font-medium">
+                                            削除
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
             </div>
             </div>
         {% endfor %}

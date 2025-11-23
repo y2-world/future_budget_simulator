@@ -553,9 +553,35 @@ def credit_estimate_list(request):
             except CreditDefault.DoesNotExist:
                 return JsonResponse({'status': 'error', 'message': '削除対象の定期項目が見つかりません。'}, status=404)
 
+        elif action == 'edit_default':
+            default_id = request.POST.get('id')
+            year_month = request.POST.get('year_month')
+            new_amount = request.POST.get('amount')
+
+            try:
+                default_instance = get_object_or_404(CreditDefault, pk=default_id)
+                default_label = default_instance.label
+
+                # この月だけの金額上書きを作成
+                DefaultChargeOverride.objects.update_or_create(
+                    default=default_instance,
+                    year_month=year_month,
+                    defaults={'amount': new_amount}
+                )
+
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'{format_year_month_display(year_month)}の「{default_label}」を{new_amount}円に変更しました。'
+                })
+            except CreditDefault.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': '編集対象の定期項目が見つかりません。'}, status=404)
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': f'エラーが発生しました: {str(e)}'}, status=500)
+
         elif action == 'reflect_card':
             year_month = request.POST.get('year_month')
             card_type = request.POST.get('card_type')
+            is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
             # card_typeから実際のカード種別とボーナス払いフラグを取得
             is_bonus = card_type.endswith('_bonus')
@@ -636,14 +662,27 @@ def credit_estimate_list(request):
                     setattr(plan, field_name, total_amount)
                     plan.save()
 
-                    messages.success(
-                        request,
-                        f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
-                    )
+                    success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
+
+                    if is_ajax:
+                        return JsonResponse({
+                            'status': 'success',
+                            'message': success_message
+                        })
+                    else:
+                        messages.success(request, success_message)
                 else:
-                    messages.error(request, f'フィールド {field_name} が見つかりません。')
+                    error_message = f'フィールド {field_name} が見つかりません。'
+                    if is_ajax:
+                        return JsonResponse({'status': 'error', 'message': error_message}, status=400)
+                    else:
+                        messages.error(request, error_message)
             else:
-                messages.error(request, 'カードデータが見つかりません。')
+                error_message = 'カードデータが見つかりません。'
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': error_message}, status=400)
+                else:
+                    messages.error(request, error_message)
 
             return redirect('budget_app:credit_estimates')
 
