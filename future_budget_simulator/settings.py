@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import dj_database_url
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -77,15 +78,13 @@ WSGI_APPLICATION = 'future_budget_simulator.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# HerokuのDATABASE_URL環境変数を使用
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'future_budget_simulator',
-        'USER': 'budget_user',
-        'PASSWORD': 'your_strong_password',  # ここに設定したパスワードを入力してください
-        'HOST': 'localhost',                  # データベースサーバーのホスト名 or IPアドレス
-        'PORT': '5432',                       # PostgreSQLのデフォルトポート
-    }
+    'default': dj_database_url.config(
+        default='postgresql://budget_user:your_strong_password@localhost:5432/future_budget_simulator',
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 
