@@ -5,12 +5,12 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 
-# Heroku 用に collectstatic 出力先を絶対パスで指定
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Heroku 用に collectstatic 出力先を文字列の絶対パスで指定
+STATIC_ROOT = str(BASE_DIR / 'staticfiles')
 
 # collectstatic 時に参照するディレクトリ（存在する場合のみ）
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    str(BASE_DIR / 'static'),  # 存在しない場合は削除してもOK
 ]
 
 # WhiteNoise 設定
