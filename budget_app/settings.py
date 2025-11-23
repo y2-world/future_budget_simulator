@@ -8,7 +8,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = str(BASE_DIR / 'staticfiles')
 STATICFILES_DIRS = [str(BASE_DIR / 'static')]
 
-# WhiteNoise
+# Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -16,9 +16,18 @@ MIDDLEWARE = [
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ALLOWED_HOSTS
-env_hosts = os.environ.get('ALLOWED_HOSTS', '*')
-ALLOWED_HOSTS = [h.strip() for h in env_hosts.split(',') if h.strip()]
+# ALLOWED_HOSTS の設定
+ALLOWED_HOSTS = ['future-budget-simulator-b9ef5003e4b5.herokuapp.com']
 
-# デバッグ用に Heroku で値を確認
+# 環境変数から追加のホストを取得
+allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
+if allowed_hosts_env:
+    additional_hosts = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+    ALLOWED_HOSTS.extend(additional_hosts)
+
+# ローカル開発用
+if os.environ.get('DEBUG') == 'True':
+    ALLOWED_HOSTS.extend(['localhost', '127.0.0.1', '[::1]'])
+
+# デバッグ用ログ
 print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
