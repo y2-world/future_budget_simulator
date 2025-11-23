@@ -7,10 +7,15 @@
 
     <!-- 新規追加フォーム -->
     <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 mb-8">
-        <h3 class="text-xl font-bold mb-4 text-gray-800 flex items-center">
-            <span class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">+</span>
-            定期項目の新規追加
-        </h3>
+        <button type="button" onclick="toggleDefaultCreateForm()" class="w-full flex justify-between items-center text-xl font-bold text-gray-800 cursor-pointer">
+            <span class="flex items-center">
+                <span class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">+</span>
+                定期項目の新規追加
+            </span>
+            <span id="toggleDefaultIcon" class="text-2xl transition-transform duration-200">∨</span>
+        </button>
+
+        <div id="defaultCreateFormSection" class="hidden mt-4">
         <form method="post" class="space-y-4" action="{% url 'budget_app:credit_defaults' %}">
             {% csrf_token %}
             <input type="hidden" name="action" value="create">
@@ -39,7 +44,23 @@
                 追加
             </button>
         </form>
+        </div>
     </div>
+
+    <script>
+        function toggleDefaultCreateForm() {
+            const formSection = document.getElementById('defaultCreateFormSection');
+            const toggleIcon = document.getElementById('toggleDefaultIcon');
+
+            formSection.classList.toggle('hidden');
+
+            if (formSection.classList.contains('hidden')) {
+                toggleIcon.style.transform = 'rotate(0deg)';
+            } else {
+                toggleIcon.style.transform = 'rotate(180deg)';
+            }
+        }
+    </script>
 
     <h3 class="text-xl font-bold mb-4 text-gray-800">登録済み定期項目</h3>
 
