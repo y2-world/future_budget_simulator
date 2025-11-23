@@ -367,8 +367,32 @@ def credit_estimate_list(request):
 
     # サマリー（年月 -> カード -> {total, entries}）
     card_labels = dict(CreditEstimate.CARD_TYPES)
+
+    # カードタイプと支払日のマッピング
+    card_due_days = {
+        'view': 4,
+        'rakuten': 27,
+        'paypay': 27,
+        'vermillion': 4,
+        'amazon': 26,
+    }
+
+    # カード名に支払日を追加する関数
+    def get_card_label_with_due_day(card_type, is_bonus=False):
+        base_label = card_labels.get(card_type, card_type)
+        due_day = card_due_days.get(card_type, '')
+        if due_day:
+            label = f'{base_label}（{due_day}日）'
+        else:
+            label = base_label
+
+        if is_bonus:
+            label = f'{label}（ボーナス払い）'
+
+        return label
+
     summary = OrderedDict()
-    
+
     # シミュレーション設定からVIEWカードのデフォルト値を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
 
@@ -387,13 +411,10 @@ def credit_estimate_list(request):
 
         if est.is_bonus_payment:
             card_key = f'{est.card_type}_bonus'
-            # ボーナス払いの場合、カード名に「（ボーナス払い）」を追加
-            base_label = card_labels.get(est.card_type, est.card_type)
-            card_label = f'{base_label}（ボーナス払い）'
+            card_label = get_card_label_with_due_day(est.card_type, is_bonus=True)
         else:
             card_key = est.card_type
-            # 通常のカードはカード名のみ
-            card_label = card_labels.get(est.card_type, est.card_type)
+            card_label = get_card_label_with_due_day(est.card_type, is_bonus=False)
 
         card_group = month_group.setdefault(card_key, { # card_keyが 'view_bonus' のようになる
             'label': card_label, # 'VIEWカード' または 'VIEWカード（ボーナス払い）'
@@ -423,7 +444,7 @@ def credit_estimate_list(request):
 
             # 該当カードのグループを取得または作成
             card_group = month_group.setdefault(default.card_type, {
-                'label': card_labels.get(default.card_type, default.card_type),
+                'label': get_card_label_with_due_day(default.card_type, is_bonus=False),
                 'total': 0,
                 'entries': [],
                 # 反映機能で year_month が参照されるため追加
@@ -463,6 +484,28 @@ def credit_estimate_list(request):
                 # 定期デフォルト項目の場合はdefault_idでソート、通常項目はpkでソート
                 x.default_id if (hasattr(x, 'is_default') and x.is_default and hasattr(x, 'default_id')) else (x.pk if hasattr(x, 'pk') and x.pk else float('inf'))
             ))
+
+    # カードタイプの表示順序（定義順）
+    card_order = {
+        'view': 0,
+        'rakuten': 1,
+        'paypay': 2,
+        'vermillion': 3,
+        'amazon': 4,
+        'view_bonus': 5,  # VIEWボーナス払い
+        'rakuten_bonus': 6,
+        'paypay_bonus': 7,
+        'vermillion_bonus': 8,
+        'amazon_bonus': 9,
+    }
+
+    # 各月のカードをカードタイプ順にソート
+    for year_month, month_group in summary.items():
+        sorted_cards = OrderedDict(sorted(
+            month_group.items(),
+            key=lambda item: card_order.get(item[0], 99)  # カードタイプ順でソート
+        ))
+        summary[year_month] = sorted_cards
 
     # summaryを現在、未来、過去に分割
     current_month_str = datetime.now().strftime('%Y-%m')
