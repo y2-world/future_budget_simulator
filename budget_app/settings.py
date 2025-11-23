@@ -1,20 +1,22 @@
 import os
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # collectstatic 出力先
 
-# ローカル静的ファイルを探すディレクトリ（任意／必要に応じて）
+# Heroku 用に絶対パスで staticfiles を指定
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# collectstatic 時に参照するディレクトリ
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    BASE_DIR / 'static',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # SecurityMiddleware のすぐあとに配置する
-    # その他ミドルウェア
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # 他のミドルウェア
 ]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
