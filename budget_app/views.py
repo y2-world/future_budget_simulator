@@ -166,7 +166,20 @@ def plan_list(request):
     from datetime import date
     import calendar
 
-    plans = list(MonthlyPlan.objects.all().order_by('year_month'))
+    # 現在の年月を取得
+    today = date.today()
+    current_year_month = f"{today.year}-{today.month:02d}"
+
+    # 月次計画を取得し、現在/未来と過去に分ける
+    all_plans = list(MonthlyPlan.objects.all().order_by('year_month'))
+    current_and_future_plans = [p for p in all_plans if p.year_month >= current_year_month]
+    past_plans = [p for p in all_plans if p.year_month < current_year_month]
+
+    # 過去のプランは新しい順にソート
+    past_plans.sort(key=lambda p: p.year_month, reverse=True)
+
+    # 現在/未来 + 過去の順で結合
+    plans = current_and_future_plans + past_plans
 
     # 初期残高と定期預金情報を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
@@ -202,7 +215,7 @@ def plan_list(request):
         transactions = [
             {'date': date(year, month, clamp_day(25)), 'name': '給与', 'amount': plan.salary},
             {'date': date(year, month, clamp_day(25)), 'name': 'ボーナス', 'amount': plan.bonus},
-            {'date': date(year, month, clamp_day(1)), 'name': '食費', 'amount': -plan.food},
+            {'date': date(year, month, clamp_day(25)), 'name': '食費', 'amount': -plan.food},
             {'date': date(year, month, clamp_day(27)), 'name': '家賃', 'amount': -plan.rent},
             {'date': date(year, month, clamp_day(27)), 'name': 'レイク返済', 'amount': -plan.lake},
             {'date': date(year, month, clamp_day(4)), 'name': 'VIEWカード', 'amount': -plan.view_card},
@@ -240,9 +253,13 @@ def plan_list(request):
 
         plan.timeline = timeline
         plan.final_balance = current_balance
+        # アーカイブフラグを設定
+        plan.is_archived = plan.year_month < current_year_month
 
     return render(request, 'budget_app/plan_list.html', {
         'plans': plans,
+        'current_and_future_plans': current_and_future_plans,
+        'past_plans': past_plans,
         'initial_balance': initial_balance,
     })
 
