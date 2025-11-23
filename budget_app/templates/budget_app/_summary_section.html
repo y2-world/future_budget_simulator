@@ -52,8 +52,8 @@
                     <tbody>
                         {% for card_type, data in cards.items %}
                             <tr class="bg-blue-50 font-semibold">
-                                <td class="px-3 py-2 font-bold" colspan="3">{{ data.label }}</td>
-                                <td class="px-3 py-2 text-right">{{ data.total|yen }}</td>
+                                <td class="px-3 py-2 font-bold whitespace-wrap" colspan="3">{{ data.label }}</td>
+                                <td class="px-3 py-2 text-right whitespace-wrap">{{ data.total|yen }}</td>
                                 <td class="px-3 py-2 text-center">
                                     <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline reflect-card-form">
                                         {% csrf_token %}
@@ -119,8 +119,8 @@
                     <!-- カード種別ヘッダー -->
                     <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
                         <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-bold text-lg">{{ data.label }}</h4>
-                            <span class="text-2xl font-bold">{{ data.total|yen }}</span>
+                            <div class="font-bold whitespace-wrap">{{ data.label }}</div>
+                            <h4 class="text-2xl font-bold whitespace-wrap ml-2">{{ data.total|yen }}</h4>
                         </div>
                         <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="reflect-card-form">
                             {% csrf_token %}

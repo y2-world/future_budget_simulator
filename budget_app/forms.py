@@ -248,8 +248,8 @@ class MonthlyPlanForm(forms.ModelForm):
                 self.fields['amazon_card'].label = f'Amazonカード（{year_int}年{month_name}26日）'
                 self.fields['loan'].label = f'マネーアシスト返済（{year_int}年{month_name}{last_day}日）'
 
-                # レイク返済は2025年6月以降は表示しない
-                if year_int > 2025 or (year_int == 2025 and month_int >= 6):
+                # レイク返済は2026年6月以降は表示しない
+                if year_int > 2026 or (year_int == 2026 and month_int > 5):
                     if 'lake' in self.fields:
                         del self.fields['lake']
 
@@ -462,10 +462,11 @@ class CreditDefaultForm(forms.ModelForm):
                 'class': 'w-full p-2 border rounded',
                 'id': 'default_edit_card_type',
             }),
-            'amount': forms.NumberInput(attrs={
-                'class': 'w-full p-2 border rounded',
-                'min': 0,
+            'amount': forms.TextInput(attrs={
+                'class': 'w-full p-2 border rounded amount-input',
                 'id': 'default_edit_amount',
+                'inputmode': 'numeric',
+                'pattern': '[0-9,]*',
             }),
             'apply_odd_months_only': forms.CheckboxInput(attrs={
                 'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded',
@@ -483,6 +484,19 @@ class CreditDefaultForm(forms.ModelForm):
         # 新規作成時のみカード種別のデフォルト値をVIEWカードに設定
         if not self.instance.pk:
             self.fields['card_type'].initial = 'view'
+        # 既存インスタンスの場合、金額にカンマを追加して表示
+        if self.instance.pk and self.instance.amount:
+            self.fields['amount'].initial = f"{self.instance.amount:,}"
+
+    def clean_amount(self):
+        """カンマを除去して整数に変換"""
+        amount_str = self.cleaned_data.get('amount', '')
+        if isinstance(amount_str, str):
+            amount_str = amount_str.replace(',', '')
+        try:
+            return int(amount_str)
+        except (ValueError, TypeError):
+            raise forms.ValidationError('正しい数値を入力してください。')
 
     def save(self, commit=True):
         instance = super().save(commit=False)

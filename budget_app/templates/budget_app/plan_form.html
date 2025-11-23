@@ -59,7 +59,7 @@
                 const selectedMonth = parseInt(monthSelect.value);
 
                 // 2026年6月以降は非表示
-                if (selectedYear > 2026 || (selectedYear === 2026 && selectedMonth >= 6)) {
+                if (selectedYear > 2026 || (selectedYear === 2026 && selectedMonth > 5)) {
                     lakeWrapper.style.display = 'none';
                     // 非表示の場合は値を0にクリア
                     const lakeInput = lakeWrapper.querySelector('input');

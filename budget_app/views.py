@@ -382,12 +382,12 @@ def credit_estimate_list(request):
         base_label = card_labels.get(card_type, card_type)
         due_day = card_due_days.get(card_type, '')
         if due_day:
-            label = f'{base_label}（{due_day}日）'
+            label = f'{base_label} ({due_day}日)'
         else:
             label = base_label
 
         if is_bonus:
-            label = f'{label}（ボーナス払い）'
+            label = f'ボーナス払い {label}'
 
         return label
 

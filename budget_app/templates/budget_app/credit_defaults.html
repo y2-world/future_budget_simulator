@@ -1,5 +1,5 @@
 {% extends 'budget_app/base.html' %}
-{% load budget_filters %}
+{% load humanize budget_filters %}
 
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-5xl mx-auto">
@@ -81,7 +81,7 @@
                 <tr class="border-b" data-id="{{ d.id }}">
                     <td class="px-3 py-2 align-middle">{{ d.label }}</td>
                     <td class="px-3 py-2 align-middle">{{ d.get_card_type_display }}</td>
-                    <td class="px-3 py-2 align-middle text-right">{{ d.amount|default:0 }}円</td>
+                    <td class="px-3 py-2 align-middle text-right">{{ d.amount|default:0|intcomma }}円</td>
                     <td class="px-3 py-2 align-middle text-center">
                         {% if d.apply_odd_months_only %}<span class="text-xs bg-yellow-100 px-2 py-1 rounded">奇数月のみ</span>{% else %}毎月{% endif %}
                     </td>
@@ -108,7 +108,7 @@
                     <p class="text-sm text-gray-600 mt-1">{{ d.get_card_type_display }}</p>
                 </div>
                 <div class="text-right ml-3">
-                    <p class="text-xl font-bold text-green-600">{{ d.amount|default:0 }}円</p>
+                    <p class="text-xl font-bold text-green-600">{{ d.amount|default:0|intcomma }}円</p>
                     {% if d.apply_odd_months_only %}
                     <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full mt-1 inline-block">奇数月のみ</span>
                     {% else %}
@@ -193,9 +193,38 @@ function closeDefaultEditModal() {
     document.getElementById('defaultEditModal').classList.add('hidden');
 }
 
+// カンマ区切りフォーマット関数
+function formatNumberWithCommas(value) {
+    // カンマを削除してから、3桁ごとにカンマを追加
+    return value.replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 // 背景クリックでモーダルを閉じる
 document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('defaultEditModal');
+
+    // 金額入力フィールドにカンマ区切りを適用
+    document.querySelectorAll('.amount-input').forEach(input => {
+        // 既存の値にカンマを追加
+        if (input.value) {
+            input.value = formatNumberWithCommas(input.value);
+        }
+
+        // 入力時にカンマを追加
+        input.addEventListener('input', (e) => {
+            const cursorPosition = e.target.selectionStart;
+            const oldLength = e.target.value.length;
+            const oldValue = e.target.value;
+
+            e.target.value = formatNumberWithCommas(e.target.value);
+
+            // カーソル位置を調整（カンマが追加された場合）
+            const newLength = e.target.value.length;
+            const lengthDiff = newLength - oldLength;
+            e.target.setSelectionRange(cursorPosition + lengthDiff, cursorPosition + lengthDiff);
+        });
+    });
+
     // Djangoのmessagesフレームワークからのメッセージをトーストで表示
     {% for message in messages %}
     Toastify({
