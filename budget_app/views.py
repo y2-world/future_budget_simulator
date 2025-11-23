@@ -290,6 +290,8 @@ def plan_edit(request, pk):
     """月次計画編集"""
     plan = get_object_or_404(MonthlyPlan, pk=pk)
     from django.http import JsonResponse
+    import logging
+    logger = logging.getLogger(__name__)
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
     if request.method == 'POST':
@@ -301,14 +303,16 @@ def plan_edit(request, pk):
                 return JsonResponse({'status': 'success', 'message': f'{display_month} の計画を更新しました。'})
             messages.success(request, f'{display_month} の計画を更新しました。')
             return redirect('budget_app:plan_list')
-        elif is_ajax:
-            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+        else:
+            # フォームエラーをログに出力
+            logger.error(f"Plan edit form validation failed. Errors: {form.errors}")
+            logger.error(f"POST data: {request.POST}")
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+            messages.error(request, '更新に失敗しました。入力内容を確認してください。')
 
     else:
         form = MonthlyPlanForm(instance=plan)
-        # Ajaxでない場合、またはGETリクエストの場合は通常のページレンダリング
-        if not is_ajax and request.method == 'POST':
-            messages.error(request, '更新に失敗しました。入力内容を確認してください。')
 
     return render(request, 'budget_app/plan_form.html', {
         'form': form,

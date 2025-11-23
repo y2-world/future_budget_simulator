@@ -127,12 +127,14 @@ class MonthlyPlanForm(forms.ModelForm):
     """月次計画フォーム"""
     year = forms.ChoiceField(
         label='年',
+        required=False,
         widget=forms.Select(attrs={
             'class': 'w-full p-2 border rounded'
         })
     )
     month = forms.ChoiceField(
         label='月',
+        required=False,
         widget=forms.Select(attrs={
             'class': 'w-full p-2 border rounded'
         })
@@ -278,10 +280,16 @@ class MonthlyPlanForm(forms.ModelForm):
         cleaned_data = super().clean()
         year = cleaned_data.get('year')
         month = cleaned_data.get('month')
-        
-        if year and month:
-            cleaned_data['year_month'] = f"{year}-{month}"
-        
+        year_month = cleaned_data.get('year_month')
+
+        # year_monthが既に設定されている場合（インライン編集時）はそのまま使用
+        # 設定されていない場合（新規作成時）はyearとmonthから生成
+        if not year_month:
+            if year and month:
+                cleaned_data['year_month'] = f"{year}-{month}"
+            else:
+                raise forms.ValidationError('年と月を選択してください。')
+
         return cleaned_data
 
 
