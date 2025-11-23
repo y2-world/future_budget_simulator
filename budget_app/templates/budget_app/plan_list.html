@@ -101,6 +101,8 @@
                             <label class="block text-sm font-medium mb-1">ボーナス</label>
                             <input type="number" name="bonus" value="{{ plan.bonus }}" class="w-full p-2 border rounded">
                         </div>
+                        {% else %}
+                        <input type="hidden" name="bonus" value="{{ plan.bonus }}">
                         {% endif %}
                         {% endwith %}
                         <div>
@@ -117,6 +119,8 @@
                             <label class="block text-sm font-medium mb-1">レイク返済</label>
                             <input type="number" name="lake" value="{{ plan.lake }}" class="w-full p-2 border rounded">
                         </div>
+                        {% else %}
+                        <input type="hidden" name="lake" value="{{ plan.lake }}">
                         {% endif %}
                         {% endwith %}
                         <div>
@@ -128,6 +132,8 @@
                             <label class="block text-sm font-medium mb-1">VIEWボーナス払い</label>
                             <input type="number" name="view_card_bonus" value="{{ plan.view_card_bonus }}" class="w-full p-2 border rounded">
                         </div>
+                        {% else %}
+                        <input type="hidden" name="view_card_bonus" value="{{ plan.view_card_bonus }}">
                         {% endif %}
                         <div>
                             <label class="block text-sm font-medium mb-1">楽天カード</label>
