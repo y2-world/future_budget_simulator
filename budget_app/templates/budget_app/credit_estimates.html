@@ -464,20 +464,14 @@
             deleteForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                const isRecurring = deleteForm.closest('tr').dataset.recurring === 'true';
+                const isRecurring = deleteForm.dataset.recurring === 'true';
                 let confirmed = false;
                 let deleteType = 'single';
 
                 if (isRecurring) {
-                    const choice = prompt("この項目は定期的な見積もりです。削除方法を選択してください。\n\n1: この月の見積もりのみ削除\n2: 定期設定と全ての関連見積もりを削除\n\n(番号を入力してください)");
-                    if (choice === '1') {
-                        confirmed = true;
+                    confirmed = confirm('この項目は定期的な見積もりです。この月の見積もりのみ削除しますか？\n\n「OK」でこの月のみ削除、「キャンセル」で中止します。');
+                    if (confirmed) {
                         deleteType = 'single';
-                    } else if (choice === '2') {
-                        confirmed = confirm('本当に定期設定と全ての関連見積もりを削除しますか？これは元に戻せません。');
-                        if (confirmed) {
-                            deleteType = 'all';
-                        }
                     }
                 } else {
                     confirmed = confirm('本当に削除しますか？');
