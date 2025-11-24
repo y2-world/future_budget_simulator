@@ -37,10 +37,15 @@
         {% for plan in current_and_future_plans %}
         <div class="mb-8 border rounded-lg overflow-hidden" id="plan-{{ plan.pk }}">
             <!-- 計画ヘッダー -->
-            <div class="bg-gray-100 p-3 md:p-4">
+            <div class="bg-gray-100 p-3 md:p-4 cursor-pointer hover:bg-gray-200 transition" onclick="togglePlan{{ plan.pk }}()">
                 <div class="flex justify-between items-start mb-2">
-                    <h3 class="text-lg md:text-xl font-bold">{{ plan.year_month|format_year_month }}</h3>
-                    <div class="flex gap-2">
+                    <div class="flex items-center gap-2">
+                        <svg id="collapse-icon-{{ plan.pk }}" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                        <h3 class="text-lg md:text-xl font-bold">{{ plan.year_month|format_year_month }}</h3>
+                    </div>
+                    <div class="flex gap-2" onclick="event.stopPropagation()">
                         <button onclick="toggleEdit{{ plan.pk }}()" class="bg-blue-500 text-white px-2 md:px-3 py-1 rounded hover:bg-blue-600 text-xs md:text-sm">編集</button>
                         <form method="post" action="{% url 'budget_app:plan_delete' plan.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？')">
                             {% csrf_token %}
@@ -186,10 +191,17 @@
                     const form = document.getElementById('edit-form-{{ plan.pk }}');
                     form.classList.toggle('hidden');
                 }
+
+                function togglePlan{{ plan.pk }}() {
+                    const content = document.getElementById('plan-content-{{ plan.pk }}');
+                    const icon = document.getElementById('collapse-icon-{{ plan.pk }}');
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-180');
+                }
             </script>
 
             <!-- タイムライン -->
-            <div class="p-3 md:p-4">
+            <div id="plan-content-{{ plan.pk }}" class="p-3 md:p-4">
                 <div class="bg-blue-50 p-2 mb-2 rounded">
                     <span class="text-xs md:text-sm font-semibold">現在残高: {{ plan.start_balance|yen }}</span>
                 </div>
@@ -255,10 +267,15 @@
             {% for plan in past_plans %}
             <div class="mb-8 border rounded-lg overflow-hidden opacity-75 hover:opacity-100 transition-opacity" id="plan-{{ plan.pk }}">
                 <!-- 計画ヘッダー -->
-                <div class="bg-gray-100 p-3 md:p-4">
+                <div class="bg-gray-100 p-3 md:p-4 cursor-pointer hover:bg-gray-200 transition" onclick="togglePlan{{ plan.pk }}()">
                     <div class="flex justify-between items-start mb-2">
-                        <h3 class="text-lg md:text-xl font-bold text-gray-600">{{ plan.year_month|format_year_month }}</h3>
-                        <div class="flex gap-2">
+                        <div class="flex items-center gap-2">
+                            <svg id="collapse-icon-{{ plan.pk }}" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                            <h3 class="text-lg md:text-xl font-bold text-gray-600">{{ plan.year_month|format_year_month }}</h3>
+                        </div>
+                        <div class="flex gap-2" onclick="event.stopPropagation()">
                             <button onclick="toggleEdit{{ plan.pk }}()" class="bg-blue-500 text-white px-2 md:px-3 py-1 rounded hover:bg-blue-600 text-xs md:text-sm">編集</button>
                             <form method="post" action="{% url 'budget_app:plan_delete' plan.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？')">
                                 {% csrf_token %}
@@ -404,10 +421,17 @@
                         const form = document.getElementById('edit-form-{{ plan.pk }}');
                         form.classList.toggle('hidden');
                     }
+
+                    function togglePlan{{ plan.pk }}() {
+                        const content = document.getElementById('plan-content-{{ plan.pk }}');
+                        const icon = document.getElementById('collapse-icon-{{ plan.pk }}');
+                        content.classList.toggle('hidden');
+                        icon.classList.toggle('rotate-180');
+                    }
                 </script>
 
                 <!-- タイムライン -->
-                <div class="p-3 md:p-4">
+                <div id="plan-content-{{ plan.pk }}" class="p-3 md:p-4">
                     <div class="bg-blue-50 p-2 mb-2 rounded">
                         <span class="text-xs md:text-sm font-semibold">現在残高: {{ plan.start_balance|yen }}</span>
                     </div>
