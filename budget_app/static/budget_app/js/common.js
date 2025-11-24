@@ -71,7 +71,9 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
             body: formData
         });
 
+        console.log('Response status:', response.status); // デバッグ用
         const data = await response.json();
+        console.log('Response data:', data); // デバッグ用
 
         if (response.ok && data.status === 'success') {
             // モーダルを閉じる
@@ -95,8 +97,80 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
             return data;
         } else {
             // エラー時の処理
+            console.log('Error response:', data); // デバッグ用
+            console.log('Error data.errors:', data.errors); // エラー詳細をログ
+
             if (showErrorToast) {
-                window.showToast(data.message || 'エラーが発生しました。', 'error', 5000);
+                let errorMessage = '';
+
+                // バリデーションエラーの詳細を表示
+                if (data.errors && typeof data.errors === 'object') {
+                    const errorMessages = [];
+
+                    // フィールド名の日本語マッピング
+                    const fieldLabels = {
+                        'salary': '給与',
+                        'bonus': 'ボーナス',
+                        'food': '食費',
+                        'rent': '家賃',
+                        'lake': 'レイク返済',
+                        'view_card': 'VIEWカード',
+                        'view_card_bonus': 'VIEWボーナス払い',
+                        'rakuten_card': '楽天カード',
+                        'paypay_card': 'PayPayカード',
+                        'vermillion_card': 'VERMILLION CARD',
+                        'amazon_card': 'Amazonカード',
+                        'loan': 'マネーアシスト返済',
+                        'loan_borrowing': 'マネーアシスト借入',
+                        'other': 'その他',
+                        'initial_balance': '初期残高',
+                        'default_salary': 'デフォルト給与',
+                        'default_food': 'デフォルト食費',
+                        'default_view_card': 'VIEWカードデフォルト利用額',
+                        'savings_amount': '定期預金額',
+                        'savings_year': '定期預金開始年',
+                        'savings_month': '定期預金開始月',
+                        'year': '年',
+                        'month': '月',
+                        'year_month': '年月',
+                        'card_type': 'カード種別',
+                        'description': 'メモ',
+                        'amount': '金額',
+                        'due_date': '請求日',
+                        'label': '項目名'
+                    };
+
+                    for (const [field, errors] of Object.entries(data.errors)) {
+                        // フィールド名を日本語に変換
+                        let fieldLabel = fieldLabels[field] || field;
+
+                        // Djangoのフォームエラーは通常配列形式: {"field": ["エラー1", "エラー2"]}
+                        if (Array.isArray(errors)) {
+                            errors.forEach(error => {
+                                // エラーがオブジェクト形式の場合（例: {message: "エラー内容"}）
+                                const errorText = typeof error === 'object' ? (error.message || JSON.stringify(error)) : error;
+                                errorMessages.push(`【${fieldLabel}】${errorText}`);
+                            });
+                        } else if (typeof errors === 'string') {
+                            // 文字列の場合
+                            errorMessages.push(`【${fieldLabel}】${errors}`);
+                        } else {
+                            // その他のオブジェクト形式
+                            errorMessages.push(`【${fieldLabel}】${JSON.stringify(errors)}`);
+                        }
+                    }
+                    if (errorMessages.length > 0) {
+                        errorMessage = errorMessages.join('\n');
+                    }
+                }
+
+                // エラーメッセージがない場合はデフォルトメッセージを使用
+                if (!errorMessage) {
+                    errorMessage = data.message || 'エラーが発生しました。入力内容を確認してください。';
+                }
+
+                console.log('Final error message:', errorMessage); // デバッグ用
+                window.showToast(errorMessage, 'error', 6000);
             }
 
             if (onError) {
