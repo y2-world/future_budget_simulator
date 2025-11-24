@@ -4,6 +4,48 @@ import calendar
 from .models import SimulationConfig, MonthlyPlan, CreditEstimate, CreditDefault
 
 
+def get_bonus_month_from_date(purchase_date) -> str:
+    """購入日からボーナス払い請求月を計算
+    - 12/6〜6/5の購入 → 8/4請求（同年または翌年の8月）
+    - 7/6〜11/5の購入 → 1/4請求（翌年の1月）
+    """
+    from datetime import date
+
+    if isinstance(purchase_date, str):
+        from datetime import datetime
+        purchase_date = datetime.strptime(purchase_date, '%Y-%m-%d').date()
+
+    if not isinstance(purchase_date, date):
+        return None
+
+    year = purchase_date.year
+    month = purchase_date.month
+    day = purchase_date.day
+
+    # 12/6〜6/5の購入 → 8月請求
+    if month == 12 and day >= 6:
+        # 12/6以降は翌年8月
+        return f"{year + 1}-08"
+    elif month == 6 and day <= 5:
+        # 6/5以前は同年8月
+        return f"{year}-08"
+    elif 1 <= month <= 5:
+        # 1月〜5月は同年8月
+        return f"{year}-08"
+    elif month == 6 and day >= 6:
+        # 6/6以降は翌年1月（7/6-11/5グループの開始）
+        return f"{year + 1}-01"
+    elif 7 <= month <= 11:
+        # 7月〜11月は翌年1月
+        return f"{year + 1}-01"
+    elif month == 11 and day <= 5:
+        # 11/5以前は翌年1月
+        return f"{year + 1}-01"
+    else:
+        # デフォルト（12/1-12/5）
+        return f"{year}-08"
+
+
 def get_next_bonus_month(year_month: str) -> str:
     """指定された購入月から請求月を返す
     - 12/6〜6/5の購入 → 8/4請求（同年または翌年の8月）
@@ -434,62 +476,94 @@ class CreditEstimateForm(forms.ModelForm):
         instance = super().save(commit=False)
 
         # ボーナス払いの場合、年月を調整
-        # 新規作成時、または通常払いからボーナス払いに変更した場合のみ再計算
         if instance.is_bonus_payment:
             # 既存エントリーの場合は、元々ボーナス払いだったかチェック
             was_bonus_payment = False
+            original_due_date = None
             if instance.pk:
                 try:
                     original = CreditEstimate.objects.get(pk=instance.pk)
                     was_bonus_payment = original.is_bonus_payment
+                    original_due_date = original.due_date
                 except CreditEstimate.DoesNotExist:
                     pass
 
-            # 新規作成 または 通常払い→ボーナス払いへの変更の場合のみ再計算
-            if not instance.pk or not was_bonus_payment:
-                instance.year_month = get_next_bonus_month(instance.year_month)
-
-        # 既に分割済みのエントリー（descriptionに「分割」が含まれる）は分割処理しない
-        is_already_split = '(分割' in (instance.description or '')
-
-        # 分割払いが選択されている場合は分割処理を実行（新規・編集どちらでも）
-        if instance.is_split_payment and not is_already_split:
-            total_amount = instance.amount
-            # descriptionから既存の分割テキストを除去
-            original_description = (instance.description or "").replace(" (分割1回目)", "").replace(" (分割2回目)", "").strip()
-
-            # 2回目の金額を10の位まで0にする（100で切り捨て）
-            second_payment = (total_amount // 2) // 100 * 100
-            first_payment = total_amount - second_payment
-
-            # 当月のインスタンス（1回目）を更新
-            instance.amount = first_payment
-            instance.description = f"{original_description} (分割1回目)".strip()
-            instance.is_split_payment = False  # 保存後は分割フラグをオフ
-
-            if commit:
-                instance.save()
-
-            # 次月を計算
-            current_date = datetime.strptime(instance.year_month, '%Y-%m')
-            next_month_date = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
-            next_month_str = next_month_date.strftime('%Y-%m')
-
-            # 次月のエントリー（2回目）を作成
-            CreditEstimate.objects.create(
-                year_month=next_month_str,
-                card_type=instance.card_type,
-                description=f"{original_description} (分割2回目)".strip(),
-                amount=second_payment,
-                due_date=instance.due_date,
-                is_split_payment=False,  # 2回目は分割フラグをオフ
-                is_bonus_payment=instance.is_bonus_payment,
+            # 請求月の再計算条件：
+            # 1. 新規作成、または
+            # 2. 通常払い→ボーナス払いへの変更、または
+            # 3. ボーナス払いでdue_dateが変更された場合
+            should_recalculate = (
+                not instance.pk or  # 新規作成
+                not was_bonus_payment or  # 通常払い→ボーナス払い
+                (was_bonus_payment and original_due_date != instance.due_date)  # due_date変更
             )
+
+            if should_recalculate:
+                # due_dateがある場合は、それから請求月を計算
+                if instance.due_date:
+                    calculated_month = get_bonus_month_from_date(instance.due_date)
+                    if calculated_month:
+                        instance.year_month = calculated_month
+                else:
+                    # due_dateがない場合は、year_monthから計算
+                    instance.year_month = get_next_bonus_month(instance.year_month)
+
+        # 既に分割済みのエントリーかチェック（split_payment_partが設定されているか）
+        is_already_split = instance.split_payment_part is not None
+
+        # 分割払いが選択されている場合
+        if instance.is_split_payment:
+            if not is_already_split:
+                # 新規分割払い：2つのエントリーに分割
+                import uuid
+                total_amount = instance.amount
+
+                # 2回目の金額を10の位まで0にする（100で切り捨て）
+                second_payment = (total_amount // 2) // 100 * 100
+                first_payment = total_amount - second_payment
+
+                # 分割グループIDを生成
+                group_id = str(uuid.uuid4())
+
+                # 当月のインスタンス（1回目）を更新
+                instance.amount = first_payment
+                instance.split_payment_part = 1
+                instance.split_payment_group = group_id
+
+                if commit:
+                    instance.save()
+
+                # 次月を計算
+                current_date = datetime.strptime(instance.year_month, '%Y-%m')
+                next_month_date = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
+                next_month_str = next_month_date.strftime('%Y-%m')
+
+                # 次月のエントリー（2回目）を作成
+                CreditEstimate.objects.create(
+                    year_month=next_month_str,
+                    card_type=instance.card_type,
+                    description=instance.description,
+                    amount=second_payment,
+                    due_date=instance.due_date,
+                    is_split_payment=True,
+                    is_bonus_payment=instance.is_bonus_payment,
+                    split_payment_part=2,
+                    split_payment_group=group_id,
+                )
+            # else: 既に分割済みの場合は何もしない（金額の編集のみ許可）
         else:
-            # 分割払いチェックボックスがオフの場合、または既に分割済みの場合
-            if instance.is_split_payment and is_already_split:
-                # 既に分割済みの場合は分割フラグをオフ
-                instance.is_split_payment = False
+            # 分割払いチェックボックスがオフの場合
+            if is_already_split:
+                # 分割払いから通常払いに戻す処理
+                # 同じグループの他のエントリーを削除
+                if instance.split_payment_group:
+                    CreditEstimate.objects.filter(
+                        split_payment_group=instance.split_payment_group
+                    ).exclude(pk=instance.pk).delete()
+
+                # 分割払い情報をクリア
+                instance.split_payment_part = None
+                instance.split_payment_group = None
 
         if commit:
             instance.save()

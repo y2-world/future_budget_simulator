@@ -86,29 +86,25 @@
                                     {% endif %}
                                 </td>
                                 <td class="px-3 py-2">
-                                    {% comment %}
-                                    メモの内容から (分割1回目) や (分割2回目) を除去して表示
-                                    {% endcomment %}
                                     {% if item.description %}
-                                        {% with desc=item.description|cut:" (分割1回目)"|cut:" (分割2回目)" %}
-                                            {{ desc }}
-                                        {% endwith %}
+                                        {{ item.description }}
                                     {% else %}
                                         -
                                     {% endif %}
                                     {% if item.is_default %}
                                         <span class="text-xs text-gray-400 ml-1">(定期)</span>
                                     {% endif %}
-                                    {% if "(分割1回目)" in item.description %}
+                                    {% if item.split_payment_part %}
                                         <span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded ml-1">分割払い</span>
-                                        <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded ml-1">1回目</span>
-                                    {% elif "(分割2回目)" in item.description %}
-                                        <span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded ml-1">分割払い</span>
-                                        <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded ml-1">2回目</span>
+                                        {% if item.split_payment_part == 1 %}
+                                            <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded ml-1">1回目</span>
+                                        {% elif item.split_payment_part == 2 %}
+                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded ml-1">2回目</span>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                                 <td class="px-3 py-2 text-center">
-                                    {% if item.is_split_payment or "(分割" in item.description %}✓{% else %}-{% endif %}
+                                    {% if item.split_payment_part %}✓{% else %}-{% endif %}
                                 </td>
                                 <td class="px-3 py-2 text-right">
                                     {{ item.amount|yen }}
@@ -166,13 +162,8 @@
                             <div class="flex justify-between items-start mb-3">
                                 <div class="flex-1">
                                     <div class="font-semibold text-base mb-1">
-                                        {% comment %}
-                                        メモの内容から (分割1回目) や (分割2回目) を除去して表示
-                                        {% endcomment %}
                                         {% if item.description %}
-                                            {% with desc=item.description|cut:" (分割1回目)"|cut:" (分割2回目)" %}
-                                                {{ desc }}
-                                            {% endwith %}
+                                            {{ item.description }}
                                         {% else %}
                                             -
                                         {% endif %}
@@ -184,12 +175,12 @@
                                         {% if not item.is_default and item.due_date %}
                                             <div>📅 {{ item.due_date|date:'Y年m月d日' }}</div>
                                         {% endif %}
-                                        {% if item.is_split_payment or "(分割" in item.description %}
+                                        {% if item.split_payment_part %}
                                             <div class="flex gap-1 flex-wrap">
                                                 <span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">分割払い</span>
-                                                {% if "(分割1回目)" in item.description %}
+                                                {% if item.split_payment_part == 1 %}
                                                     <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">1回目</span>
-                                                {% elif "(分割2回目)" in item.description %}
+                                                {% elif item.split_payment_part == 2 %}
                                                     <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">2回目</span>
                                                 {% endif %}
                                             </div>

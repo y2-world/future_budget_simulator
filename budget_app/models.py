@@ -112,6 +112,19 @@ class CreditEstimate(models.Model):
         default=False,
         verbose_name="ボーナス払い"
     )
+    split_payment_part = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="分割払い回数",
+        help_text="分割払いの場合、1 or 2"
+    )
+    split_payment_group = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        verbose_name="分割払いグループID",
+        help_text="同じ分割払いのペアを識別するID"
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
 
     class Meta:
