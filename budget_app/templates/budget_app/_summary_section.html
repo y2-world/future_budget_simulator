@@ -10,9 +10,14 @@
             {% endcomment %}
             {% if '_bonus' in ym %}
                 {% with real_ym=ym|slice:":-6" %}
-                <div class="bg-gray-100 px-4 py-2 font-semibold flex justify-between items-center">
-                    <span>{{ real_ym|format_year_month }}（ボーナス払い）</span>
-                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline">
+                <div class="bg-gray-100 px-4 py-2 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-200 transition" data-toggle-estimate="{{ ym }}">
+                    <div class="flex items-center gap-2">
+                        <svg id="collapse-icon-{{ ym }}" class="w-5 h-5 transition-transform rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                        <span>{{ real_ym|format_year_month }}（ボーナス払い）</span>
+                    </div>
+                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline" onclick="event.stopPropagation()">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="reflect">
                         <input type="hidden" name="year_month" value="{{ real_ym }}">
@@ -24,9 +29,14 @@
                 </div>
                 {% endwith %}
             {% else %}
-            <div class="bg-gray-100 px-4 py-2 font-semibold flex justify-between items-center">
-                <span>{{ ym|format_year_month }}</span>
-                <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline">
+            <div class="bg-gray-100 px-4 py-2 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-200 transition" data-toggle-estimate="{{ ym }}">
+                <div class="flex items-center gap-2">
+                    <svg id="collapse-icon-{{ ym }}" class="w-5 h-5 transition-transform rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                    <span>{{ ym|format_year_month }}</span>
+                </div>
+                <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline" onclick="event.stopPropagation()">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="reflect">
                     <input type="hidden" name="year_month" value="{{ ym }}">
@@ -38,7 +48,7 @@
             </div>
             {% endif %}
             <!-- デスクトップ表示：テーブル -->
-            <div class="hidden md:block p-4 overflow-x-auto">
+            <div id="estimate-content-{{ ym }}" class="p-4 overflow-x-auto hidden md:block">
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="bg-gray-50">
@@ -114,7 +124,7 @@
             </div>
 
             <!-- モバイル表示：カード形式 -->
-            <div class="md:hidden p-4 space-y-6">
+            <div id="estimate-content-mobile-{{ ym }}" class="p-4 space-y-6 md:hidden">
                 {% for card_type, data in cards.items %}
                     <!-- カード種別ヘッダー -->
                     <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
@@ -193,6 +203,38 @@
             </div>
         {% endfor %}
     </div>
+
+    <script>
+        // クレカ見積もりの折りたたみ機能
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[data-toggle-estimate]').forEach(function(header) {
+                const ym = header.getAttribute('data-toggle-estimate');
+
+                header.addEventListener('click', function() {
+                    const desktopContent = document.getElementById('estimate-content-' + ym);
+                    const mobileContent = document.getElementById('estimate-content-mobile-' + ym);
+                    const icon = document.getElementById('collapse-icon-' + ym);
+
+                    // デスクトップとモバイルの両方を同時にトグル
+                    if (desktopContent && mobileContent) {
+                        const isHidden = desktopContent.classList.contains('!hidden');
+
+                        if (isHidden) {
+                            desktopContent.classList.remove('!hidden');
+                            mobileContent.classList.remove('!hidden');
+                        } else {
+                            desktopContent.classList.add('!hidden');
+                            mobileContent.classList.add('!hidden');
+                        }
+                    }
+
+                    if (icon) {
+                        icon.classList.toggle('rotate-180');
+                    }
+                });
+            });
+        });
+    </script>
 {% else %}
     <p class="text-gray-600">{{ title }}の見積もりは登録されていません。</p>
 {% endif %}
