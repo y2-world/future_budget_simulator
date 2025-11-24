@@ -403,8 +403,13 @@ class CreditEstimateForm(forms.ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
 
-        # 分割2回払いの場合、金額と説明を調整し、次月のエントリーを自動作成
-        if instance.is_split_payment:
+        # 分割2回払いの処理は新規作成時のみ実行
+        # 既存のレコードを編集する場合は分割処理を行わない
+        # （descriptionに「分割」の文字列が含まれている場合は既に分割済み）
+        is_already_split = instance.pk and '(分割' in (instance.description or '')
+        is_new_split_request = instance.is_split_payment and not instance.pk
+
+        if is_new_split_request and not is_already_split:
             from datetime import datetime, timedelta
             from .models import CreditEstimate
 
@@ -418,6 +423,7 @@ class CreditEstimateForm(forms.ModelForm):
             # 当月のインスタンス（1回目）を更新
             instance.amount = first_payment
             instance.description = f"{original_description} (分割1回目)".strip()
+            instance.is_split_payment = False  # 保存後は分割フラグをオフ
 
             if commit:
                 instance.save()
@@ -437,8 +443,10 @@ class CreditEstimateForm(forms.ModelForm):
                 is_split_payment=False,  # 2回目は分割フラグをオフ
                 is_bonus_payment=instance.is_bonus_payment,
             )
-            # 分割処理後は、元のインスタンスの分割フラグをFalseにしておく
-            instance.is_split_payment = False
+        else:
+            # 編集時に分割払いチェックボックスがチェックされていても、既に分割済みの場合は無視
+            if instance.pk and instance.is_split_payment:
+                instance.is_split_payment = False
 
         if commit:
             instance.save()
