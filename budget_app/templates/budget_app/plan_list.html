@@ -11,7 +11,7 @@
             </a>
         </div>
         <div class="flex items-center space-x-2">
-            <span class="text-xs md:text-sm font-medium">現在残高:</span>
+            <span class="text-xs md:text-sm font-medium">残高:</span>
             <span id="initial-balance-display" class="font-bold text-base md:text-lg">{{ initial_balance|yen }}</span>
             <button onclick="toggleInitialBalanceEdit()" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">編集</button>
         </div>
@@ -22,7 +22,7 @@
         <form method="post" action="{% url 'budget_app:update_initial_balance' %}" class="space-y-3">
             {% csrf_token %}
             <div>
-                <label class="block font-medium mb-2 text-sm">現在残高:</label>
+                <label class="block font-medium mb-2 text-sm">残高:</label>
                 <input type="number" name="initial_balance" value="{{ initial_balance }}" class="p-2 border rounded w-full">
             </div>
             <div class="flex gap-2">
@@ -203,7 +203,7 @@
             <!-- タイムライン -->
             <div id="plan-content-{{ plan.pk }}" class="p-3 md:p-4">
                 <div class="bg-blue-50 p-2 mb-2 rounded">
-                    <span class="text-xs md:text-sm font-semibold">現在残高: {{ plan.start_balance|yen }}</span>
+                    <span class="text-xs md:text-sm font-semibold">残高: {{ plan.start_balance|yen }}</span>
                 </div>
                 <div class="space-y-2">
                     {% for item in plan.timeline %}
@@ -433,7 +433,7 @@
                 <!-- タイムライン -->
                 <div id="plan-content-{{ plan.pk }}" class="p-3 md:p-4">
                     <div class="bg-blue-50 p-2 mb-2 rounded">
-                        <span class="text-xs md:text-sm font-semibold">現在残高: {{ plan.start_balance|yen }}</span>
+                        <span class="text-xs md:text-sm font-semibold">残高: {{ plan.start_balance|yen }}</span>
                     </div>
                     <div class="space-y-2">
                         {% for item in plan.timeline %}
