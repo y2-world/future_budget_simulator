@@ -227,15 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Djangoのmessagesフレームワークからのメッセージをトーストで表示
     {% for message in messages %}
-    Toastify({
-        text: "{{ message|escapejs }}",
-        duration: 5000,
-        close: true,
-        gravity: "top",
-        position: "right",
-        backgroundColor: "{% if message.tags == 'success' %}#4CAF50{% elif message.tags == 'error' %}#f44336{% else %}#2196F3{% endif %}",
-        stopOnFocus: true,
-    }).showToast();
+        window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
 
     if (modal) {
@@ -280,50 +272,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // トーストを表示してからリロード
-                if (typeof Toastify !== 'undefined') {
-                    Toastify({
-                        text: data.message || '処理が完了しました。',
-                        duration: 1500,
-                        close: true,
-                        gravity: "top",
-                        position: "right",
-                        backgroundColor: "#4CAF50",
-                    }).showToast();
-                    setTimeout(() => window.location.reload(), 800);
-                } else {
-                    // Toastifyが利用できない場合は即座にリロード
-                    window.location.reload();
-                }
+                window.showToast(data.message || '処理が完了しました。', 'success', 1500);
+                setTimeout(() => window.location.reload(), 800);
             } else {
                 // エラー時
                 console.error('Request failed:', data);
-                if (typeof Toastify !== 'undefined') {
-                    Toastify({
-                        text: data.message || 'エラーが発生しました。',
-                        duration: 5000,
-                        close: true,
-                        gravity: "top",
-                        position: "right",
-                        backgroundColor: "#f44336",
-                    }).showToast();
-                } else {
-                    alert(data.message || 'エラーが発生しました。');
-                }
+                window.showToast(data.message || 'エラーが発生しました。', 'error', 5000);
             }
         } catch (error) {
             console.error('Error:', error);
-            if (typeof Toastify !== 'undefined') {
-                Toastify({
-                    text: 'サーバーとの通信中にエラーが発生しました。',
-                    duration: 5000,
-                    close: true,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#f44336",
-                }).showToast();
-            } else {
-                alert('サーバーとの通信中にエラーが発生しました。');
-            }
+            window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
         }
     };
 
@@ -338,7 +296,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 {% endblock %}

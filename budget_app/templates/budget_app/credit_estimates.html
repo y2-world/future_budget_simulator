@@ -403,7 +403,7 @@
                 window.handleAjaxResponse(data);
             } catch (error) {
                 console.error('Error:', error);
-                Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
             }
         });
 
@@ -427,7 +427,7 @@
                 window.handleAjaxResponse(data);
             } catch (error) {
                 console.error('Error:', error);
-                Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
             }
         });
 
@@ -446,7 +446,7 @@
                 window.handleAjaxResponse(data);
             } catch (error) {
                 console.error('Error:', error);
-                Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
             }
         });
 
@@ -467,7 +467,7 @@
                     window.handleAjaxResponse(data);
                 } catch (error) {
                     console.error('Error:', error);
-                    Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                    window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
                 }
             });
         });
@@ -509,7 +509,7 @@
                     window.handleAjaxResponse(data);
                 } catch (error) {
                     console.error('Error:', error);
-                    Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                    window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
                 }
             });
         });
@@ -532,7 +532,7 @@
                     window.handleAjaxResponse(data);
                 } catch (error) {
                     console.error('Error:', error);
-                    Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                    window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
                 }
             });
         });
@@ -557,41 +557,12 @@
 </script>
 
 {% block extra_js %}
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Djangoのmessagesフレームワークからのメッセージをトーストで表示
     {% for message in messages %}
-    Toastify({
-        text: "{{ message|escapejs }}",
-        duration: 5000,
-        close: true,
-        gravity: "top",
-        position: "right",
-        backgroundColor: "{% if message.tags == 'success' %}#4CAF50{% elif message.tags == 'error' %}#f44336{% else %}#2196F3{% endif %}",
-        stopOnFocus: true,
-    }).showToast();
+        window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
-
-    // Ajaxフォームの成功/エラーをトーストで表示する共通関数
-    window.handleAjaxResponse = function(response) {
-        const message = response.message || (response.status === 'success' ? '処理が完了しました。' : 'エラーが発生しました。');
-        const isSuccess = response.status === 'success';
-
-        Toastify({
-            text: message,
-            duration: isSuccess ? 3000 : 5000,
-            close: !isSuccess,
-            gravity: "top",
-            position: "right",
-            backgroundColor: isSuccess ? "#4CAF50" : "#f44336",
-        }).showToast();
-
-        if (isSuccess) {
-            setTimeout(() => window.location.reload(), 1500);
-        }
-    };
 });
 </script>
 {% endblock %}

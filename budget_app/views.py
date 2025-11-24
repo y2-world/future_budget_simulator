@@ -161,6 +161,26 @@ def update_initial_balance(request):
     return redirect('budget_app:plan_list')
 
 
+def adjust_to_previous_business_day(target_date):
+    """給与日用: 土日祝なら前の営業日（金曜日）に調整"""
+    import jpholiday
+    from datetime import timedelta
+
+    while target_date.weekday() >= 5 or jpholiday.is_holiday(target_date):
+        target_date -= timedelta(days=1)
+    return target_date
+
+
+def adjust_to_next_business_day(target_date):
+    """支払日用: 土日祝なら次の営業日に調整"""
+    import jpholiday
+    from datetime import timedelta
+
+    while target_date.weekday() >= 5 or jpholiday.is_holiday(target_date):
+        target_date += timedelta(days=1)
+    return target_date
+
+
 def plan_list(request):
     """月次計画一覧"""
     from datetime import date
@@ -208,24 +228,41 @@ def plan_list(request):
 
         timeline = []
         plan.start_balance = current_balance
+        view_card_balance = None  # VIEWカード引き落とし後の残高を記録
 
         def clamp_day(day: int) -> int:
             return min(max(day, 1), last_day)
 
+        # 給与日（土日祝なら前の営業日）
+        salary_date = adjust_to_previous_business_day(date(year, month, clamp_day(25)))
+        bonus_date = adjust_to_previous_business_day(date(year, month, clamp_day(25)))
+        food_date = adjust_to_previous_business_day(date(year, month, clamp_day(25)))
+
+        # 支払日（土日祝なら次の営業日）
+        rent_date = adjust_to_next_business_day(date(year, month, clamp_day(27)))
+        lake_date = adjust_to_next_business_day(date(year, month, clamp_day(27)))
+        view_card_date = adjust_to_next_business_day(date(year, month, clamp_day(4)))
+        rakuten_card_date = adjust_to_next_business_day(date(year, month, clamp_day(27)))
+        paypay_card_date = adjust_to_next_business_day(date(year, month, clamp_day(27)))
+        vermillion_card_date = adjust_to_next_business_day(date(year, month, clamp_day(4)))
+        amazon_card_date = adjust_to_next_business_day(date(year, month, clamp_day(26)))
+        loan_date = adjust_to_next_business_day(date(year, month, clamp_day(last_day)))
+        loan_borrowing_date = adjust_to_next_business_day(date(year, month, clamp_day(1)))
+
         transactions = [
-            {'date': date(year, month, clamp_day(25)), 'name': '給与', 'amount': plan.salary},
-            {'date': date(year, month, clamp_day(25)), 'name': 'ボーナス', 'amount': plan.bonus},
-            {'date': date(year, month, clamp_day(25)), 'name': '食費', 'amount': -plan.food},
-            {'date': date(year, month, clamp_day(27)), 'name': '家賃', 'amount': -plan.rent},
-            {'date': date(year, month, clamp_day(27)), 'name': 'レイク返済', 'amount': -plan.lake},
-            {'date': date(year, month, clamp_day(4)), 'name': 'VIEWカード', 'amount': -plan.view_card},
-            {'date': date(year, month, clamp_day(4)), 'name': 'ボーナス払い', 'amount': -plan.view_card_bonus},
-            {'date': date(year, month, clamp_day(27)), 'name': '楽天カード', 'amount': -plan.rakuten_card},
-            {'date': date(year, month, clamp_day(27)), 'name': 'PayPayカード', 'amount': -plan.paypay_card},
-            {'date': date(year, month, clamp_day(4)), 'name': 'VERMILLION CARD', 'amount': -plan.vermillion_card},
-            {'date': date(year, month, clamp_day(26)), 'name': 'Amazonカード', 'amount': -plan.amazon_card},
-            {'date': date(year, month, clamp_day(last_day)), 'name': 'マネーアシスト返済', 'amount': -plan.loan},
-            {'date': date(year, month, clamp_day(1)), 'name': 'マネーアシスト借入', 'amount': plan.loan_borrowing},
+            {'date': salary_date, 'name': '給与', 'amount': plan.salary, 'is_view_card': False},
+            {'date': bonus_date, 'name': 'ボーナス', 'amount': plan.bonus, 'is_view_card': False},
+            {'date': food_date, 'name': '食費', 'amount': -plan.food, 'is_view_card': False},
+            {'date': rent_date, 'name': '家賃', 'amount': -plan.rent, 'is_view_card': False},
+            {'date': lake_date, 'name': 'レイク返済', 'amount': -plan.lake, 'is_view_card': False},
+            {'date': view_card_date, 'name': 'VIEWカード', 'amount': -plan.view_card, 'is_view_card': True},
+            {'date': view_card_date, 'name': 'ボーナス払い', 'amount': -plan.view_card_bonus, 'is_view_card': True},
+            {'date': rakuten_card_date, 'name': '楽天カード', 'amount': -plan.rakuten_card, 'is_view_card': False},
+            {'date': paypay_card_date, 'name': 'PayPayカード', 'amount': -plan.paypay_card, 'is_view_card': False},
+            {'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': -plan.vermillion_card, 'is_view_card': False},
+            {'date': amazon_card_date, 'name': 'Amazonカード', 'amount': -plan.amazon_card, 'is_view_card': False},
+            {'date': loan_date, 'name': 'マネーアシスト返済', 'amount': -plan.loan, 'is_view_card': False},
+            {'date': loan_borrowing_date, 'name': 'マネーアシスト借入', 'amount': plan.loan_borrowing, 'is_view_card': False},
         ]
 
         # 「その他」は金額が0でない場合のみ追加（日付なし）
@@ -234,6 +271,7 @@ def plan_list(request):
                 'date': None,
                 'name': 'その他',
                 'amount': -plan.other,
+                'is_view_card': False,
             })
 
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
@@ -250,9 +288,16 @@ def plan_list(request):
                 'balance': current_balance,
                 'is_income': transaction['amount'] > 0
             })
+            # VIEWカード（通常払いまたはボーナス払い）の引き落とし後の残高を記録
+            if transaction.get('is_view_card', False):
+                view_card_balance = current_balance
 
         plan.timeline = timeline
         plan.final_balance = current_balance
+        # メイン預金残高を計算（VIEWカード引き落とし後の残高 - 定期預金残高）
+        # VIEWカードの引き落としがない場合は月末残高を使用
+        base_balance = view_card_balance if view_card_balance is not None else current_balance
+        plan.main_balance = base_balance - cumulative_savings if plan.has_savings else base_balance
         # アーカイブフラグを設定
         plan.is_archived = plan.year_month < current_year_month
 

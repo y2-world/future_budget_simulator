@@ -113,6 +113,13 @@
 
         // チェックボックスの変更を監視
         savingsEnabledCheckbox.addEventListener('change', toggleSavingsFields);
+
+        // Djangoメッセージをトーストとして表示
+        {% if messages %}
+            {% for message in messages %}
+                window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+            {% endfor %}
+        {% endif %}
     });
 </script>
 {% endblock %}

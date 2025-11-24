@@ -54,14 +54,16 @@
                     <span class="text-green-600 font-semibold">収入: {{ plan.total_income|yen }}</span>
                     <span class="mx-2">|</span>
                     <span class="text-red-600 font-semibold">支出: {{ plan.total_expenses|yen }}</span>
-                    {% if plan.has_savings %}
-                        <span class="mx-2">|</span>
-                        <span class="text-blue-600 font-semibold">定期預金: {{ plan.savings_amount_display|yen }}</span>
-                    {% endif %}
                     <span class="mx-2">|</span>
                     <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
                         純収支: {{ plan.net_income|yen }}
                     </span>
+                    {% if plan.has_savings %}
+                        <span class="mx-2">|</span>
+                        <span class="text-blue-600 font-semibold">定期預金残高: {{ plan.savings_amount_display|yen }}</span>
+                        <span class="mx-2">|</span>
+                        <span class="text-purple-600 font-semibold">メイン預金残高: {{ plan.main_balance|yen }}</span>
+                    {% endif %}
                 </div>
 
                 <!-- モバイル: グリッド表示 -->
@@ -74,16 +76,20 @@
                         <span class="text-gray-600">支出:</span>
                         <span class="text-red-600 font-semibold ml-1">{{ plan.total_expenses|yen }}</span>
                     </div>
-                    {% if plan.has_savings %}
-                    <div>
-                        <span class="text-gray-600">定期預金:</span>
-                        <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
-                    </div>
-                    {% endif %}
                     <div>
                         <span class="text-gray-600">純収支:</span>
                         <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold ml-1">{{ plan.net_income|yen }}</span>
                     </div>
+                    {% if plan.has_savings %}
+                    <div>
+                        <span class="text-gray-600">定期預金残高:</span>
+                        <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">メイン預金残高:</span>
+                        <span class="text-purple-600 font-semibold ml-1">{{ plan.main_balance|yen }}</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -266,14 +272,16 @@
                         <span class="text-green-600 font-semibold">収入: {{ plan.total_income|yen }}</span>
                         <span class="mx-2">|</span>
                         <span class="text-red-600 font-semibold">支出: {{ plan.total_expenses|yen }}</span>
-                        {% if plan.has_savings %}
-                            <span class="mx-2">|</span>
-                            <span class="text-blue-600 font-semibold">定期預金: {{ plan.savings_amount_display|yen }}</span>
-                        {% endif %}
                         <span class="mx-2">|</span>
                         <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
                             純収支: {{ plan.net_income|yen }}
                         </span>
+                        {% if plan.has_savings %}
+                            <span class="mx-2">|</span>
+                            <span class="text-blue-600 font-semibold">定期預金残高: {{ plan.savings_amount_display|yen }}</span>
+                            <span class="mx-2">|</span>
+                            <span class="text-purple-600 font-semibold">メイン預金残高: {{ plan.main_balance|yen }}</span>
+                        {% endif %}
                     </div>
 
                     <!-- モバイル: グリッド表示 -->
@@ -286,16 +294,20 @@
                             <span class="text-gray-600">支出:</span>
                             <span class="text-red-600 font-semibold ml-1">{{ plan.total_expenses|yen }}</span>
                         </div>
-                        {% if plan.has_savings %}
-                        <div>
-                            <span class="text-gray-600">定期預金:</span>
-                            <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
-                        </div>
-                        {% endif %}
                         <div>
                             <span class="text-gray-600">純収支:</span>
                             <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold ml-1">{{ plan.net_income|yen }}</span>
                         </div>
+                        {% if plan.has_savings %}
+                        <div>
+                            <span class="text-gray-600">定期預金残高:</span>
+                            <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">メイン預金残高:</span>
+                            <span class="text-purple-600 font-semibold ml-1">{{ plan.main_balance|yen }}</span>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -486,8 +498,7 @@
                     const data = await response.json();
                     window.handleAjaxResponse(data);
                 } catch (error) {
-                    console.error('Error:', error);
-                    Toastify({ text: 'サーバーとの通信中にエラーが発生しました。', backgroundColor: "#f44336" }).showToast();
+                    window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
                 }
             });
         });
@@ -495,41 +506,12 @@
 </script>
 
 {% block extra_js %}
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Djangoのmessagesフレームワークからのメッセージをトーストで表示
     {% for message in messages %}
-    Toastify({
-        text: "{{ message|escapejs }}",
-        duration: 5000,
-        close: true,
-        gravity: "top",
-        position: "right",
-        backgroundColor: "{% if message.tags == 'success' %}#4CAF50{% elif message.tags == 'error' %}#f44336{% else %}#2196F3{% endif %}",
-        stopOnFocus: true,
-    }).showToast();
+        window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
-
-    // Ajaxフォームの成功/エラーをトーストで表示する共通関数
-    window.handleAjaxResponse = function(response) {
-        const message = response.message || (response.status === 'success' ? '処理が完了しました。' : 'エラーが発生しました。');
-        const isSuccess = response.status === 'success';
-
-        Toastify({
-            text: message,
-            duration: isSuccess ? 3000 : 5000,
-            close: !isSuccess,
-            gravity: "top",
-            position: "right",
-            backgroundColor: isSuccess ? "#4CAF50" : "#f44336",
-        }).showToast();
-
-        if (isSuccess) {
-            setTimeout(() => window.location.reload(), 1500);
-        }
-    };
 });
 </script>
 {% endblock %}
