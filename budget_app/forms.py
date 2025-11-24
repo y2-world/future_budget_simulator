@@ -4,6 +4,33 @@ import calendar
 from .models import SimulationConfig, MonthlyPlan, CreditEstimate, CreditDefault
 
 
+def get_next_bonus_month(year_month: str) -> str:
+    """指定された購入月から請求月を返す
+    - 12/6〜6/5の購入 → 8/4請求（同年または翌年の8月）
+    - 7/6〜11/5の購入 → 1/4請求（翌年の1月）
+
+    ※編集モーダルで入力される年月は「購入月」を想定
+    """
+    try:
+        year, month = map(int, year_month.split('-'))
+    except (ValueError, AttributeError):
+        return year_month
+
+    # 12/6〜6/5の購入 → 8月請求
+    if month == 12 or 1 <= month <= 5:
+        # 12月の購入は翌年8月、1-5月の購入は同年8月
+        if month == 12:
+            return f"{year + 1}-08"
+        else:
+            return f"{year}-08"
+    # 6月の購入 → 同年8月請求
+    elif month == 6:
+        return f"{year}-08"
+    # 7月〜11月の購入 → 翌年1月請求
+    else:  # 7 <= month <= 11
+        return f"{year + 1}-01"
+
+
 class SimulationConfigForm(forms.ModelForm):
     """シミュレーション設定フォーム"""
     savings_year = forms.ChoiceField(
@@ -401,20 +428,35 @@ class CreditEstimateForm(forms.ModelForm):
         return cleaned_data
 
     def save(self, commit=True):
+        from datetime import datetime, timedelta
+        from .models import CreditEstimate
+
         instance = super().save(commit=False)
 
-        # 分割2回払いの処理は新規作成時のみ実行
-        # 既存のレコードを編集する場合は分割処理を行わない
-        # （descriptionに「分割」の文字列が含まれている場合は既に分割済み）
-        is_already_split = instance.pk and '(分割' in (instance.description or '')
-        is_new_split_request = instance.is_split_payment and not instance.pk
+        # ボーナス払いの場合、年月を調整
+        # 新規作成時、または通常払いからボーナス払いに変更した場合のみ再計算
+        if instance.is_bonus_payment:
+            # 既存エントリーの場合は、元々ボーナス払いだったかチェック
+            was_bonus_payment = False
+            if instance.pk:
+                try:
+                    original = CreditEstimate.objects.get(pk=instance.pk)
+                    was_bonus_payment = original.is_bonus_payment
+                except CreditEstimate.DoesNotExist:
+                    pass
 
-        if is_new_split_request and not is_already_split:
-            from datetime import datetime, timedelta
-            from .models import CreditEstimate
+            # 新規作成 または 通常払い→ボーナス払いへの変更の場合のみ再計算
+            if not instance.pk or not was_bonus_payment:
+                instance.year_month = get_next_bonus_month(instance.year_month)
 
+        # 既に分割済みのエントリー（descriptionに「分割」が含まれる）は分割処理しない
+        is_already_split = '(分割' in (instance.description or '')
+
+        # 分割払いが選択されている場合は分割処理を実行（新規・編集どちらでも）
+        if instance.is_split_payment and not is_already_split:
             total_amount = instance.amount
-            original_description = instance.description or ""
+            # descriptionから既存の分割テキストを除去
+            original_description = (instance.description or "").replace(" (分割1回目)", "").replace(" (分割2回目)", "").strip()
 
             # 2回目の金額を10の位まで0にする（100で切り捨て）
             second_payment = (total_amount // 2) // 100 * 100
@@ -444,8 +486,9 @@ class CreditEstimateForm(forms.ModelForm):
                 is_bonus_payment=instance.is_bonus_payment,
             )
         else:
-            # 編集時に分割払いチェックボックスがチェックされていても、既に分割済みの場合は無視
-            if instance.pk and instance.is_split_payment:
+            # 分割払いチェックボックスがオフの場合、または既に分割済みの場合
+            if instance.is_split_payment and is_already_split:
+                # 既に分割済みの場合は分割フラグをオフ
                 instance.is_split_payment = False
 
         if commit:

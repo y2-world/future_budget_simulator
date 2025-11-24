@@ -17,6 +17,7 @@ from .forms import (
     MonthlyPlanForm,
     CreditEstimateForm,
     CreditDefaultForm,
+    get_next_bonus_month,
 )
 
 # 支払日・給与日の定数
@@ -44,28 +45,6 @@ def format_year_month_display(year_month: str) -> str:
     except (ValueError, TypeError):
         return year_month
     return f'{year}年{month}月'
-
-
-def get_next_bonus_month(year_month: str) -> str:
-    """指定された年月から請求月を返す
-    - 12月〜6月の購入 -> 8月請求
-    - 7月〜11月の購入 -> 翌年1月請求
-    """
-    try:
-        year, month = map(int, year_month.split('-'))
-    except (ValueError, AttributeError):
-        return year_month
-
-    # 12月〜6月の購入 -> 同年8月請求
-    if month == 12 or 1 <= month <= 6:
-        # 12月の場合は翌年8月
-        if month == 12:
-            return f"{year + 1}-08"
-        else:
-            return f"{year}-08"
-    # 7月〜11月の購入 -> 翌年1月請求
-    else:
-        return f"{year + 1}-01"
 
 
 def index(request):
@@ -966,10 +945,9 @@ def credit_estimate_edit(request, pk):
     if request.method == 'POST':
         form = CreditEstimateForm(request.POST, instance=estimate)
         if form.is_valid():
-            estimate = form.save(commit=False)
-            if estimate.is_bonus_payment:
-                estimate.year_month = get_next_bonus_month(estimate.year_month)
-            estimate.save()
+            # フォームのsave()メソッドで分割払いとボーナス払いの処理を含めて保存
+            form.save()
+
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': 'クレカ見積りを更新しました。'})
             messages.success(request, 'クレカ見積りを更新しました。')
@@ -979,7 +957,7 @@ def credit_estimate_edit(request, pk):
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
             messages.error(request, '更新に失敗しました。入力内容を確認してください。')
             return redirect('budget_app:credit_estimates')
-    
+
     # GETリクエストやAjaxでないPOSTの場合は、ここでは何も返さず、リダイレクトさせる
     return redirect('budget_app:credit_estimates')
 
