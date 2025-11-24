@@ -208,9 +208,6 @@
 
             <!-- タイムライン -->
             <div id="plan-content-{{ plan.pk }}" class="p-3 md:p-4">
-                <div class="bg-blue-50 p-2 mb-2 rounded">
-                    <span class="text-xs md:text-sm font-semibold">残高: {{ plan.start_balance|yen }}</span>
-                </div>
                 <div class="space-y-2">
                     {% for item in plan.timeline %}
                     <!-- デスクトップ表示 -->
@@ -444,9 +441,6 @@
 
                 <!-- タイムライン -->
                 <div id="plan-content-{{ plan.pk }}" class="p-3 md:p-4">
-                    <div class="bg-blue-50 p-2 mb-2 rounded">
-                        <span class="text-xs md:text-sm font-semibold">残高: {{ plan.start_balance|yen }}</span>
-                    </div>
                     <div class="space-y-2">
                         {% for item in plan.timeline %}
                         <!-- デスクトップ表示 -->
