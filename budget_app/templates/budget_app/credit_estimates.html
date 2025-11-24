@@ -391,20 +391,7 @@
         const createForm = document.getElementById('createEstimateForm');
         createForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(createForm);
-
-            try {
-                const response = await fetch("{% url 'budget_app:credit_estimates' %}", {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                    body: formData,
-                });
-                const data = await response.json();
-                window.handleAjaxResponse(data);
-            } catch (error) {
-                console.error('Error:', error);
-                window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
-            }
+            await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(createForm));
         });
 
         // --- 見積り編集モーダルフォームの非同期処理 ---
@@ -417,37 +404,18 @@
             const month = formData.get('month');
             formData.append('year_month', `${year}-${month}`);
 
-            try {
-                const response = await fetch(editForm.action, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                    body: formData,
-                });
-                const data = await response.json();
-                window.handleAjaxResponse(data);
-            } catch (error) {
-                console.error('Error:', error);
-                window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
-            }
+            await window.sendAjaxRequest(editForm.action, formData, {
+                closeModal: closeEditModal
+            });
         });
 
         // --- 定期デフォルト編集モーダルフォームの非同期処理 ---
         const defaultEditForm = document.getElementById('defaultEditForm');
         defaultEditForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(defaultEditForm);
-            try {
-                const response = await fetch("{% url 'budget_app:credit_estimates' %}", {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                    body: formData,
-                });
-                const data = await response.json();
-                window.handleAjaxResponse(data);
-            } catch (error) {
-                console.error('Error:', error);
-                window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
-            }
+            await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(defaultEditForm), {
+                closeModal: closeDefaultEditModal
+            });
         });
 
         // --- カードごとの反映ボタンの非同期処理 ---
@@ -456,19 +424,7 @@
                 e.preventDefault();
                 if (!confirm('このカードの合計額を月次計画に反映しますか？')) return;
 
-                const formData = new FormData(form);
-                try {
-                    const response = await fetch("{% url 'budget_app:credit_estimates' %}", {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                        body: formData,
-                    });
-                    const data = await response.json();
-                    window.handleAjaxResponse(data);
-                } catch (error) {
-                    console.error('Error:', error);
-                    window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
-                }
+                await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(form));
             });
         });
 
@@ -500,17 +456,10 @@
 
                 if (!confirmed) return;
 
-                try {
-                    const formData = new FormData();
-                    formData.append('delete_type', deleteType);
+                const formData = new FormData();
+                formData.append('delete_type', deleteType);
 
-                    const response = await fetch(deleteForm.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
-                    const data = await response.json();
-                    window.handleAjaxResponse(data);
-                } catch (error) {
-                    console.error('Error:', error);
-                    window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
-                }
+                await window.sendAjaxRequest(deleteForm.action, formData);
             });
         });
 
@@ -521,19 +470,7 @@
 
                 if (!confirm('この月の定期項目を削除しますか？')) return;
 
-                const formData = new FormData(form);
-                try {
-                    const response = await fetch("{% url 'budget_app:credit_estimates' %}", {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                        body: formData,
-                    });
-                    const data = await response.json();
-                    window.handleAjaxResponse(data);
-                } catch (error) {
-                    console.error('Error:', error);
-                    window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
-                }
+                await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(form));
             });
         });
 

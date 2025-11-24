@@ -19,53 +19,19 @@ from .forms import (
     CreditDefaultForm,
 )
 
-DEFAULT_CREDIT_CHARGES = [
-     {
-         'key': 'amazon_prime',
-         'label': 'Amazon Prime',
-         'card_type': 'view',
-         'amount': 600,
-         'due_day': 4,
-     },
-     {
-         'key': 'apple_music',
-         'label': 'Apple Music',
-         'card_type': 'view',
-         'amount': 1980,
-         'due_day': 4,
-     },
-     {
-         'key': 'heroku',
-         'label': 'Heroku',
-         'card_type': 'view',
-         'amount': 798,
-         'due_day': 4,
-     },
-     {
-         'key': 'moneytree',
-         'label': 'Moneytree',
-         'card_type': 'view',
-         'amount': 360,
-         'due_day': 4,
-     },
-     {
-         'key': 'ntt',
-         'label': 'NTT',
-         'card_type': 'view',
-         'amount': 5170,
-         'due_day': 4,
-     },
-     {
-         'key': 'water',
-         'label': '水道（奇数月）',
-         'card_type': 'view',
-         'amount': 3806,
-         'due_day': 4,  # 支払日をVIEWカードに合わせる
-         'odd_month_only': True,
-     },
- ]
-
-DEFAULT_CHARGE_MAP = {item['key']: item for item in DEFAULT_CREDIT_CHARGES}
+# 支払日・給与日の定数
+SALARY_DAY = 25  # 給与支給日
+BONUS_DAY = 25  # ボーナス支給日
+FOOD_EXPENSE_DAY = 25  # 食費引き落とし日
+RENT_DUE_DAY = 27  # 家賃引き落とし日
+LAKE_DUE_DAY = 27  # レイク返済日
+VIEW_CARD_DUE_DAY = 4  # VIEWカード引き落とし日
+RAKUTEN_CARD_DUE_DAY = 27  # 楽天カード引き落とし日
+PAYPAY_CARD_DUE_DAY = 27  # PayPayカード引き落とし日
+VERMILLION_CARD_DUE_DAY = 4  # VERMILLION CARD引き落とし日
+AMAZON_CARD_DUE_DAY = 26  # Amazonカード引き落とし日
+LOAN_DUE_DAY_OF_MONTH = 'last'  # マネーアシスト返済日（月末）
+LOAN_BORROWING_DAY = 1  # マネーアシスト借入日（月初）
 
 
 def format_year_month_display(year_month: str) -> str:
@@ -234,20 +200,20 @@ def plan_list(request):
             return min(max(day, 1), last_day)
 
         # 給与日（土日祝なら前の営業日）
-        salary_date = adjust_to_previous_business_day(date(year, month, clamp_day(25)))
-        bonus_date = adjust_to_previous_business_day(date(year, month, clamp_day(25)))
-        food_date = adjust_to_previous_business_day(date(year, month, clamp_day(25)))
+        salary_date = adjust_to_previous_business_day(date(year, month, clamp_day(SALARY_DAY)))
+        bonus_date = adjust_to_previous_business_day(date(year, month, clamp_day(BONUS_DAY)))
+        food_date = adjust_to_previous_business_day(date(year, month, clamp_day(FOOD_EXPENSE_DAY)))
 
         # 支払日（土日祝なら次の営業日）
-        rent_date = adjust_to_next_business_day(date(year, month, clamp_day(27)))
-        lake_date = adjust_to_next_business_day(date(year, month, clamp_day(27)))
-        view_card_date = adjust_to_next_business_day(date(year, month, clamp_day(4)))
-        rakuten_card_date = adjust_to_next_business_day(date(year, month, clamp_day(27)))
-        paypay_card_date = adjust_to_next_business_day(date(year, month, clamp_day(27)))
-        vermillion_card_date = adjust_to_next_business_day(date(year, month, clamp_day(4)))
-        amazon_card_date = adjust_to_next_business_day(date(year, month, clamp_day(26)))
-        loan_date = adjust_to_next_business_day(date(year, month, clamp_day(last_day)))
-        loan_borrowing_date = adjust_to_next_business_day(date(year, month, clamp_day(1)))
+        rent_date = adjust_to_next_business_day(date(year, month, clamp_day(RENT_DUE_DAY)))
+        lake_date = adjust_to_next_business_day(date(year, month, clamp_day(LAKE_DUE_DAY)))
+        view_card_date = adjust_to_next_business_day(date(year, month, clamp_day(VIEW_CARD_DUE_DAY)))
+        rakuten_card_date = adjust_to_next_business_day(date(year, month, clamp_day(RAKUTEN_CARD_DUE_DAY)))
+        paypay_card_date = adjust_to_next_business_day(date(year, month, clamp_day(PAYPAY_CARD_DUE_DAY)))
+        vermillion_card_date = adjust_to_next_business_day(date(year, month, clamp_day(VERMILLION_CARD_DUE_DAY)))
+        amazon_card_date = adjust_to_next_business_day(date(year, month, clamp_day(AMAZON_CARD_DUE_DAY)))
+        loan_date = adjust_to_next_business_day(date(year, month, clamp_day(last_day)))  # 月末
+        loan_borrowing_date = adjust_to_next_business_day(date(year, month, clamp_day(LOAN_BORROWING_DAY)))
 
         transactions = [
             {'date': salary_date, 'name': '給与', 'amount': plan.salary, 'is_view_card': False},

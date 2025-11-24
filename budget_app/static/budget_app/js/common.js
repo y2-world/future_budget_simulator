@@ -57,7 +57,8 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
         showSuccessToast = true,
         showErrorToast = true,
         reloadOnSuccess = true,
-        reloadDelay = 1500
+        reloadDelay = 1500,
+        closeModal = null  // モーダルを閉じる関数
     } = options;
 
     try {
@@ -73,6 +74,11 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
         const data = await response.json();
 
         if (response.ok && data.status === 'success') {
+            // モーダルを閉じる
+            if (closeModal) {
+                closeModal();
+            }
+
             // 成功時の処理
             if (showSuccessToast) {
                 window.showToast(data.message || '処理が完了しました。', 'success', 3000);
@@ -100,8 +106,6 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
             return data;
         }
     } catch (error) {
-        console.error('Ajax request error:', error);
-
         if (showErrorToast) {
             window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
         }

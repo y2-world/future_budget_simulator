@@ -241,48 +241,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- フォームの非同期処理 ---
     const handleFormSubmit = async (form, isDelete = false) => {
-        console.log('handleFormSubmit called:', {form: form.id || form.className, isDelete});
-
         if (isDelete && !confirm('本当に削除しますか？')) {
-            console.log('Delete cancelled by user');
             return;
         }
 
         // フォームにname="action"のinput要素がある場合、form.actionがその要素を返してしまうため、getAttributeを使用
         const actionUrl = form.getAttribute('action');
-        console.log('Action URL:', actionUrl);
-
         const formData = new FormData(form);
-        try {
-            console.log('Sending request...');
-            const response = await fetch(actionUrl, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData,
-            });
-            console.log('Response received:', response.status, response.ok);
-            const data = await response.json();
-            console.log('Response data:', data);
 
-            // 成功時の処理
-            if (response.ok && data.status === 'success') {
-                // モーダルを閉じる（編集フォームの場合）
-                if (form.id === 'defaultEditForm') {
-                    closeDefaultEditModal();
-                }
-
-                // トーストを表示してからリロード
-                window.showToast(data.message || '処理が完了しました。', 'success', 1500);
-                setTimeout(() => window.location.reload(), 800);
-            } else {
-                // エラー時
-                console.error('Request failed:', data);
-                window.showToast(data.message || 'エラーが発生しました。', 'error', 5000);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
-        }
+        await window.sendAjaxRequest(actionUrl, formData, {
+            closeModal: form.id === 'defaultEditForm' ? closeDefaultEditModal : null,
+            reloadDelay: 800
+        });
     };
 
     // イベントリスナーを設定

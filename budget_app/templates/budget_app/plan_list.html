@@ -483,23 +483,7 @@
         document.querySelectorAll('.inline-edit-form').forEach(editForm => {
             editForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const formData = new FormData(editForm);
-                const csrfToken = editForm.querySelector('[name=csrfmiddlewaretoken]').value;
-
-                try {
-                    const response = await fetch(editForm.action, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        body: formData,
-                    });
-                    const data = await response.json();
-                    window.handleAjaxResponse(data);
-                } catch (error) {
-                    window.showToast('サーバーとの通信中にエラーが発生しました。', 'error', 5000);
-                }
+                await window.sendAjaxRequest(editForm.action, new FormData(editForm));
             });
         });
     });
