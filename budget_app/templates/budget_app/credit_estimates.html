@@ -279,6 +279,35 @@
         // CSRFトークンを取得
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
+        // クレカ見積もりの折りたたみ機能
+        document.querySelectorAll('[data-toggle-estimate]').forEach(function(header) {
+            const ym = header.getAttribute('data-toggle-estimate');
+
+            header.addEventListener('click', function() {
+                const desktopContent = document.getElementById('estimate-content-' + ym);
+                const mobileContent = document.getElementById('estimate-content-mobile-' + ym);
+                const icon = document.getElementById('collapse-icon-' + ym);
+
+                // デスクトップとモバイルの両方を同時にトグル
+                if (desktopContent && mobileContent) {
+                    // style.displayで直接制御
+                    if (desktopContent.style.display === 'none') {
+                        // 表示する（レスポンシブクラスに戻す）
+                        desktopContent.style.display = '';
+                        mobileContent.style.display = '';
+                    } else {
+                        // 非表示にする
+                        desktopContent.style.display = 'none';
+                        mobileContent.style.display = 'none';
+                    }
+                }
+
+                if (icon) {
+                    icon.classList.toggle('rotate-180');
+                }
+            });
+        });
+
         // ボーナス払いチェックボックスの表示制御（新規追加フォーム）
         const createCardTypeSelect = document.getElementById('id_card_type');
         const createBonusWrapper = document.getElementById('create_bonus_payment_wrapper');

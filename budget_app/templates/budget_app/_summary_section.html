@@ -48,7 +48,7 @@
             </div>
             {% endif %}
             <!-- デスクトップ表示：テーブル -->
-            <div id="estimate-content-{{ ym }}" class="p-4 overflow-x-auto hidden md:block">
+            <div id="estimate-content-{{ ym }}" class="hidden md:block p-4 overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="bg-gray-50">
@@ -124,7 +124,7 @@
             </div>
 
             <!-- モバイル表示：カード形式 -->
-            <div id="estimate-content-mobile-{{ ym }}" class="p-4 space-y-6 md:hidden">
+            <div id="estimate-content-mobile-{{ ym }}" class="md:hidden p-4 space-y-6">
                 {% for card_type, data in cards.items %}
                     <!-- カード種別ヘッダー -->
                     <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
@@ -203,38 +203,6 @@
             </div>
         {% endfor %}
     </div>
-
-    <script>
-        // クレカ見積もりの折りたたみ機能
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('[data-toggle-estimate]').forEach(function(header) {
-                const ym = header.getAttribute('data-toggle-estimate');
-
-                header.addEventListener('click', function() {
-                    const desktopContent = document.getElementById('estimate-content-' + ym);
-                    const mobileContent = document.getElementById('estimate-content-mobile-' + ym);
-                    const icon = document.getElementById('collapse-icon-' + ym);
-
-                    // デスクトップとモバイルの両方を同時にトグル
-                    if (desktopContent && mobileContent) {
-                        const isHidden = desktopContent.classList.contains('!hidden');
-
-                        if (isHidden) {
-                            desktopContent.classList.remove('!hidden');
-                            mobileContent.classList.remove('!hidden');
-                        } else {
-                            desktopContent.classList.add('!hidden');
-                            mobileContent.classList.add('!hidden');
-                        }
-                    }
-
-                    if (icon) {
-                        icon.classList.toggle('rotate-180');
-                    }
-                });
-            });
-        });
-    </script>
 {% else %}
     <p class="text-gray-600">{{ title }}の見積もりは登録されていません。</p>
 {% endif %}
