@@ -6,8 +6,13 @@ from .models import SimulationConfig, MonthlyPlan, CreditEstimate, CreditDefault
 
 def get_bonus_month_from_date(purchase_date) -> str:
     """購入日からボーナス払い請求月を計算
+    対象期間:
     - 12/6〜6/5の購入 → 8/4請求（同年または翌年の8月）
     - 7/6〜11/5の購入 → 1/4請求（翌年の1月）
+
+    対象外期間:
+    - 6/6〜7/5（ボーナス払い不可）
+    - 11/6〜12/5（ボーナス払い不可）
     """
     from datetime import date
 
@@ -22,28 +27,43 @@ def get_bonus_month_from_date(purchase_date) -> str:
     month = purchase_date.month
     day = purchase_date.day
 
-    # 12/6〜6/5の購入 → 8月請求
+    # 対象外期間のチェック
+    # 6/6〜7/5は対象外
+    if month == 6 and day >= 6:
+        return None
+    if month == 7 and day <= 5:
+        return None
+
+    # 11/6〜12/5は対象外
+    if month == 11 and day >= 6:
+        return None
+    if month == 12 and day <= 5:
+        return None
+
+    # 対象期間の処理
+    # 12/6〜6/5 → 8月請求
     if month == 12 and day >= 6:
-        # 12/6以降は翌年8月
+        # 12/6〜12/31 → 翌年8月
         return f"{year + 1}-08"
-    elif month == 6 and day <= 5:
-        # 6/5以前は同年8月
-        return f"{year}-08"
     elif 1 <= month <= 5:
-        # 1月〜5月は同年8月
+        # 1/1〜5/31 → 同年8月
         return f"{year}-08"
-    elif month == 6 and day >= 6:
-        # 6/6以降は翌年1月（7/6-11/5グループの開始）
+    elif month == 6 and day <= 5:
+        # 6/1〜6/5 → 同年8月
+        return f"{year}-08"
+
+    # 7/6〜11/5 → 翌年1月請求
+    elif month == 7 and day >= 6:
+        # 7/6〜7/31 → 翌年1月
         return f"{year + 1}-01"
-    elif 7 <= month <= 11:
-        # 7月〜11月は翌年1月
+    elif 8 <= month <= 10:
+        # 8/1〜10/31 → 翌年1月
         return f"{year + 1}-01"
     elif month == 11 and day <= 5:
-        # 11/5以前は翌年1月
+        # 11/1〜11/5 → 翌年1月
         return f"{year + 1}-01"
-    else:
-        # デフォルト（12/1-12/5）
-        return f"{year}-08"
+
+    return None
 
 
 def get_next_bonus_month(year_month: str) -> str:
@@ -555,11 +575,42 @@ class CreditEstimateForm(forms.ModelForm):
             # 分割払いチェックボックスがオフの場合
             if is_already_split:
                 # 分割払いから通常払いに戻す処理
-                # 同じグループの他のエントリーを削除
                 if instance.split_payment_group:
-                    CreditEstimate.objects.filter(
+                    # 同じグループの全エントリーを取得
+                    all_payments = CreditEstimate.objects.filter(
                         split_payment_group=instance.split_payment_group
-                    ).exclude(pk=instance.pk).delete()
+                    ).order_by('split_payment_part')
+
+                    # 全エントリーの金額を合計
+                    total_amount = sum(payment.amount for payment in all_payments)
+
+                    # 1回目のエントリーを取得（元の月）
+                    first_payment = all_payments.filter(split_payment_part=1).first()
+
+                    if first_payment:
+                        if first_payment.pk == instance.pk:
+                            # 編集中のエントリーが1回目の場合
+                            instance.amount = total_amount
+                            # 2回目を削除
+                            all_payments.exclude(pk=instance.pk).delete()
+                        else:
+                            # 編集中のエントリーが2回目の場合
+                            # 1回目に合計金額を設定
+                            first_payment.amount = total_amount
+                            first_payment.split_payment_part = None
+                            first_payment.split_payment_group = None
+                            first_payment.is_split_payment = False
+                            first_payment.save()
+                            # 現在のエントリー（2回目）を削除するため、commitをFalseに
+                            if commit:
+                                instance.delete()
+                            return first_payment
+                    else:
+                        # 1回目が見つからない場合は現在のエントリーに合計
+                        other_payments = all_payments.exclude(pk=instance.pk)
+                        total_other_amount = sum(payment.amount for payment in other_payments)
+                        instance.amount += total_other_amount
+                        other_payments.delete()
 
                 # 分割払い情報をクリア
                 instance.split_payment_part = None
