@@ -44,11 +44,17 @@
                 }
 
                 const selectedMonth = parseInt(monthSelect.value);
+                const bonusInput = bonusWrapper.querySelector('input');
 
                 if (selectedMonth === 6 || selectedMonth === 12) {
                     bonusWrapper.style.display = 'block';
+                    if (bonusInput) bonusInput.removeAttribute('required');
                 } else {
                     bonusWrapper.style.display = 'none';
+                    if (bonusInput) {
+                        bonusInput.removeAttribute('required');
+                        bonusInput.value = bonusInput.value || 0;
+                    }
                 }
             }
 
@@ -63,17 +69,19 @@
 
                 const selectedYear = parseInt(yearSelect.value);
                 const selectedMonth = parseInt(monthSelect.value);
+                const lakeInput = lakeWrapper.querySelector('input');
 
                 // 2026年6月以降は非表示
                 if (selectedYear > 2026 || (selectedYear === 2026 && selectedMonth > 5)) {
                     lakeWrapper.style.display = 'none';
-                    // 非表示の場合は値を0にクリア
-                    const lakeInput = lakeWrapper.querySelector('input');
+                    // 非表示の場合は値を0にクリアし、requiredを削除
                     if (lakeInput) {
                         lakeInput.value = 0;
+                        lakeInput.removeAttribute('required');
                     }
                 } else {
                     lakeWrapper.style.display = 'block';
+                    if (lakeInput) lakeInput.removeAttribute('required');
                 }
             }
 
@@ -163,7 +171,15 @@
                 if (viewCardBonusWrapper) {
                     const month = monthSelectForBonus ? monthSelectForBonus.value : null;
                     const shouldShow = month === '1' || month === '8';
+                    const viewCardBonusInput = viewCardBonusWrapper.querySelector('input');
+
                     viewCardBonusWrapper.style.display = shouldShow ? 'block' : 'none';
+                    if (viewCardBonusInput) {
+                        viewCardBonusInput.removeAttribute('required');
+                        if (!shouldShow) {
+                            viewCardBonusInput.value = viewCardBonusInput.value || 0;
+                        }
+                    }
                 }
 
             }
@@ -216,11 +232,17 @@
                         <div class="mb-4" id="{{ field.name }}-field-wrapper">
                             <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
+                            {% if field.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
                         </div>
                     {% elif field.name == 'bonus' %}
                         <div class="mb-4" id="bonus-field-wrapper" style="display: none;">
                             <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
+                            {% if field.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
                         </div>
                     {% endif %}
                 {% endfor %}
@@ -235,6 +257,9 @@
                         <div class="mb-4" id="{{ field.name }}-field-wrapper">
                             <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
+                            {% if field.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
                         </div>
                     {% endif %}
                 {% endfor %}

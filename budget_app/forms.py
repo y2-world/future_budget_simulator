@@ -275,6 +275,9 @@ class MonthlyPlanForm(forms.ModelForm):
                     'class': 'w-full p-2 border rounded',
                     'placeholder': '0'
                 })
+                # 条件付きフィールド（bonus, view_card_bonus, lake）はrequiredをFalseに
+                if field_name in ['bonus', 'view_card_bonus', 'lake']:
+                    self.fields[field_name].required = False
 
     def clean(self):
         cleaned_data = super().clean()
