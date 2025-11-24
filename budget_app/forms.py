@@ -149,7 +149,7 @@ class MonthlyPlanForm(forms.ModelForm):
             'lake',
             'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
             'vermillion_card', 'amazon_card',
-            'loan', 'loan_borrowing', 'other'
+            'loan_borrowing', 'other'
         ]
 
         widgets = {
@@ -169,7 +169,6 @@ class MonthlyPlanForm(forms.ModelForm):
             'paypay_card': 'PayPayカード（27日）',
             'vermillion_card': 'VERMILLION CARD（4日）',
             'amazon_card': 'Amazonカード（26日）',
-            'loan': 'マネーアシスト返済',
             'loan_borrowing': 'マネーアシスト借入',
             'other': 'その他',
         }
@@ -233,20 +232,17 @@ class MonthlyPlanForm(forms.ModelForm):
                     prev_month = month_int - 1
                 prev_month_name = f"{prev_month}月"
                 
-                # 末日を計算（マネーアシスト返済用）
-                last_day = calendar.monthrange(year_int, month_int)[1]
-                
                 # 各フィールドのラベルを動的に設定
                 self.fields['salary'].label = f'給与（{year_int}年{month_name}25日）'
                 self.fields['food'].label = f'食費（{year_int}年{month_name}1日）'
                 self.fields['rent'].label = f'家賃（{year_int}年{month_name}27日）'
                 self.fields['lake'].label = f'レイク返済（{year_int}年{month_name}27日）'
                 self.fields['view_card'].label = f'VIEWカード（{year_int}年{month_name}4日）'
-                self.fields['rakuten_card'].label = f'楽天カード（{year_int}年{month_name}27日）' # 修正: Amazonカードの支払日を26日に変更
+                self.fields['rakuten_card'].label = f'楽天カード（{year_int}年{month_name}27日）'
                 self.fields['paypay_card'].label = f'PayPayカード（{year_int}年{month_name}27日）'
                 self.fields['vermillion_card'].label = f'VERMILLION CARD（{year_int}年{month_name}4日）'
                 self.fields['amazon_card'].label = f'Amazonカード（{year_int}年{month_name}26日）'
-                self.fields['loan'].label = f'マネーアシスト返済（{year_int}年{month_name}{last_day}日）'
+                self.fields['loan_borrowing'].label = f'マネーアシスト借入（{year_int}年{month_name}1日）'
 
                 # レイク返済は2026年6月以降は表示しない
                 if year_int > 2026 or (year_int == 2026 and month_int > 5):

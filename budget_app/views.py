@@ -278,12 +278,37 @@ def plan_list(request):
 def plan_create(request):
     """月次計画作成"""
     from django.http import JsonResponse
+    from datetime import datetime, timedelta
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
     if request.method == 'POST':
         form = MonthlyPlanForm(request.POST)
         if form.is_valid():
             plan = form.save()
+
+            # マネーアシスト借入がある場合、翌月末に自動で返済を登録
+            if plan.loan_borrowing > 0:
+                current_date = datetime.strptime(plan.year_month, '%Y-%m')
+                # 翌月の1日を計算（月末の28日後 + 数日）
+                next_month = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
+                next_month_str = next_month.strftime('%Y-%m')
+
+                # 翌月の計画を取得または作成
+                config = SimulationConfig.objects.filter(is_active=True).first()
+                next_plan, _ = MonthlyPlan.objects.get_or_create(
+                    year_month=next_month_str,
+                    defaults={
+                        'salary': config.default_salary if config else 271919,
+                        'food': config.default_food if config else 50000,
+                        'rent': 74396,
+                        'lake': 8000,
+                    }
+                )
+
+                # 翌月の返済額に借入額を加算
+                next_plan.loan += plan.loan_borrowing
+                next_plan.save()
+
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': '月次計画を作成しました。'})
             messages.success(request, '月次計画を作成しました。')
@@ -318,14 +343,41 @@ def plan_edit(request, pk):
     """月次計画編集"""
     plan = get_object_or_404(MonthlyPlan, pk=pk)
     from django.http import JsonResponse
+    from datetime import datetime, timedelta
     import logging
     logger = logging.getLogger(__name__)
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
     if request.method == 'POST':
+        # 編集前の借入額を保存
+        old_loan_borrowing = plan.loan_borrowing
+
         form = MonthlyPlanForm(request.POST, instance=plan)
         if form.is_valid():
             plan = form.save()
+
+            # マネーアシスト借入額が変更された場合、翌月の返済額を更新
+            if plan.loan_borrowing != old_loan_borrowing:
+                current_date = datetime.strptime(plan.year_month, '%Y-%m')
+                next_month = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
+                next_month_str = next_month.strftime('%Y-%m')
+
+                # 翌月の計画を取得または作成
+                config = SimulationConfig.objects.filter(is_active=True).first()
+                next_plan, _ = MonthlyPlan.objects.get_or_create(
+                    year_month=next_month_str,
+                    defaults={
+                        'salary': config.default_salary if config else 271919,
+                        'food': config.default_food if config else 50000,
+                        'rent': 74396,
+                        'lake': 8000,
+                    }
+                )
+
+                # 翌月の返済額を調整（古い借入額を引いて、新しい借入額を加算）
+                next_plan.loan = next_plan.loan - old_loan_borrowing + plan.loan_borrowing
+                next_plan.save()
+
             display_month = format_year_month_display(plan.year_month)
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': f'{display_month} の計画を更新しました。'})
