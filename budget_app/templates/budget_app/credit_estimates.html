@@ -12,7 +12,9 @@
                 <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">+</span>
                 新規追加
             </span>
-            <span id="toggleIcon" class="text-2xl transition-transform duration-200">∨</span>
+            <svg id="toggleIcon" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
         </button>
 
         <div id="createFormSection" class="hidden mt-4">
@@ -76,12 +78,7 @@
             const toggleIcon = document.getElementById('toggleIcon');
 
             formSection.classList.toggle('hidden');
-
-            if (formSection.classList.contains('hidden')) {
-                toggleIcon.style.transform = 'rotate(0deg)';
-            } else {
-                toggleIcon.style.transform = 'rotate(180deg)';
-            }
+            toggleIcon.classList.toggle('rotate-180');
         }
     </script>
 

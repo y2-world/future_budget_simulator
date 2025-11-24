@@ -56,6 +56,8 @@
 
                 <!-- デスクトップ: 1行表示 -->
                 <div class="hidden md:block text-sm text-gray-600">
+                    <span class="text-blue-600 font-semibold">残高: {{ plan.start_balance|yen }}</span>
+                    <span class="mx-2">|</span>
                     <span class="text-green-600 font-semibold">収入: {{ plan.total_income|yen }}</span>
                     <span class="mx-2">|</span>
                     <span class="text-red-600 font-semibold">支出: {{ plan.total_expenses|yen }}</span>
@@ -65,14 +67,18 @@
                     </span>
                     {% if plan.has_savings %}
                         <span class="mx-2">|</span>
-                        <span class="text-blue-600 font-semibold">定期預金残高: {{ plan.savings_amount_display|yen }}</span>
-                        <span class="mx-2">|</span>
                         <span class="text-purple-600 font-semibold">メイン預金残高: {{ plan.main_balance|yen }}</span>
+                        <span class="mx-2">|</span>
+                        <span class="text-blue-600 font-semibold">定期預金残高: {{ plan.savings_amount_display|yen }}</span>
                     {% endif %}
                 </div>
 
                 <!-- モバイル: グリッド表示 -->
                 <div class="md:hidden grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-gray-600">残高:</span>
+                        <span class="text-blue-600 font-semibold ml-1">{{ plan.start_balance|yen }}</span>
+                    </div>
                     <div>
                         <span class="text-gray-600">収入:</span>
                         <span class="text-green-600 font-semibold ml-1">{{ plan.total_income|yen }}</span>
@@ -87,12 +93,12 @@
                     </div>
                     {% if plan.has_savings %}
                     <div>
-                        <span class="text-gray-600">定期預金残高:</span>
-                        <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
-                    </div>
-                    <div>
                         <span class="text-gray-600">メイン預金残高:</span>
                         <span class="text-purple-600 font-semibold ml-1">{{ plan.main_balance|yen }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">定期預金残高:</span>
+                        <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
                     </div>
                     {% endif %}
                 </div>
@@ -286,6 +292,8 @@
 
                     <!-- デスクトップ: 1行表示 -->
                     <div class="hidden md:block text-sm text-gray-600">
+                        <span class="text-blue-600 font-semibold">残高: {{ plan.start_balance|yen }}</span>
+                        <span class="mx-2">|</span>
                         <span class="text-green-600 font-semibold">収入: {{ plan.total_income|yen }}</span>
                         <span class="mx-2">|</span>
                         <span class="text-red-600 font-semibold">支出: {{ plan.total_expenses|yen }}</span>
@@ -295,14 +303,18 @@
                         </span>
                         {% if plan.has_savings %}
                             <span class="mx-2">|</span>
-                            <span class="text-blue-600 font-semibold">定期預金残高: {{ plan.savings_amount_display|yen }}</span>
-                            <span class="mx-2">|</span>
                             <span class="text-purple-600 font-semibold">メイン預金残高: {{ plan.main_balance|yen }}</span>
+                            <span class="mx-2">|</span>
+                            <span class="text-blue-600 font-semibold">定期預金残高: {{ plan.savings_amount_display|yen }}</span>
                         {% endif %}
                     </div>
 
                     <!-- モバイル: グリッド表示 -->
                     <div class="md:hidden grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-gray-600">残高:</span>
+                            <span class="text-blue-600 font-semibold ml-1">{{ plan.start_balance|yen }}</span>
+                        </div>
                         <div>
                             <span class="text-gray-600">収入:</span>
                             <span class="text-green-600 font-semibold ml-1">{{ plan.total_income|yen }}</span>
@@ -317,12 +329,12 @@
                         </div>
                         {% if plan.has_savings %}
                         <div>
-                            <span class="text-gray-600">定期預金残高:</span>
-                            <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
-                        </div>
-                        <div>
                             <span class="text-gray-600">メイン預金残高:</span>
                             <span class="text-purple-600 font-semibold ml-1">{{ plan.main_balance|yen }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">定期預金残高:</span>
+                            <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
                         </div>
                         {% endif %}
                     </div>
