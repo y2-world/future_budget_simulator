@@ -11,8 +11,12 @@
             </a>
         </div>
         <div class="flex items-center space-x-2">
-            <span class="text-xs md:text-sm font-medium">残高:</span>
+            <span class="text-xs md:text-sm font-medium">現在残高:</span>
+            {% if current_and_future_plans and current_and_future_plans.0.current_balance is not None %}
+            <span id="initial-balance-display" class="font-bold text-base md:text-lg">{{ current_and_future_plans.0.current_balance|yen }}</span>
+            {% else %}
             <span id="initial-balance-display" class="font-bold text-base md:text-lg">{{ initial_balance|yen }}</span>
+            {% endif %}
             <button onclick="toggleInitialBalanceEdit()" class="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600">編集</button>
         </div>
     </div>
@@ -22,7 +26,7 @@
         <form method="post" action="{% url 'budget_app:update_initial_balance' %}" class="space-y-3">
             {% csrf_token %}
             <div>
-                <label class="block font-medium mb-2 text-sm">残高:</label>
+                <label class="block font-medium mb-2 text-sm">現在残高:</label>
                 <input type="number" name="initial_balance" value="{{ initial_balance }}" class="p-2 border rounded w-full">
             </div>
             <div class="flex gap-2">
@@ -204,8 +208,10 @@
 
             <!-- タイムライン -->
             <div id="plan-content-{{ plan.pk }}" class="p-3 md:p-4">
+                {# 当日以降の明細 #}
                 <div class="space-y-2">
                     {% for item in plan.timeline %}
+                    {% if not item.date or item.date > today or plan.year_month != today|date:"Y-m" %}
                     <!-- デスクトップ表示 -->
                     <div class="hidden md:flex items-center justify-between p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded hover:{% if item.balance < 0 %}bg-red-200{% else %}bg-gray-50{% endif %}">
                         <div class="flex items-center space-x-3 flex-1">
@@ -249,8 +255,10 @@
                             </span>
                         </div>
                     </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
+
                 <div class="bg-green-50 p-2 mt-2 rounded">
                     <span class="text-xs md:text-sm font-semibold">月末残高: {{ plan.final_balance|yen }}</span>
                 </div>
@@ -487,6 +495,65 @@
             </div>
             {% endfor %}
         </div>
+        {% endif %}
+
+        {# 全体の一番下に過去の明細を表示 #}
+        {% if current_and_future_plans %}
+        {% for plan in current_and_future_plans %}
+        {% if plan.year_month == today|date:"Y-m" %}
+        <div class="mt-12 pt-8 border-t-2 border-gray-300">
+            <details class="group">
+                <summary class="text-lg md:text-xl font-bold cursor-pointer list-none flex items-center text-gray-600 hover:text-gray-800">
+                    <span class="group-open:rotate-90 transition-transform duration-200 mr-2">▶</span>
+                    過去の明細
+                </summary>
+                <div class="mt-4 space-y-2 opacity-75">
+                    {% for item in plan.timeline %}
+                    {% if item.date and item.date <= today %}
+                    <!-- デスクトップ表示 -->
+                    <div class="hidden md:flex items-center justify-between p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded hover:{% if item.balance < 0 %}bg-red-200{% else %}bg-gray-50{% endif %}">
+                        <div class="flex items-center space-x-3 flex-1">
+                            <span class="text-sm text-gray-600 w-20">{{ item.date|date:"m/d（D）" }}</span>
+                            <span class="font-medium w-40">{{ item.name }}</span>
+                            <span class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold w-32 text-right">
+                                {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
+                            </span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm text-gray-500">残高:</span>
+                            <span class="font-bold ml-2 {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
+                                {{ item.balance|yen }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- モバイル表示 -->
+                    <div class="md:hidden p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">{{ item.date|date:"m/d（D）" }}</div>
+                                <div class="font-medium text-sm">{{ item.name }}</div>
+                            </div>
+                            <div class="text-right ml-2">
+                                <div class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold text-sm">
+                                    {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right pt-2 border-t border-gray-100">
+                            <span class="text-xs text-gray-500">残高: </span>
+                            <span class="font-bold text-sm {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
+                                {{ item.balance|yen }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </details>
+        </div>
+        {% endif %}
+        {% endfor %}
         {% endif %}
     {% else %}
         <p class="text-gray-600">月次計画がありません。</p>

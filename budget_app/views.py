@@ -157,6 +157,9 @@ def plan_list(request):
     cumulative_savings = 0  # 定期預金の累計
 
     # 各計画に収支情報とタイムラインを追加
+    # 現在月かどうかを判定するフラグ
+    reached_current_month = False
+
     for plan in plans:
         plan.total_income = plan.get_total_income()
         plan.total_expenses = plan.get_total_expenses()
@@ -172,6 +175,12 @@ def plan_list(request):
         last_day = calendar.monthrange(year, month)[1]
 
         timeline = []
+
+        # 現在月の場合、初期残高（今日時点の残高）から開始
+        if plan.year_month == current_year_month:
+            reached_current_month = True
+            current_balance = initial_balance
+
         plan.start_balance = current_balance
         view_card_balance = None  # VIEWカード引き落とし後の残高を記録
 
@@ -222,9 +231,15 @@ def plan_list(request):
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, -x['amount']))
 
+        # 現在月の場合、今日以前の取引をスキップ
         for transaction in transactions:
             if transaction['amount'] == 0:
                 continue
+            # 現在月で今日以前の取引はスキップ
+            if reached_current_month and plan.year_month == current_year_month:
+                if transaction['date'] and transaction['date'] <= today:
+                    continue
+
             current_balance += transaction['amount']
             timeline.append({
                 'date': transaction['date'],
@@ -246,11 +261,18 @@ def plan_list(request):
         # アーカイブフラグを設定
         plan.is_archived = plan.year_month < current_year_month
 
+        # 現在月の場合、現在残高を表示
+        if plan.year_month == current_year_month:
+            plan.current_balance = initial_balance  # 現在残高（今日時点）
+        else:
+            plan.current_balance = None
+
     return render(request, 'budget_app/plan_list.html', {
         'plans': plans,
         'current_and_future_plans': current_and_future_plans,
         'past_plans': past_plans,
         'initial_balance': initial_balance,
+        'today': today,
     })
 
 
