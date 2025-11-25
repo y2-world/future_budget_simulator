@@ -231,7 +231,27 @@ def plan_list(request):
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, -x['amount']))
 
-        # 現在月の場合、今日以前の取引をスキップ
+        # 過去の明細用のリスト（現在月の今日以前の取引）
+        past_timeline = []
+
+        # 現在月の場合、過去の明細を別途計算
+        if reached_current_month and plan.year_month == current_year_month:
+            past_balance = initial_balance
+            for transaction in transactions:
+                if transaction['amount'] == 0:
+                    continue
+                if transaction['date'] and transaction['date'] <= today:
+                    # 過去の明細として記録（残高は元の累積計算のまま）
+                    # 実際の残高計算は不要なので、ダミー値を入れる
+                    past_timeline.append({
+                        'date': transaction['date'],
+                        'name': transaction['name'],
+                        'amount': transaction['amount'],
+                        'balance': 0,  # テンプレートで表示しないのでダミー
+                        'is_income': transaction['amount'] > 0
+                    })
+
+        # タイムライン作成（未来の取引のみ、または過去月の全取引）
         for transaction in transactions:
             if transaction['amount'] == 0:
                 continue
@@ -253,6 +273,7 @@ def plan_list(request):
                 view_card_balance = current_balance
 
         plan.timeline = timeline
+        plan.past_timeline = past_timeline  # 過去の明細を保存
         plan.final_balance = current_balance
         # メイン預金残高を計算（VIEWカード引き落とし後の残高 - 定期預金残高）
         # VIEWカードの引き落としがない場合は月末残高を使用

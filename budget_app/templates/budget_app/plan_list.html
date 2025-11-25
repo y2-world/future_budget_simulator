@@ -508,10 +508,9 @@
                     過去の明細
                 </summary>
                 <div class="mt-4 space-y-2 opacity-75">
-                    {% for item in plan.timeline %}
-                    {% if item.date and item.date <= today %}
+                    {% for item in plan.past_timeline %}
                     <!-- デスクトップ表示 -->
-                    <div class="hidden md:flex items-center justify-between p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded hover:{% if item.balance < 0 %}bg-red-200{% else %}bg-gray-50{% endif %}">
+                    <div class="hidden md:flex items-center justify-between p-3 bg-white border rounded hover:bg-gray-50">
                         <div class="flex items-center space-x-3 flex-1">
                             <span class="text-sm text-gray-600 w-20">{{ item.date|date:"m/d（D）" }}</span>
                             <span class="font-medium w-40">{{ item.name }}</span>
@@ -519,16 +518,10 @@
                                 {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
                             </span>
                         </div>
-                        <div class="text-right">
-                            <span class="text-sm text-gray-500">残高:</span>
-                            <span class="font-bold ml-2 {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
-                                {{ item.balance|yen }}
-                            </span>
-                        </div>
                     </div>
 
                     <!-- モバイル表示 -->
-                    <div class="md:hidden p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded">
+                    <div class="md:hidden p-3 bg-white border rounded">
                         <div class="flex justify-between items-start mb-2">
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">{{ item.date|date:"m/d（D）" }}</div>
@@ -540,14 +533,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="text-right pt-2 border-t border-gray-100">
-                            <span class="text-xs text-gray-500">残高: </span>
-                            <span class="font-bold text-sm {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
-                                {{ item.balance|yen }}
-                            </span>
-                        </div>
                     </div>
-                    {% endif %}
                     {% endfor %}
                 </div>
             </details>
