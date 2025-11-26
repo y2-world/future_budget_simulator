@@ -20,6 +20,9 @@ urlpatterns = [
     # 給与一覧
     path('salaries/', views.salary_list, name='salary_list'),
 
+    # 過去の明細
+    path('past-transactions/', views.past_transactions_list, name='past_transactions'),
+
     # クレカ見積り
     path('credit-estimates/', views.credit_estimate_list, name='credit_estimates'),
     path('credit-estimates/<int:pk>/edit/', views.credit_estimate_edit, name='credit_estimate_edit'),

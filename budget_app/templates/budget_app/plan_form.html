@@ -185,12 +185,38 @@
 
             }
 
+            function toggleExpenseSection() {
+                const yearSelect = document.querySelector('select[name="year"]');
+                const monthSelect = document.querySelector('select[name="month"]');
+                const expenseSection = document.getElementById('expense-section');
+
+                if (!yearSelect || !monthSelect || !expenseSection) {
+                    return;
+                }
+
+                const selectedYear = parseInt(yearSelect.value);
+                const selectedMonth = parseInt(monthSelect.value);
+
+                // 現在の年月を取得
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth() + 1;
+
+                // 選択された年月が現在より前の場合、支出セクションを非表示
+                if (selectedYear < currentYear || (selectedYear === currentYear && selectedMonth < currentMonth)) {
+                    expenseSection.style.display = 'none';
+                } else {
+                    expenseSection.style.display = 'block';
+                }
+            }
+
             // ページ読み込み時と年・月の選択変更時にラベルを更新
             document.addEventListener('DOMContentLoaded', function() {
                 updateLabels();
                 updateYearMonth();
                 toggleBonusField(); // ページ読み込み時にボーナス表示を更新
                 toggleLakeField(); // ページ読み込み時にレイク返済表示を更新
+                toggleExpenseSection(); // ページ読み込み時に支出セクション表示を更新
 
                 const yearSelect = document.querySelector('select[name="year"]');
                 const monthSelect = document.querySelector('select[name="month"]');
@@ -201,6 +227,7 @@
                         updateYearMonth();
                         toggleBonusField(); // 年変更時にもボーナス表示を更新
                         toggleLakeField(); // 年変更時にレイク返済表示を更新
+                        toggleExpenseSection(); // 年変更時に支出セクション表示を更新
                     });
                 }
 
@@ -210,6 +237,7 @@
                         updateYearMonth();
                         toggleBonusField(); // 月変更時にボーナス表示を更新
                         toggleLakeField(); // 月変更時にレイク返済表示を更新
+                        toggleExpenseSection(); // 月変更時に支出セクション表示を更新
                     });
                 }
 
@@ -257,7 +285,7 @@
                 {% endfor %}
             </div>
 
-            <div class="bg-gradient-to-br from-red-50 to-pink-50 p-4 md:p-6 rounded-xl shadow-sm">
+            <div id="expense-section" class="bg-gradient-to-br from-red-50 to-pink-50 p-4 md:p-6 rounded-xl shadow-sm">
                 <h3 class="font-bold text-lg md:text-xl mb-4 text-red-800 flex items-center">
                     <span class="mr-2">💳</span>支出
                 </h3>

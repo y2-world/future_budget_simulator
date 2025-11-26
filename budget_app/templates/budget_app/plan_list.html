@@ -553,50 +553,6 @@
         </div>
         {% endif %}
 
-        {# 全体の一番下に過去の明細を表示 #}
-        {% if current_and_future_plans %}
-        {% for plan in current_and_future_plans %}
-        {% if plan.year_month == today|date:"Y-m" %}
-        <div class="mt-12 pt-8 border-t-2 border-gray-300">
-            <details class="group">
-                <summary class="text-lg md:text-xl font-bold cursor-pointer list-none flex items-center text-gray-600 hover:text-gray-800">
-                    <span class="group-open:rotate-90 transition-transform duration-200 mr-2">▶</span>
-                    過去の明細（{{ plan.year_month|slice:":4" }}年）
-                </summary>
-                <div class="mt-4 space-y-2 opacity-75">
-                    {% for item in plan.past_timeline %}
-                    <!-- デスクトップ表示 -->
-                    <div class="hidden md:flex items-center justify-between p-3 bg-white border rounded hover:bg-gray-50">
-                        <div class="flex items-center space-x-3 flex-1">
-                            <span class="text-sm text-gray-600 w-20">{{ item.date|date:"m/d（D）" }}</span>
-                            <span class="font-medium w-40">{{ item.name }}</span>
-                            <span class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold w-32 text-right">
-                                {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- モバイル表示 -->
-                    <div class="md:hidden p-3 bg-white border rounded">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 mb-1">{{ item.date|date:"m/d（D）" }}</div>
-                                <div class="font-medium text-sm">{{ item.name }}</div>
-                            </div>
-                            <div class="text-right ml-2">
-                                <div class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold text-sm">
-                                    {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </details>
-        </div>
-        {% endif %}
-        {% endfor %}
-        {% endif %}
     {% else %}
         <p class="text-gray-600">月次計画がありません。</p>
         <a href="{% url 'budget_app:plan_create' %}" class="text-blue-600 hover:underline">最初の計画を作成</a>

@@ -305,9 +305,25 @@ def plan_create(request):
     from django.http import JsonResponse
     from datetime import datetime, timedelta
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+    is_past_mode = False
 
     if request.method == 'POST':
-        form = MonthlyPlanForm(request.POST)
+        # 先月以前かどうかを判定
+        year = request.POST.get('year')
+        month = request.POST.get('month')
+        current_year_month = datetime.now().strftime('%Y-%m')
+        is_past_month = False
+
+        if year and month:
+            selected_year_month = f"{year}-{month}"
+            is_past_month = selected_year_month < current_year_month
+
+        # 過去月の場合はPastMonthlyPlanFormを使用
+        if is_past_month:
+            from .forms import PastMonthlyPlanForm
+            form = PastMonthlyPlanForm(request.POST)
+        else:
+            form = MonthlyPlanForm(request.POST)
         if form.is_valid():
             plan = form.save()
 
@@ -342,25 +358,33 @@ def plan_create(request):
             return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
 
     else:
-        # 設定からデフォルト給与と食費を取得
-        config = SimulationConfig.objects.filter(is_active=True).first()
-        default_salary = config.default_salary if config else 271919
-        default_food = config.default_food if config else 50000
-        default_view_card = config.default_view_card if config else 0
+        # URLパラメータで過去月モードかどうかを判定
+        is_past_mode = request.GET.get('past_mode') == 'true'
 
-        # デフォルト値を設定
-        initial_data = {
-            'salary': default_salary,
-            'food': default_food,
-            'view_card': default_view_card,
-            'lake': 8000,
-            'rent': 74396,
-        }
-        form = MonthlyPlanForm(initial=initial_data)
+        if is_past_mode:
+            from .forms import PastMonthlyPlanForm
+            form = PastMonthlyPlanForm()
+        else:
+            # 設定からデフォルト給与と食費を取得
+            config = SimulationConfig.objects.filter(is_active=True).first()
+            default_salary = config.default_salary if config else 271919
+            default_food = config.default_food if config else 50000
+            default_view_card = config.default_view_card if config else 0
+
+            # デフォルト値を設定
+            initial_data = {
+                'salary': default_salary,
+                'food': default_food,
+                'view_card': default_view_card,
+                'lake': 8000,
+                'rent': 74396,
+            }
+            form = MonthlyPlanForm(initial=initial_data)
 
     return render(request, 'budget_app/plan_form.html', {
         'form': form,
-        'title': '月次計画の作成'
+        'title': '月次計画の作成' if not is_past_mode else '過去の給与データ登録',
+        'is_past_mode': is_past_mode
     })
 
 
@@ -1183,3 +1207,162 @@ def salary_list(request):
         'annual_summary': annual_summary,
     }
     return render(request, 'budget_app/salary_list.html', context)
+
+
+def past_transactions_list(request):
+    """過去の明細一覧（アーカイブ）"""
+    from datetime import datetime
+
+    current_year_month = datetime.now().strftime('%Y-%m')
+
+    # 当月を含む全てのMonthlyPlanを取得（年月で降順ソート）
+    past_plans = MonthlyPlan.objects.filter(
+        year_month__lte=current_year_month
+    ).order_by('-year_month')
+
+    # 当月を含む全てのクレカ見積りを取得
+    past_credit_estimates = CreditEstimate.objects.filter(
+        year_month__lte=current_year_month
+    ).order_by('-year_month')
+
+    # 年ごとにグループ化して、月ごとの収入・支出を集計
+    yearly_data = {}
+
+    # 月次計画データを追加
+    for plan in past_plans:
+        year = plan.year_month[:4]
+
+        if year not in yearly_data:
+            yearly_data[year] = {
+                'months': [],
+                'credit_months': {},
+                'total_income': 0,
+                'total_expenses': 0,
+                'total_credit': 0
+            }
+
+        # 収入の合計（給与、ボーナス、その他収入）
+        income = plan.salary + plan.bonus
+
+        # 支出の合計（全ての支出項目）
+        expenses = (
+            plan.food + plan.rent + plan.lake +
+            plan.view_card + plan.view_card_bonus + plan.rakuten_card +
+            plan.paypay_card + plan.vermillion_card + plan.amazon_card +
+            plan.olive_card + plan.loan_borrowing + plan.other
+        )
+
+        # 収入・支出の明細を作成
+        transactions = []
+        if plan.salary > 0:
+            transactions.append({'date': 25, 'name': '給与', 'amount': plan.salary, 'type': 'income'})
+        if plan.bonus > 0:
+            transactions.append({'date': 25, 'name': 'ボーナス', 'amount': plan.bonus, 'type': 'income'})
+        if plan.food > 0:
+            transactions.append({'date': 1, 'name': '食費', 'amount': plan.food, 'type': 'expense'})
+        if plan.rent > 0:
+            transactions.append({'date': 1, 'name': '家賃', 'amount': plan.rent, 'type': 'expense'})
+        if plan.lake > 0:
+            transactions.append({'date': 10, 'name': 'レイク', 'amount': plan.lake, 'type': 'expense'})
+        if plan.view_card > 0:
+            transactions.append({'date': 4, 'name': 'ビューカード', 'amount': plan.view_card, 'type': 'expense'})
+        if plan.view_card_bonus > 0:
+            transactions.append({'date': 4, 'name': 'ビューカード(ボーナス)', 'amount': plan.view_card_bonus, 'type': 'expense'})
+        if plan.rakuten_card > 0:
+            transactions.append({'date': 27, 'name': '楽天カード', 'amount': plan.rakuten_card, 'type': 'expense'})
+        if plan.paypay_card > 0:
+            transactions.append({'date': 27, 'name': 'PayPayカード', 'amount': plan.paypay_card, 'type': 'expense'})
+        if plan.vermillion_card > 0:
+            transactions.append({'date': 10, 'name': '朱雀カード', 'amount': plan.vermillion_card, 'type': 'expense'})
+        if plan.amazon_card > 0:
+            transactions.append({'date': 27, 'name': 'Amazonカード', 'amount': plan.amazon_card, 'type': 'expense'})
+        if plan.olive_card > 0:
+            transactions.append({'date': 26, 'name': 'Olive', 'amount': plan.olive_card, 'type': 'expense'})
+        if plan.loan_borrowing > 0:
+            transactions.append({'date': 10, 'name': '借入', 'amount': plan.loan_borrowing, 'type': 'expense'})
+        if plan.other > 0:
+            transactions.append({'date': 15, 'name': 'その他', 'amount': plan.other, 'type': 'expense'})
+
+        yearly_data[year]['months'].append({
+            'year_month': plan.year_month,
+            'income': income,
+            'expenses': expenses,
+            'transactions': transactions,
+            'plan': plan
+        })
+        yearly_data[year]['total_income'] += income
+        yearly_data[year]['total_expenses'] += expenses
+
+    # クレカ見積りデータを月別→カード別にグループ化
+    for estimate in past_credit_estimates:
+        year = estimate.year_month[:4]
+
+        if year not in yearly_data:
+            yearly_data[year] = {
+                'months': [],
+                'credit_months': {},
+                'total_income': 0,
+                'total_expenses': 0,
+                'total_credit': 0
+            }
+
+        # 月ごとにグループ化
+        if estimate.year_month not in yearly_data[year]['credit_months']:
+            yearly_data[year]['credit_months'][estimate.year_month] = {
+                'year_month': estimate.year_month,
+                'cards': {},
+                'total_amount': 0
+            }
+
+        # その月の中でカード別にグループ化
+        card_name = estimate.get_card_type_display()
+        if card_name not in yearly_data[year]['credit_months'][estimate.year_month]['cards']:
+            yearly_data[year]['credit_months'][estimate.year_month]['cards'][card_name] = {
+                'card_name': card_name,
+                'estimates': []
+            }
+
+        yearly_data[year]['credit_months'][estimate.year_month]['cards'][card_name]['estimates'].append({
+            'card_type': estimate.card_type,
+            'amount': estimate.amount,
+            'memo': estimate.description,
+            'estimate': estimate
+        })
+        yearly_data[year]['credit_months'][estimate.year_month]['total_amount'] += estimate.amount
+        yearly_data[year]['total_credit'] += estimate.amount
+
+    # クレカ見積りの月別データをリストに変換してソート
+    for year in yearly_data:
+        credit_months_list = sorted(
+            yearly_data[year]['credit_months'].values(),
+            key=lambda x: x['year_month'],
+            reverse=True
+        )
+        # 各月のカード別データをリストに変換
+        for month_data in credit_months_list:
+            cards_list = []
+            for card_name, card_data in month_data['cards'].items():
+                # 各カードの明細を引落日順にソート
+                def get_sort_key(est):
+                    due = est['estimate'].due_date
+                    if due is None:
+                        day = 99
+                    else:
+                        day = due.day if hasattr(due, 'day') else due
+                    return (day, est['estimate'].id)
+
+                card_data['estimates'] = sorted(card_data['estimates'], key=get_sort_key)
+                cards_list.append(card_data)
+
+            month_data['cards'] = sorted(cards_list, key=lambda x: x['card_name'])
+
+        yearly_data[year]['credit_months'] = credit_months_list
+
+    # 年ごとに降順ソート
+    sorted_years = sorted(yearly_data.keys(), reverse=True)
+
+    context = {
+        'yearly_data': yearly_data,
+        'sorted_years': sorted_years,
+    }
+    return render(request, 'budget_app/past_transactions.html', context)
