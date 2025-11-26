@@ -1376,7 +1376,14 @@ def past_transactions_list(request):
                 card_data['estimates'] = sorted(card_data['estimates'], key=get_sort_key)
                 cards_list.append(card_data)
 
-            month_data['cards'] = sorted(cards_list, key=lambda x: x['card_name'])
+            # カードの表示順をモデルの定義順に合わせる
+            card_order = {
+                display_name: i
+                for i, (_, display_name) in enumerate(CreditEstimate.CARD_TYPES)
+            }
+            month_data['cards'] = sorted(
+                cards_list, key=lambda x: card_order.get(x['card_name'], 99)
+            )
 
         yearly_data[year]['credit_months'] = credit_months_list
 
