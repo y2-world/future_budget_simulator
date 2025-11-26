@@ -31,6 +31,7 @@ RAKUTEN_CARD_DUE_DAY = 27  # 楽天カード引き落とし日
 PAYPAY_CARD_DUE_DAY = 27  # PayPayカード引き落とし日
 VERMILLION_CARD_DUE_DAY = 4  # VERMILLION CARD引き落とし日
 AMAZON_CARD_DUE_DAY = 26  # Amazonカード引き落とし日
+OLIVE_CARD_DUE_DAY = 26  # Olive引き落とし日
 LOAN_DUE_DAY_OF_MONTH = 'last'  # マネーアシスト返済日（月末）
 LOAN_BORROWING_DAY = 1  # マネーアシスト借入日（月初）
 
@@ -200,6 +201,7 @@ def plan_list(request):
         paypay_card_date = adjust_to_next_business_day(date(year, month, clamp_day(PAYPAY_CARD_DUE_DAY)))
         vermillion_card_date = adjust_to_next_business_day(date(year, month, clamp_day(VERMILLION_CARD_DUE_DAY)))
         amazon_card_date = adjust_to_next_business_day(date(year, month, clamp_day(AMAZON_CARD_DUE_DAY)))
+        olive_card_date = adjust_to_next_business_day(date(year, month, clamp_day(OLIVE_CARD_DUE_DAY)))
         loan_date = adjust_to_next_business_day(date(year, month, clamp_day(last_day)))  # 月末
         loan_borrowing_date = adjust_to_next_business_day(date(year, month, clamp_day(LOAN_BORROWING_DAY)))
 
@@ -215,6 +217,7 @@ def plan_list(request):
             {'date': paypay_card_date, 'name': 'PayPayカード', 'amount': -plan.paypay_card, 'is_view_card': False},
             {'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': -plan.vermillion_card, 'is_view_card': False},
             {'date': amazon_card_date, 'name': 'Amazonカード', 'amount': -plan.amazon_card, 'is_view_card': False},
+            {'date': olive_card_date, 'name': 'Olive', 'amount': -plan.olive_card, 'is_view_card': False},
             {'date': loan_date, 'name': 'マネーアシスト返済', 'amount': -plan.loan, 'is_view_card': False},
             {'date': loan_borrowing_date, 'name': 'マネーアシスト借入', 'amount': plan.loan_borrowing, 'is_view_card': False},
         ]
@@ -477,6 +480,7 @@ def credit_estimate_list(request):
         'paypay': 27,
         'vermillion': 4,
         'amazon': 26,
+        'olive': 26,
     }
 
     # カード名に支払日を追加する関数

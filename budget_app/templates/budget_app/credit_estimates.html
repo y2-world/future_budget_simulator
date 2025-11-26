@@ -450,15 +450,22 @@
                 e.preventDefault();
                 if (!confirm('このカードの合計額を月次計画に反映しますか？')) return;
 
-                await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(form));
+                const success = await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(form));
+                if (success) {
+                    alert('月次計画に反映しました');
+                }
             });
         });
 
         // --- 月ごとの反映ボタンの処理 ---
         document.querySelectorAll('.reflect-month-form').forEach(form => {
-            form.addEventListener('submit', (e) => {
-                if (!confirm('この月の全ての見積もりを月次計画に反映しますか？')) {
-                    e.preventDefault();
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!confirm('この月の全ての見積もりを月次計画に反映しますか？')) return;
+
+                const success = await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(form));
+                if (success) {
+                    alert('月次計画に反映しました');
                 }
             });
         });

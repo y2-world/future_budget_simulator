@@ -41,6 +41,7 @@ class MonthlyPlan(models.Model):
     paypay_card = models.IntegerField(default=0, verbose_name="PayPayカード")
     vermillion_card = models.IntegerField(default=0, verbose_name="VERMILLION CARD")
     amazon_card = models.IntegerField(default=0, verbose_name="Amazonカード")
+    olive_card = models.IntegerField(default=0, verbose_name="Olive")
     savings = models.IntegerField(default=0, verbose_name="定期預金")
     loan = models.IntegerField(default=0, verbose_name="マネーアシスト返済")
     loan_borrowing = models.IntegerField(default=0, verbose_name="マネーアシスト借入")
@@ -71,6 +72,7 @@ class MonthlyPlan(models.Model):
             self.paypay_card +
             self.vermillion_card +
             self.amazon_card +
+            self.olive_card +
             self.savings + self.loan + self.other
         )
     
@@ -92,6 +94,7 @@ class CreditEstimate(models.Model):
         ('paypay', 'PayPayカード'),
         ('vermillion', 'VERMILLION CARD'),
         ('amazon', 'Amazonカード'),
+        ('olive', 'Olive'),
     ]
 
     year_month = models.CharField(max_length=7, verbose_name="請求月（YYYY-MM）")

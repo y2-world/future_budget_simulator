@@ -237,7 +237,7 @@ class MonthlyPlanForm(forms.ModelForm):
             'food', 'rent',
             'lake',
             'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
-            'vermillion_card', 'amazon_card',
+            'vermillion_card', 'amazon_card', 'olive_card',
             'loan_borrowing', 'other'
         ]
 
