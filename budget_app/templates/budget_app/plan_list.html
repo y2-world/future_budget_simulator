@@ -112,7 +112,10 @@
             <div id="edit-form-{{ plan.pk }}" class="hidden p-3 md:p-4 bg-yellow-50 border-b">
                 <form class="inline-edit-form" method="post" action="{% url 'budget_app:plan_edit' plan.pk %}">
                     {% csrf_token %}
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4">
+                <!-- 収入セクション -->
+                <div class="bg-green-50 p-3 rounded-lg mb-4">
+                    <h4 class="font-semibold text-green-800 mb-3 text-sm">💰 収入</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-sm font-medium mb-1">給与</label>
                             <input type="number" name="salary" value="{{ plan.salary }}" class="w-full p-2 border rounded">
@@ -127,6 +130,25 @@
                         <input type="hidden" name="bonus" value="{{ plan.bonus }}">
                         {% endif %}
                         {% endwith %}
+                        <div>
+                            <label class="block text-sm font-medium mb-1">総支給額</label>
+                            <input type="number" name="gross_salary" value="{{ plan.gross_salary }}" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">控除額</label>
+                            <input type="number" name="deductions" value="{{ plan.deductions }}" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">交通費</label>
+                            <input type="number" name="transportation" value="{{ plan.transportation }}" class="w-full p-2 border rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 支出セクション -->
+                <div class="bg-red-50 p-3 rounded-lg mb-4">
+                    <h4 class="font-semibold text-red-800 mb-3 text-sm">💸 支出</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         <div>
                             <label class="block text-sm font-medium mb-1">食費</label>
                             <input type="number" name="food" value="{{ plan.food }}" class="w-full p-2 border rounded">
@@ -186,6 +208,8 @@
                             <input type="number" name="other" value="{{ plan.other }}" class="w-full p-2 border rounded">
                         </div>
                     </div>
+                </div>
+
                     <input type="hidden" name="year" value="{{ plan.year_month|slice:':4' }}">
                     <input type="hidden" name="month" value="{{ plan.year_month|slice:'5:7' }}">
                     <input type="hidden" name="year_month" value="{{ plan.year_month }}">
@@ -274,7 +298,7 @@
         {% if past_plans %}
         <!-- アーカイブセクション -->
         <div class="mt-12 pt-8 border-t-2 border-gray-300">
-            <h2 class="text-lg md:text-xl font-bold mb-6 text-gray-600">アーカイブ</h2>
+            <h2 class="text-lg md:text-xl font-bold mb-6 text-gray-600">アーカイブ（{% now "Y年" %}以前）</h2>
             {% for plan in past_plans %}
             <div class="mb-8 border rounded-lg overflow-hidden opacity-75 hover:opacity-100 transition-opacity" id="plan-{{ plan.pk }}">
                 <!-- 計画ヘッダー -->
@@ -349,7 +373,10 @@
                 <div id="edit-form-{{ plan.pk }}" class="hidden p-3 md:p-4 bg-yellow-50 border-b">
                     <form class="inline-edit-form" method="post" action="{% url 'budget_app:plan_edit' plan.pk %}">
                         {% csrf_token %}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4">
+                    <!-- 収入セクション -->
+                    <div class="bg-green-50 p-3 rounded-lg mb-4">
+                        <h4 class="font-semibold text-green-800 mb-3 text-sm">💰 収入</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-sm font-medium mb-1">給与</label>
                                 <input type="number" name="salary" value="{{ plan.salary }}" class="w-full p-2 border rounded">
@@ -364,6 +391,25 @@
                             <input type="hidden" name="bonus" value="{{ plan.bonus }}">
                             {% endif %}
                             {% endwith %}
+                            <div>
+                                <label class="block text-sm font-medium mb-1">総支給額</label>
+                                <input type="number" name="gross_salary" value="{{ plan.gross_salary }}" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">控除額</label>
+                                <input type="number" name="deductions" value="{{ plan.deductions }}" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">交通費</label>
+                                <input type="number" name="transportation" value="{{ plan.transportation }}" class="w-full p-2 border rounded">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 支出セクション -->
+                    <div class="bg-red-50 p-3 rounded-lg mb-4">
+                        <h4 class="font-semibold text-red-800 mb-3 text-sm">💸 支出</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                             <div>
                                 <label class="block text-sm font-medium mb-1">食費</label>
                                 <input type="number" name="food" value="{{ plan.food }}" class="w-full p-2 border rounded">
@@ -423,6 +469,8 @@
                                 <input type="number" name="other" value="{{ plan.other }}" class="w-full p-2 border rounded">
                             </div>
                         </div>
+                    </div>
+
                         <input type="hidden" name="year" value="{{ plan.year_month|slice:':4' }}">
                         <input type="hidden" name="month" value="{{ plan.year_month|slice:'5:7' }}">
                         <input type="hidden" name="year_month" value="{{ plan.year_month }}">
@@ -513,7 +561,7 @@
             <details class="group">
                 <summary class="text-lg md:text-xl font-bold cursor-pointer list-none flex items-center text-gray-600 hover:text-gray-800">
                     <span class="group-open:rotate-90 transition-transform duration-200 mr-2">▶</span>
-                    過去の明細
+                    過去の明細（{{ plan.year_month|slice:":4" }}年）
                 </summary>
                 <div class="mt-4 space-y-2 opacity-75">
                     {% for item in plan.past_timeline %}

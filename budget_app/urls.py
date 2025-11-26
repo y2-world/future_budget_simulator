@@ -17,6 +17,9 @@ urlpatterns = [
     path('plans/<int:pk>/edit/', views.plan_edit, name='plan_edit'),
     path('plans/<int:pk>/delete/', views.plan_delete, name='plan_delete'),
 
+    # 給与一覧
+    path('salaries/', views.salary_list, name='salary_list'),
+
     # クレカ見積り
     path('credit-estimates/', views.credit_estimate_list, name='credit_estimates'),
     path('credit-estimates/<int:pk>/edit/', views.credit_estimate_edit, name='credit_estimate_edit'),

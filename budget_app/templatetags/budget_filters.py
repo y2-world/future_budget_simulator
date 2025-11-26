@@ -48,3 +48,16 @@ def attr(obj, name):
     except Exception:
         return None
 
+
+@register.filter
+def deduction_rate(plan):
+    """控除率を計算（控除額 / (総支給額 - 交通費) * 100）"""
+    try:
+        gross_minus_transport = plan.gross_salary - plan.transportation
+        if gross_minus_transport > 0:
+            rate = (plan.deductions / gross_minus_transport) * 100
+            return f"{rate:.1f}"
+        return "0.0"
+    except (AttributeError, ZeroDivisionError, TypeError):
+        return "0.0"
+

@@ -31,6 +31,11 @@ class MonthlyPlan(models.Model):
     salary = models.IntegerField(default=0, verbose_name="給与")
     bonus = models.IntegerField(default=0, verbose_name="ボーナス")
 
+    # 給与明細の詳細
+    gross_salary = models.IntegerField(default=0, verbose_name="総支給額")
+    deductions = models.IntegerField(default=0, verbose_name="控除額")
+    transportation = models.IntegerField(default=0, verbose_name="交通費")
+
     # 支出
     food = models.IntegerField(default=0, verbose_name="食費")
     rent = models.IntegerField(default=0, verbose_name="家賃")

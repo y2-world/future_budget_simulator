@@ -1139,3 +1139,47 @@ def credit_default_delete(request, pk):
     if is_ajax:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
     return redirect('budget_app:credit_defaults')
+
+
+def salary_list(request):
+    """給与一覧"""
+    # 給与明細データがある月次計画を取得（新しい順）
+    plans_with_salary = MonthlyPlan.objects.filter(
+        gross_salary__gt=0
+    ).order_by('-year_month')
+
+    # 年間集計を計算
+    from datetime import datetime
+    current_year = datetime.now().year
+
+    # 今年のデータを取得
+    current_year_plans = plans_with_salary.filter(year_month__startswith=str(current_year))
+
+    # 今年の集計
+    total_gross = sum(p.gross_salary for p in current_year_plans)
+    total_transportation = sum(p.transportation for p in current_year_plans)
+    total_deductions = sum(p.deductions for p in current_year_plans)
+    total_net = sum(p.salary for p in current_year_plans)
+    gross_minus_transport = total_gross - total_transportation
+
+    # 平均控除率を計算
+    avg_deduction_rate = 0.0
+    if gross_minus_transport > 0:
+        avg_deduction_rate = (total_deductions / gross_minus_transport) * 100
+
+    annual_summary = {
+        'year': current_year,
+        'total_gross': total_gross,
+        'total_transportation': total_transportation,
+        'total_deductions': total_deductions,
+        'total_net': total_net,
+        'gross_minus_transport': gross_minus_transport,
+        'avg_deduction_rate': round(avg_deduction_rate, 1),
+        'count': current_year_plans.count(),
+    }
+
+    context = {
+        'salary_plans': plans_with_salary,
+        'annual_summary': annual_summary,
+    }
+    return render(request, 'budget_app/salary_list.html', context)

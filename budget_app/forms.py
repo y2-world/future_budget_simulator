@@ -234,6 +234,7 @@ class MonthlyPlanForm(forms.ModelForm):
         fields = [
             'year_month',
             'salary', 'bonus',
+            'gross_salary', 'deductions', 'transportation',
             'food', 'rent',
             'lake',
             'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
@@ -249,6 +250,9 @@ class MonthlyPlanForm(forms.ModelForm):
             'year_month': '年月（YYYY-MM）',
             'salary': '給与',
             'bonus': 'ボーナス',
+            'gross_salary': '総支給額',
+            'deductions': '控除額',
+            'transportation': '交通費',
             'food': '食費',
             'rent': '家賃',
             'lake': 'レイク返済',
