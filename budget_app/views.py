@@ -615,19 +615,13 @@ def credit_estimate_list(request):
                 x.default_id if (hasattr(x, 'is_default') and x.is_default and hasattr(x, 'default_id')) else (x.pk if hasattr(x, 'pk') and x.pk else float('inf'))
             ))
 
-    # カードタイプの表示順序（定義順）
-    card_order = {
-        'view': 0,
-        'rakuten': 1,
-        'paypay': 2,
-        'vermillion': 3,
-        'amazon': 4,
-        'view_bonus': 5,  # VIEWボーナス払い
-        'rakuten_bonus': 6,
-        'paypay_bonus': 7,
-        'vermillion_bonus': 8,
-        'amazon_bonus': 9,
-    }
+    # カードタイプの表示順序をモデルの定義から動的に生成
+    card_order = {card_type: i for i, (card_type, _) in enumerate(CreditEstimate.CARD_TYPES)}
+    
+    # ボーナス払いの順序も追加
+    bonus_offset = len(card_order)
+    for i, (card_type, _) in enumerate(CreditEstimate.CARD_TYPES):
+        card_order[f'{card_type}_bonus'] = i + bonus_offset
 
     # 各月のカードをカードタイプ順にソート
     for year_month, month_group in summary.items():
@@ -1212,6 +1206,7 @@ def salary_list(request):
 def past_transactions_list(request):
     """過去の明細一覧（アーカイブ）"""
     from datetime import datetime
+    import calendar
 
     current_year_month = datetime.now().strftime('%Y-%m')
 
@@ -1230,6 +1225,7 @@ def past_transactions_list(request):
 
     # 月次計画データを追加
     for plan in past_plans:
+        from datetime import date
         year = plan.year_month[:4]
 
         if year not in yearly_data:
@@ -1240,6 +1236,9 @@ def past_transactions_list(request):
                 'total_expenses': 0,
                 'total_credit': 0
             }
+
+        plan_year, plan_month = map(int, plan.year_month.split('-'))
+        last_day = calendar.monthrange(plan_year, plan_month)[1]
 
         # 収入の合計（給与、ボーナス、その他収入）
         income = plan.salary + plan.bonus
@@ -1252,36 +1251,59 @@ def past_transactions_list(request):
             plan.olive_card + plan.loan_borrowing + plan.other
         )
 
+        def clamp_day(day: int) -> int:
+            return min(max(day, 1), last_day)
+
+        # 支払日・給与日の日付オブジェクトを生成
+        salary_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(SALARY_DAY)))
+        bonus_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(BONUS_DAY)))
+        food_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(FOOD_EXPENSE_DAY)))
+        rent_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(RENT_DUE_DAY)))
+        lake_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(LAKE_DUE_DAY)))
+        view_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(VIEW_CARD_DUE_DAY)))
+        rakuten_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(RAKUTEN_CARD_DUE_DAY)))
+        paypay_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(PAYPAY_CARD_DUE_DAY)))
+        vermillion_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(VERMILLION_CARD_DUE_DAY)))
+        amazon_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(AMAZON_CARD_DUE_DAY)))
+        olive_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(OLIVE_CARD_DUE_DAY)))
+        loan_borrowing_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(LOAN_BORROWING_DAY)))
+        # 「その他」は日付がないためNone
+
         # 収入・支出の明細を作成
         transactions = []
         if plan.salary > 0:
-            transactions.append({'date': 25, 'name': '給与', 'amount': plan.salary, 'type': 'income'})
+            transactions.append({'date': salary_date, 'name': '給与', 'amount': plan.salary, 'type': 'income'})
         if plan.bonus > 0:
-            transactions.append({'date': 25, 'name': 'ボーナス', 'amount': plan.bonus, 'type': 'income'})
+            transactions.append({'date': bonus_date, 'name': 'ボーナス', 'amount': plan.bonus, 'type': 'income'})
         if plan.food > 0:
-            transactions.append({'date': 1, 'name': '食費', 'amount': plan.food, 'type': 'expense'})
+            transactions.append({'date': food_date, 'name': '食費', 'amount': plan.food, 'type': 'expense'})
         if plan.rent > 0:
-            transactions.append({'date': 1, 'name': '家賃', 'amount': plan.rent, 'type': 'expense'})
+            transactions.append({'date': rent_date, 'name': '家賃', 'amount': plan.rent, 'type': 'expense'})
         if plan.lake > 0:
-            transactions.append({'date': 10, 'name': 'レイク', 'amount': plan.lake, 'type': 'expense'})
+            transactions.append({'date': lake_date, 'name': 'レイク', 'amount': plan.lake, 'type': 'expense'})
         if plan.view_card > 0:
-            transactions.append({'date': 4, 'name': 'ビューカード', 'amount': plan.view_card, 'type': 'expense'})
+            transactions.append({'date': view_card_date, 'name': 'ビューカード', 'amount': plan.view_card, 'type': 'expense'})
         if plan.view_card_bonus > 0:
-            transactions.append({'date': 4, 'name': 'ビューカード(ボーナス)', 'amount': plan.view_card_bonus, 'type': 'expense'})
+            transactions.append({'date': view_card_date, 'name': 'ビューカード(ボーナス)', 'amount': plan.view_card_bonus, 'type': 'expense'})
         if plan.rakuten_card > 0:
-            transactions.append({'date': 27, 'name': '楽天カード', 'amount': plan.rakuten_card, 'type': 'expense'})
+            transactions.append({'date': rakuten_card_date, 'name': '楽天カード', 'amount': plan.rakuten_card, 'type': 'expense'})
         if plan.paypay_card > 0:
-            transactions.append({'date': 27, 'name': 'PayPayカード', 'amount': plan.paypay_card, 'type': 'expense'})
+            transactions.append({'date': paypay_card_date, 'name': 'PayPayカード', 'amount': plan.paypay_card, 'type': 'expense'})
         if plan.vermillion_card > 0:
-            transactions.append({'date': 10, 'name': '朱雀カード', 'amount': plan.vermillion_card, 'type': 'expense'})
+            transactions.append({'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': plan.vermillion_card, 'type': 'expense'})
         if plan.amazon_card > 0:
-            transactions.append({'date': 27, 'name': 'Amazonカード', 'amount': plan.amazon_card, 'type': 'expense'})
+            transactions.append({'date': amazon_card_date, 'name': 'Amazonカード', 'amount': plan.amazon_card, 'type': 'expense'})
         if plan.olive_card > 0:
-            transactions.append({'date': 26, 'name': 'Olive', 'amount': plan.olive_card, 'type': 'expense'})
+            transactions.append({'date': olive_card_date, 'name': 'Olive', 'amount': plan.olive_card, 'type': 'expense'})
         if plan.loan_borrowing > 0:
-            transactions.append({'date': 10, 'name': '借入', 'amount': plan.loan_borrowing, 'type': 'expense'})
+            transactions.append({'date': loan_borrowing_date, 'name': '借入', 'amount': plan.loan_borrowing, 'type': 'expense'})
         if plan.other > 0:
-            transactions.append({'date': 15, 'name': 'その他', 'amount': plan.other, 'type': 'expense'})
+            transactions.append({'date': None, 'name': 'その他', 'amount': plan.other, 'type': 'expense'})
+
+        # 日付順にソート（日付がないものは最後、同日は収入が先）
+        def sort_key(x):
+            return (x['date'] if x['date'] is not None else date.max, 1 if x['type'] == 'expense' else 0)
+        transactions.sort(key=sort_key)
 
         yearly_data[year]['months'].append({
             'year_month': plan.year_month,
