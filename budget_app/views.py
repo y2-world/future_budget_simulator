@@ -767,7 +767,7 @@ def credit_estimate_list(request):
                             payment_month -= 12
                             payment_year += 1
                         target_year_month = f"{payment_year}-{payment_month:02d}"
-                    elif actual_card_type in ['rakuten', 'paypay', 'amazon']:
+                    elif actual_card_type in ['rakuten', 'paypay', 'amazon', 'olive']:
                         # 翌月払い
                         payment_month = use_month + 1
                         payment_year = use_year
