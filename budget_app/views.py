@@ -353,6 +353,9 @@ def plan_create(request):
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': '月次計画を作成しました。'})
             messages.success(request, '月次計画を作成しました。')
+            # 過去月の場合は給与一覧にリダイレクト
+            if is_past_month:
+                return redirect('budget_app:salary_list')
             return redirect('budget_app:plan_list')
         elif is_ajax:
             return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
@@ -397,11 +400,20 @@ def plan_edit(request, pk):
     logger = logging.getLogger(__name__)
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
+    # 過去月かどうかを判定
+    current_year_month = datetime.now().strftime('%Y-%m')
+    is_past_month = plan.year_month < current_year_month
+
     if request.method == 'POST':
         # 編集前の借入額を保存
         old_loan_borrowing = plan.loan_borrowing
 
-        form = MonthlyPlanForm(request.POST, instance=plan)
+        # 過去月の場合はPastMonthlyPlanFormを使用
+        if is_past_month:
+            from .forms import PastMonthlyPlanForm
+            form = PastMonthlyPlanForm(request.POST, instance=plan)
+        else:
+            form = MonthlyPlanForm(request.POST, instance=plan)
         if form.is_valid():
             plan = form.save()
 
@@ -431,6 +443,9 @@ def plan_edit(request, pk):
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': f'{display_month} の計画を更新しました。'})
             messages.success(request, f'{display_month} の計画を更新しました。')
+            # 過去月の場合は給与一覧にリダイレクト
+            if is_past_month:
+                return redirect('budget_app:salary_list')
             return redirect('budget_app:plan_list')
         else:
             # フォームエラーをログに出力
@@ -441,11 +456,17 @@ def plan_edit(request, pk):
             messages.error(request, '更新に失敗しました。入力内容を確認してください。')
 
     else:
-        form = MonthlyPlanForm(instance=plan)
+        # 過去月の場合はPastMonthlyPlanFormを使用
+        if is_past_month:
+            from .forms import PastMonthlyPlanForm
+            form = PastMonthlyPlanForm(instance=plan)
+        else:
+            form = MonthlyPlanForm(instance=plan)
 
     return render(request, 'budget_app/plan_form.html', {
         'form': form,
-        'title': f'{format_year_month_display(plan.year_month)} の編集'
+        'title': f'{format_year_month_display(plan.year_month)} の編集',
+        'is_past_mode': is_past_month
     })
 
 
