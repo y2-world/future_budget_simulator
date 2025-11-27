@@ -136,16 +136,17 @@ def plan_list(request):
     today = date.today()
     current_year_month = f"{today.year}-{today.month:02d}"
 
-    # 月次計画を取得し、現在/未来と過去に分ける
+    # 月次計画を取得（現在月以降のみ表示）
     all_plans = list(MonthlyPlan.objects.all().order_by('year_month'))
-    current_and_future_plans = [p for p in all_plans if p.year_month >= current_year_month]
-    past_plans = [p for p in all_plans if p.year_month < current_year_month]
+    # 現在月以降のプランのみ表示
+    current_and_future_plans = [
+        p for p in all_plans
+        if p.year_month >= current_year_month
+    ]
+    past_plans = []  # 過去月は非表示
 
-    # 過去のプランは新しい順にソート
-    past_plans.sort(key=lambda p: p.year_month, reverse=True)
-
-    # 現在/未来 + 過去の順で結合
-    plans = current_and_future_plans + past_plans
+    # 表示対象のプラン
+    plans = current_and_future_plans
 
     # 初期残高と定期預金情報を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
@@ -291,6 +292,28 @@ def plan_list(request):
         else:
             plan.current_balance = None
 
+    # 今日以降の明細がある月のみ表示（現在月の場合）
+    filtered_plans = []
+    for plan in plans:
+        if plan.year_month == current_year_month:
+            # 現在月の場合、今日以降の明細があるかチェック（金額が0でないもののみ）
+            future_items = [item for item in plan.timeline if item.get('date') and item['date'] >= today and item.get('amount', 0) != 0]
+            has_future_items = len(future_items) > 0
+
+            print(f'[DEBUG] Plan {plan.year_month}: {len(plan.timeline)} items, {len(future_items)} future items with amount != 0')
+            if future_items:
+                print(f'[DEBUG]   Future items: {[(item.get("name"), item.get("date"), item.get("amount")) for item in future_items[:3]]}')
+
+            if has_future_items:
+                filtered_plans.append(plan)
+            else:
+                print(f'[DEBUG]   Hiding {plan.year_month} - no future items with amount != 0')
+        else:
+            # 未来月は全て表示
+            filtered_plans.append(plan)
+
+    plans = filtered_plans
+
     return render(request, 'budget_app/plan_list.html', {
         'plans': plans,
         'current_and_future_plans': current_and_future_plans,
@@ -304,10 +327,13 @@ def plan_create(request):
     """月次計画作成"""
     from django.http import JsonResponse
     from datetime import datetime, timedelta
+
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
     is_past_mode = False
 
     if request.method == 'POST':
+        print(f'[DEBUG] POST request received: {dict(request.POST)}')
+
         # 先月以前かどうかを判定
         year = request.POST.get('year')
         month = request.POST.get('month')
@@ -317,21 +343,27 @@ def plan_create(request):
         if year and month:
             selected_year_month = f"{year}-{month}"
             is_past_month = selected_year_month < current_year_month
+            print(f'[DEBUG] Selected: {selected_year_month}, is_past_month: {is_past_month}')
 
         # 既存のプランがあるかチェック
         existing_plan = None
         if year and month:
             year_month_str = f"{year}-{month}"
             existing_plan = MonthlyPlan.objects.filter(year_month=year_month_str).first()
+            print(f'[DEBUG] Existing plan: {existing_plan}')
 
         # 過去月の場合はPastMonthlyPlanFormを使用
         if is_past_month:
             from .forms import PastMonthlyPlanForm
             form = PastMonthlyPlanForm(request.POST, instance=existing_plan)
+            print('[DEBUG] Using PastMonthlyPlanForm')
         else:
             form = MonthlyPlanForm(request.POST, instance=existing_plan)
+            print('[DEBUG] Using MonthlyPlanForm')
+
         if form.is_valid():
             plan = form.save()
+            print(f'[DEBUG] Plan saved: {plan.year_month}, gross_salary={plan.gross_salary}, deductions={plan.deductions}, transportation={plan.transportation}')
 
             # マネーアシスト借入がある場合、翌月末に自動で返済を登録
             if plan.loan_borrowing > 0:
@@ -363,8 +395,10 @@ def plan_create(request):
             if is_past_month:
                 return redirect('budget_app:salary_list')
             return redirect('budget_app:plan_list')
-        elif is_ajax:
-            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+        else:
+            print(f'[DEBUG] Form validation failed: {form.errors.as_json()}')
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
 
     else:
         # URLパラメータで過去月モードかどうかを判定

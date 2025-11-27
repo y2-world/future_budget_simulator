@@ -783,9 +783,12 @@ class PastMonthlyPlanForm(forms.ModelForm):
                     'class': 'w-full p-2 border rounded',
                     'placeholder': '0'
                 })
-                # bonusはrequiredをFalseに
-                if field_name == 'bonus':
+                # bonusとtransportationはrequiredをFalseに（任意項目）
+                if field_name in ['bonus', 'transportation']:
                     self.fields[field_name].required = False
+                # その他の給与明細フィールドは必須
+                else:
+                    self.fields[field_name].required = True
 
     def clean(self):
         cleaned_data = super().clean()

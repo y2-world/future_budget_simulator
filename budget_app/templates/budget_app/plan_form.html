@@ -290,7 +290,7 @@
                     <span class="mr-2">💳</span>支出
                 </h3>
                 {% for field in form %}
-                    {% if field.name != 'year_month' and field.name != 'salary' and field.name != 'bonus' and field.name != 'year' and field.name != 'month' %}
+                    {% if field.name != 'year_month' and field.name != 'salary' and field.name != 'bonus' and field.name != 'year' and field.name != 'month' and field.name != 'gross_salary' and field.name != 'deductions' and field.name != 'transportation' %}
                         <div class="mb-4" id="{{ field.name }}-field-wrapper">
                             <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
