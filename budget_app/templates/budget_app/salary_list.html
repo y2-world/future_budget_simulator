@@ -140,4 +140,15 @@
     <p class="text-gray-600">給与明細データがありません。月次計画で給与明細を入力してください。</p>
     {% endif %}
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Djangoメッセージをトーストとして表示
+        {% if messages %}
+            {% for message in messages %}
+                window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+            {% endfor %}
+        {% endif %}
+    });
+</script>
 {% endblock %}

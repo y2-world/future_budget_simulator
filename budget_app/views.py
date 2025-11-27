@@ -318,12 +318,18 @@ def plan_create(request):
             selected_year_month = f"{year}-{month}"
             is_past_month = selected_year_month < current_year_month
 
+        # 既存のプランがあるかチェック
+        existing_plan = None
+        if year and month:
+            year_month_str = f"{year}-{month}"
+            existing_plan = MonthlyPlan.objects.filter(year_month=year_month_str).first()
+
         # 過去月の場合はPastMonthlyPlanFormを使用
         if is_past_month:
             from .forms import PastMonthlyPlanForm
-            form = PastMonthlyPlanForm(request.POST)
+            form = PastMonthlyPlanForm(request.POST, instance=existing_plan)
         else:
-            form = MonthlyPlanForm(request.POST)
+            form = MonthlyPlanForm(request.POST, instance=existing_plan)
         if form.is_valid():
             plan = form.save()
 
