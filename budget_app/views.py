@@ -1215,9 +1215,9 @@ def past_transactions_list(request):
         year_month__lte=current_year_month
     ).order_by('-year_month')
 
-    # 当月を含む全てのクレカ見積りを取得
+    # 過去のクレカ見積りを取得（当月は除外）
     past_credit_estimates = CreditEstimate.objects.filter(
-        year_month__lte=current_year_month
+        year_month__lt=current_year_month
     ).order_by('-year_month')
 
     # 年ごとにグループ化して、月ごとの収入・支出を集計
@@ -1250,6 +1250,10 @@ def past_transactions_list(request):
             plan.paypay_card + plan.vermillion_card + plan.amazon_card +
             plan.olive_card + plan.loan_borrowing + plan.other
         )
+
+        # 支出が0円の月はスキップ
+        if expenses == 0:
+            continue
 
         def clamp_day(day: int) -> int:
             return min(max(day, 1), last_day)

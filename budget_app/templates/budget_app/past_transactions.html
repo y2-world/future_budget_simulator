@@ -56,7 +56,7 @@
                                                     <div class="bg-white p-2 rounded border border-gray-200 flex justify-between items-center">
                                                         <div class="flex items-center gap-2">
                                                             <span class="text-gray-500">
-                                                                {{ item.year_month|slice:":4" }}/{{ item.year_month|slice:"5:7" }}{% if trans.date %}/{{ trans.date }}{% endif %}
+                                                                {{ item.year_month|slice:":4" }}/{{ item.year_month|slice:"5:7" }}{% if trans.date %}/{{ trans.date|date:"j" }}{% endif %}
                                                             </span>
                                                             <span class="font-medium text-gray-700">{{ trans.name }}</span>
                                                         </div>
@@ -181,7 +181,7 @@
                                             <div class="bg-gray-50 p-2 rounded text-xs flex justify-between items-center">
                                                 <div class="flex items-center gap-1 flex-wrap">
                                                     <span class="text-gray-500">
-                                                        {{ item.year_month|slice:":4" }}/{{ item.year_month|slice:"5:7" }}{% if trans.date %}/{{ trans.date }}{% endif %}
+                                                        {{ item.year_month|slice:":4" }}/{{ item.year_month|slice:"5:7" }}{% if trans.date %}/{{ trans.date|date:"j" }}{% endif %}
                                                     </span>
                                                     <span class="font-medium text-gray-700">{{ trans.name }}</span>
                                                 </div>

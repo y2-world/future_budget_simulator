@@ -95,21 +95,9 @@
                 <h3 class="text-xl font-bold mb-4">今後の見積もり</h3>
                 {% include 'budget_app/_summary_section.html' with summary_data=future_summary title='未来' %}
             </div>
-
-            <div class="mt-8">
-                <details class="group">
-                    <summary class="text-xl font-bold cursor-pointer list-none flex items-center">
-                        <span class="group-open:rotate-90 transition-transform duration-200 mr-2">▶</span>
-                        過去の見積もり（アーカイブ）
-                    </summary>
-                    <div class="mt-4 pl-6">
-                        {% include 'budget_app/_summary_section.html' with summary_data=past_summary title='過去' %}
-                    </div>
-                </details>
-            </div>
         </div>
 
-        {% if not current_month_summary and not future_summary and not past_summary %}
+        {% if not current_month_summary and not future_summary %}
             <p class="text-gray-600">まだクレカ見積りは登録されていません。</p>
         {% else %}
         {% endif %}

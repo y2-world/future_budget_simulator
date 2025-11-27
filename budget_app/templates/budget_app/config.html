@@ -7,14 +7,6 @@
     <form method="post">
         {% csrf_token %}
         <div class="mb-4">
-            <label class="block text-gray-700 font-bold mb-2">{{ form.initial_balance.label }}</label>
-            {{ form.initial_balance }}
-            {% if form.initial_balance.errors %}
-                <p class="text-red-500 text-sm mt-1">{{ form.initial_balance.errors.0 }}</p>
-            {% endif %}
-        </div>
-
-        <div class="mb-4">
             <label class="block text-gray-700 font-bold mb-2">{{ form.default_salary.label }}</label>
             {{ form.default_salary }}
             {% if form.default_salary.errors %}

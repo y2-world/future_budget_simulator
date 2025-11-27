@@ -61,3 +61,12 @@ def deduction_rate(plan):
     except (AttributeError, ZeroDivisionError, TypeError):
         return "0.0"
 
+
+@register.filter
+def gross_minus_transport(plan):
+    """総支給額-交通費を計算"""
+    try:
+        return plan.gross_salary - plan.transportation
+    except (AttributeError, TypeError):
+        return 0
+
