@@ -118,7 +118,7 @@
                 <input type="hidden" name="year_month" id="edit_year_month_hidden">
                 <div class="mb-4 grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-gray-700 font-bold mb-2">請求年</label>
+                        <label class="block text-gray-700 font-bold mb-2">利用年</label>
                         <select name="year" id="edit_year" class="w-full p-2 border rounded">
                             {% for value, label in form.year.field.choices %}
                             <option value="{{ value }}">{{ label }}</option>
@@ -126,7 +126,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-gray-700 font-bold mb-2">請求月</label>
+                        <label class="block text-gray-700 font-bold mb-2">利用月</label>
                         <select name="month" id="edit_month" class="w-full p-2 border rounded">
                             {% for value, label in form.month.field.choices %}
                             <option value="{{ value }}">{{ label }}</option>
@@ -136,7 +136,14 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-gray-700 font-bold mb-2">カード種別</label>
-                    {{ form.card_type.as_widget }}
+                    <select name="card_type" id="edit_card_type" class="w-full p-2 border rounded">
+                        <option value="view">VIEWカード</option>
+                        <option value="rakuten">楽天カード</option>
+                        <option value="paypay">PayPayカード</option>
+                        <option value="vermillion">VERMILLION CARD</option>
+                        <option value="amazon">Amazonカード</option>
+                        <option value="olive">Olive</option>
+                    </select>
                 </div>
                 <div class="mb-4">
                     <label class="block text-gray-700 font-bold mb-2">内容</label>
@@ -147,7 +154,7 @@
                     <input type="number" name="amount" id="edit_amount" class="w-full p-2 border rounded" min="0">
                 </div>
                 <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">請求日</label>
+                    <label class="block text-gray-700 font-bold mb-2">利用日</label>
                     <input type="date" name="due_date" id="edit_due_date" class="w-full p-2 border rounded">
                 </div>
                 <div class="mb-4 flex items-center">
@@ -172,7 +179,7 @@
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3">
             <h3 class="text-lg font-bold mb-4">定期デフォルト編集</h3>
-            <form id="defaultEditForm" method="post">
+            <form id="defaultEditForm" method="post" action="{% url 'budget_app:credit_estimates' %}">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="edit_default">
                 <input type="hidden" name="id" id="default_edit_id">
@@ -183,8 +190,15 @@
                     <input type="text" id="default_edit_label" class="w-full p-2 border rounded bg-gray-100" readonly>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">{{ default_edit_form.card_type.label }}</label>
-                    {{ default_edit_form.card_type }}
+                    <label class="block text-gray-700 font-bold mb-2">カード種別</label>
+                    <select name="card_type" id="default_edit_card_type" class="w-full p-2 border rounded">
+                        <option value="view">VIEWカード</option>
+                        <option value="rakuten">楽天カード</option>
+                        <option value="paypay">PayPayカード</option>
+                        <option value="vermillion">VERMILLION CARD</option>
+                        <option value="amazon">Amazonカード</option>
+                        <option value="olive">Olive</option>
+                    </select>
                 </div>
                 <div class="mb-4">
                     <label class="block text-gray-700 font-bold mb-2">{{ default_edit_form.amount.label }}</label>
@@ -213,12 +227,24 @@
         document.getElementById('edit_month').value = month;
         document.getElementById('edit_year_month_hidden').value = yearMonth;
 
-        document.getElementById('edit_card_type').value = cardType;
+        // 各フィールドを設定
         document.getElementById('edit_description').value = description;
         document.getElementById('edit_amount').value = amount;
         document.getElementById('edit_due_date').value = dueDate;
         document.getElementById('edit_is_split_payment').checked = isSplitPayment;
         document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
+
+        // カード種別を設定（他のフィールドの後に設定）
+        const cardTypeSelect = document.getElementById('edit_card_type');
+        if (cardTypeSelect) {
+            // 明示的に値を設定
+            cardTypeSelect.value = cardType;
+            // 念のため、optionが存在するか確認
+            const selectedOption = cardTypeSelect.querySelector(`option[value="${cardType}"]`);
+            if (selectedOption) {
+                selectedOption.selected = true;
+            }
+        }
 
         // ボーナス払いチェックボックスの表示を更新
         const editBonusWrapper = document.getElementById('edit_bonus_payment_wrapper');
@@ -226,11 +252,14 @@
             editBonusWrapper.style.display = cardType === 'view' ? 'flex' : 'none';
         }
 
+        // モーダルを表示
         modal.classList.remove('hidden');
     }
 
     function closeEditModal() {
         document.getElementById('editModal').classList.add('hidden');
+        // フォームをリセット
+        document.getElementById('editForm').reset();
     }
 
     function openDefaultEditModal(id, label, amount, cardType, yearMonth) {
@@ -242,7 +271,22 @@
         document.getElementById('default_edit_year_month').value = yearMonth;
         document.getElementById('default_edit_hidden_label').value = label; // hiddenフィールドにも値を設定
         document.getElementById('default_edit_amount').value = amount;
-        document.getElementById('default_edit_card_type').value = cardType;
+
+        // カード種別を設定
+        const cardTypeSelect = document.getElementById('default_edit_card_type');
+        if (cardTypeSelect) {
+            // 全てのoptionのselectedを一旦クリア
+            Array.from(cardTypeSelect.options).forEach(opt => opt.selected = false);
+
+            // 値を設定
+            cardTypeSelect.value = cardType;
+
+            // 念のため、optionを直接選択
+            const selectedOption = cardTypeSelect.querySelector(`option[value="${cardType}"]`);
+            if (selectedOption) {
+                selectedOption.selected = true;
+            }
+        }
 
         modal.classList.remove('hidden');
     }

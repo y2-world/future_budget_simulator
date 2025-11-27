@@ -12,8 +12,8 @@
         </div>
         <div class="flex items-center space-x-2">
             <span class="text-xs md:text-sm font-medium">現在残高:</span>
-            {% if current_and_future_plans and current_and_future_plans.0.current_balance is not None %}
-            <span id="initial-balance-display" class="font-bold text-base md:text-lg">{{ current_and_future_plans.0.current_balance|yen }}</span>
+            {% if plans and plans.0.current_balance is not None %}
+            <span id="initial-balance-display" class="font-bold text-base md:text-lg">{{ plans.0.current_balance|yen }}</span>
             {% else %}
             <span id="initial-balance-display" class="font-bold text-base md:text-lg">{{ initial_balance|yen }}</span>
             {% endif %}
@@ -36,9 +36,9 @@
         </form>
     </div>
 
-    {% if current_and_future_plans or past_plans %}
-        {% if current_and_future_plans %}
-        {% for plan in current_and_future_plans %}
+    {% if plans or past_plans %}
+        {% if plans %}
+        {% for plan in plans %}
         <div class="mb-8 border rounded-lg overflow-hidden" id="plan-{{ plan.pk }}">
             <!-- 計画ヘッダー -->
             <div class="bg-gray-100 p-3 md:p-4 cursor-pointer hover:bg-gray-200 transition" onclick="togglePlan{{ plan.pk }}()">

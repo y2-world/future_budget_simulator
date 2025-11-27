@@ -389,13 +389,13 @@ class CreditEstimateForm(forms.ModelForm):
     """クレカ見積りフォーム"""
 
     year = forms.ChoiceField(
-        label='請求年',
+        label='利用年',
         widget=forms.Select(attrs={
             'class': 'w-full p-2 border rounded'
         })
     )
     month = forms.ChoiceField(
-        label='請求月',
+        label='利用月',
         widget=forms.Select(attrs={
             'class': 'w-full p-2 border rounded'
         })
@@ -430,11 +430,11 @@ class CreditEstimateForm(forms.ModelForm):
             }),
         }
         labels = {
-            'year_month': '請求月（YYYY-MM）',
+            'year_month': '利用月（YYYY-MM）',
             'card_type': 'カード種別',
             'description': 'メモ（任意）',
             'amount': '見積額（円）',
-            'due_date': '請求日（任意）',
+            'due_date': '利用日（任意）',
             'is_split_payment': '分割2回払い',
             'is_bonus_payment': 'ボーナス払い',
         }
@@ -446,10 +446,14 @@ class CreditEstimateForm(forms.ModelForm):
         self.fields['year'].widget.attrs.update({'data-year-select': 'true'})
         self.fields['month'].widget.attrs.update({'data-month-select': 'true'})
         self.fields['year_month'].widget.attrs.update({'data-year-month': 'true'})
-        
+
         # 編集モーダルで使われるIDを設定
         self.fields['card_type'].widget.attrs.update({'id': 'edit_card_type'})
 
+        # card_typeフィールドから空の選択肢を削除
+        self.fields['card_type'].required = True
+        # choicesを明示的に設定して空の選択肢を除外
+        self.fields['card_type'].choices = CreditEstimate.CARD_TYPES
 
         # 年の選択肢（現在の年から前後3年）
         current_year = datetime.now().year

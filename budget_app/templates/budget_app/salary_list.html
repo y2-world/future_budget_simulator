@@ -79,9 +79,9 @@
                     <th class="px-4 py-3 text-right font-semibold">総支給額</th>
                     <th class="px-4 py-3 text-right font-semibold">総支給額-交通費</th>
                     <th class="px-4 py-3 text-right font-semibold">給与</th>
+                    <th class="px-4 py-3 text-right font-semibold">交通費</th>
                     <th class="px-4 py-3 text-right font-semibold">控除額</th>
                     <th class="px-4 py-3 text-right font-semibold">控除率</th>
-                    <th class="px-4 py-3 text-right font-semibold">交通費</th>
                 </tr>
             </thead>
             <tbody>
@@ -91,11 +91,11 @@
                     <td class="px-4 py-3 text-right text-green-700 font-semibold">{{ plan.gross_salary|yen }}</td>
                     <td class="px-4 py-3 text-right text-blue-700">{{ plan|gross_minus_transport|yen }}</td>
                     <td class="px-4 py-3 text-right text-purple-700 font-semibold">{{ plan.salary|yen }}</td>
+                    <td class="px-4 py-3 text-right text-teal-700">{{ plan.transportation|yen }}</td>
                     <td class="px-4 py-3 text-right text-red-700">{{ plan.deductions|yen }}</td>
                     <td class="px-4 py-3 text-right text-orange-700">
                         {{ plan|deduction_rate }}%
                     </td>
-                    <td class="px-4 py-3 text-right text-teal-700">{{ plan.transportation|yen }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -121,16 +121,16 @@
                     <div class="font-semibold text-purple-700">{{ plan.salary|yen }}</div>
                 </div>
                 <div>
+                    <div class="text-xs text-gray-600 mb-1">交通費</div>
+                    <div class="font-semibold text-teal-700">{{ plan.transportation|yen }}</div>
+                </div>
+                <div>
                     <div class="text-xs text-gray-600 mb-1">控除額</div>
                     <div class="font-semibold text-red-700">{{ plan.deductions|yen }}</div>
                 </div>
                 <div>
                     <div class="text-xs text-gray-600 mb-1">控除率</div>
                     <div class="font-semibold text-orange-700">{{ plan|deduction_rate }}%</div>
-                </div>
-                <div>
-                    <div class="text-xs text-gray-600 mb-1">交通費</div>
-                    <div class="font-semibold text-teal-700">{{ plan.transportation|yen }}</div>
                 </div>
             </div>
         </div>
