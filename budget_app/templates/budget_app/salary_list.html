@@ -19,7 +19,7 @@
                         <th class="px-4 py-2 text-left font-semibold">賞与総支給額</th>
                         <th class="px-4 py-2 text-left font-semibold">合計総支給額</th>
                         <th class="px-4 py-2 text-left font-semibold">総支給額-交通費</th>
-                        <th class="px-4 py-2 text-left font-semibold">手取り合計</th>
+                        <th class="px-4 py-2 text-left font-semibold">差引支給額合計</th>
                         <th class="px-4 py-2 text-left font-semibold">交通費</th>
                         <th class="px-4 py-2 text-left font-semibold">控除合計</th>
                         <th class="px-4 py-2 text-left font-semibold">平均控除率</th>
@@ -59,7 +59,7 @@
                 <div class="text-base font-bold text-blue-700">{{ annual_summary.gross_minus_transport|yen }}</div>
             </div>
             <div class="bg-white p-3 rounded-lg">
-                <div class="text-xs text-gray-600 mb-1">手取り合計</div>
+                <div class="text-xs text-gray-600 mb-1">差引支給額合計</div>
                 <div class="text-base font-bold text-purple-700">{{ annual_summary.total_all_net|yen }}</div>
             </div>
             <div class="bg-white p-3 rounded-lg">
