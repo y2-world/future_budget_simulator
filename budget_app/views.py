@@ -88,7 +88,7 @@ def config_view(request):
 
 
 def update_initial_balance(request):
-    """初期残高を更新"""
+    """現在残高を更新"""
     if request.method == 'POST':
         initial_balance = request.POST.get('initial_balance', 0)
         try:
@@ -98,7 +98,7 @@ def update_initial_balance(request):
             if config:
                 config.initial_balance = initial_balance
                 config.save()
-                messages.success(request, f'初期残高を{initial_balance:,}円に更新しました。')
+                messages.success(request, f'現在残高を{initial_balance:,}円に更新しました。')
             else:
                 messages.error(request, 'シミュレーション設定が見つかりません。')
         except ValueError:
@@ -148,7 +148,7 @@ def plan_list(request):
     # 表示対象のプラン
     plans = current_and_future_plans
 
-    # 初期残高と定期預金情報を取得
+    # 現在残高と定期預金情報を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
     initial_balance = config.initial_balance if config else 0
     savings_enabled = config.savings_enabled if config else False
@@ -178,7 +178,7 @@ def plan_list(request):
 
         timeline = []
 
-        # 現在月の場合、初期残高（今日時点の残高）から開始
+        # 現在月の場合、現在残高（今日時点の残高）から開始
         if plan.year_month == current_year_month:
             reached_current_month = True
             current_balance = initial_balance
@@ -400,8 +400,15 @@ def plan_create(request):
             default_food = config.default_food if config else 50000
             default_view_card = config.default_view_card if config else 0
 
-            # デフォルト値を設定
+            # 現在の年月を取得
+            now = datetime.now()
+            current_year = now.year
+            current_month = f"{now.month:02d}"
+
+            # デフォルト値を設定（年月も含める）
             initial_data = {
+                'year': current_year,
+                'month': current_month,
                 'salary': default_salary,
                 'food': default_food,
                 'view_card': default_view_card,
@@ -535,9 +542,9 @@ def credit_estimate_list(request):
     from collections import OrderedDict
     from django.http import JsonResponse
 
-    # 事前に上書きデータを取得して辞書に格納
+    # 事前に上書きデータを取得して辞書に格納（金額とカード種別）
     overrides = DefaultChargeOverride.objects.all()
-    override_map = {(ov.default_id, ov.year_month): ov.amount for ov in overrides}
+    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type} for ov in overrides}
     estimates = list(CreditEstimate.objects.all().order_by('year_month', 'card_type', 'due_date', 'created_at'))
     credit_defaults = list(CreditDefault.objects.filter(is_active=True))
 
@@ -555,10 +562,47 @@ def credit_estimate_list(request):
     }
 
     # カード名に支払日を追加する関数
-    def get_card_label_with_due_day(card_type, is_bonus=False):
+    def get_card_label_with_due_day(card_type, is_bonus=False, year_month=None):
+        from datetime import date
+        import calendar
+
         base_label = card_labels.get(card_type, card_type)
         due_day = card_due_days.get(card_type, '')
-        if due_day:
+
+        if due_day and year_month:
+            # 年月から年と月を取得
+            year, month = map(int, year_month.split('-'))
+
+            # ボーナス払いの場合はその月の支払い、通常払いはカード種別に応じて計算
+            if is_bonus:
+                # ボーナス払いはその月に支払い
+                payment_year = year
+                payment_month = month
+            elif card_type in ['view', 'vermillion']:
+                # VIEWとVERMILLIONは翌々月払い
+                payment_month = month + 2
+                payment_year = year
+                if payment_month > 12:
+                    payment_month = payment_month - 12
+                    payment_year += 1
+            else:
+                # その他のカード（rakuten, paypay, amazon, olive）は翌月払い
+                payment_month = month + 1
+                payment_year = year
+                if payment_month > 12:
+                    payment_month = payment_month - 12
+                    payment_year += 1
+
+            # 支払月の最終日を取得
+            last_day = calendar.monthrange(payment_year, payment_month)[1]
+            # 支払日が月の日数を超える場合は最終日に調整
+            actual_due_day = min(due_day, last_day)
+
+            # 営業日に調整（土日祝なら翌営業日）
+            payment_date = adjust_to_next_business_day(date(payment_year, payment_month, actual_due_day))
+
+            label = f'{base_label} ({payment_date.month}/{payment_date.day})'
+        elif due_day:
             label = f'{base_label} ({due_day}日)'
         else:
             label = base_label
@@ -588,10 +632,10 @@ def credit_estimate_list(request):
 
         if est.is_bonus_payment:
             card_key = f'{est.card_type}_bonus'
-            card_label = get_card_label_with_due_day(est.card_type, is_bonus=True)
+            card_label = get_card_label_with_due_day(est.card_type, is_bonus=True, year_month=est.year_month)
         else:
             card_key = est.card_type
-            card_label = get_card_label_with_due_day(est.card_type, is_bonus=False)
+            card_label = get_card_label_with_due_day(est.card_type, is_bonus=False, year_month=est.year_month)
 
         card_group = month_group.setdefault(card_key, { # card_keyが 'view_bonus' のようになる
             'label': card_label, # 'VIEWカード' または 'VIEWカード（ボーナス払い）'
@@ -619,9 +663,15 @@ def credit_estimate_list(request):
             if default.apply_odd_months_only and not is_odd_month:
                 continue
 
-            # 該当カードのグループを取得または作成
-            card_group = month_group.setdefault(default.card_type, {
-                'label': get_card_label_with_due_day(default.card_type, is_bonus=False),
+            # 上書きデータを確認
+            override_data = override_map.get((default.id, year_month))
+
+            # 実際に使用するカード種別を決定（上書きがあればそれを使用）
+            actual_card_type = override_data.get('card_type') if override_data and override_data.get('card_type') else default.card_type
+
+            # 該当カードのグループを取得または作成（実際のカード種別を使用）
+            card_group = month_group.setdefault(actual_card_type, {
+                'label': get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=year_month),
                 'total': 0,
                 'entries': [],
                 # 反映機能で year_month が参照されるため追加
@@ -631,22 +681,21 @@ def credit_estimate_list(request):
 
             # 疑似的なCreditEstimateオブジェクトを作成
             class DefaultEntry:
-                def __init__(self, default_obj, year_month):
+                def __init__(self, default_obj, year_month, override_data, actual_card_type):
                     self.pk = None  # 削除・編集不可を示すためにNone
-                    # 上書きされた金額があればそれを使用
-                    overridden_amount = override_map.get((default_obj.id, year_month), None)
+                    # 上書きされた金額とカード種別があればそれを使用
                     self.year_month = year_month
-                    self.card_type = default_obj.card_type
+                    self.card_type = actual_card_type
                     self.description = default_obj.label
-                    self.amount = overridden_amount if overridden_amount is not None else default_obj.amount
-                    self.is_overridden = overridden_amount is not None # 上書きされているかどうかのフラグ
+                    self.amount = override_data.get('amount') if override_data else default_obj.amount
+                    self.is_overridden = override_data is not None # 上書きされているかどうかのフラグ
                     self.due_date = None
                     self.is_split_payment = False
                     self.is_bonus_payment = False
                     self.is_default = True  # デフォルトエントリーであることを示すフラグ
                     self.default_id = default_obj.id  # デフォルト項目のID
 
-            default_entry = DefaultEntry(default, year_month)
+            default_entry = DefaultEntry(default, year_month, override_data, actual_card_type)
             # 金額が0の場合は追加しない（削除された定期項目）
             if default_entry.amount > 0:
                 card_group['entries'].append(default_entry)
@@ -714,18 +763,24 @@ def credit_estimate_list(request):
             default_id = request.POST.get('id')
             year_month = request.POST.get('year_month')
             amount_str = request.POST.get('amount')
+            card_type = request.POST.get('card_type')
 
             try:
                 amount = int(amount_str)
                 default_instance = get_object_or_404(CreditDefault, pk=default_id)
 
                 # 上書きオブジェクトを取得または作成
+                defaults_dict = {'amount': amount}
+                # カード種別は常に保存する（上書きで管理）
+                if card_type:
+                    defaults_dict['card_type'] = card_type
+
                 override, created = DefaultChargeOverride.objects.update_or_create(
                     default=default_instance,
                     year_month=year_month,
-                    defaults={'amount': amount}
+                    defaults=defaults_dict
                 )
-                
+
                 return JsonResponse({
                     'status': 'success',
                     'message': f'{format_year_month_display(year_month)}の「{default_instance.label}」を更新しました。'
@@ -1209,36 +1264,52 @@ def credit_default_delete(request, pk):
 
 def salary_list(request):
     """給与一覧"""
-    # 給与明細データがある月次計画を取得（新しい順）
+    from datetime import datetime
+    from django.db.models import Q
+
+    # 給与明細データまたはボーナス明細データがある月次計画を取得（新しい順）
     plans_with_salary = MonthlyPlan.objects.filter(
-        gross_salary__gt=0
+        Q(gross_salary__gt=0) | Q(bonus_gross_salary__gt=0)
     ).order_by('-year_month')
 
     # 年間集計を計算
-    from datetime import datetime
     current_year = datetime.now().year
 
     # 今年のデータを取得
     current_year_plans = plans_with_salary.filter(year_month__startswith=str(current_year))
 
-    # 今年の集計
+    # 今年の集計（通常給与 + ボーナス）
     total_gross = sum(p.gross_salary for p in current_year_plans)
+    total_bonus_gross = sum(p.bonus_gross_salary or 0 for p in current_year_plans)
     total_transportation = sum(p.transportation for p in current_year_plans)
     total_deductions = sum(p.deductions for p in current_year_plans)
+    total_bonus_deductions = sum(p.bonus_deductions or 0 for p in current_year_plans)
     total_net = sum(p.salary for p in current_year_plans)
-    gross_minus_transport = total_gross - total_transportation
+    total_bonus_net = sum((p.bonus or 0) for p in current_year_plans)
+
+    # 合計
+    total_all_gross = total_gross + total_bonus_gross
+    total_all_deductions = total_deductions + total_bonus_deductions
+    total_all_net = total_net + total_bonus_net
+    gross_minus_transport = total_all_gross - total_transportation
 
     # 平均控除率を計算
     avg_deduction_rate = 0.0
     if gross_minus_transport > 0:
-        avg_deduction_rate = (total_deductions / gross_minus_transport) * 100
+        avg_deduction_rate = (total_all_deductions / gross_minus_transport) * 100
 
     annual_summary = {
         'year': current_year,
         'total_gross': total_gross,
+        'total_bonus_gross': total_bonus_gross,
+        'total_all_gross': total_all_gross,
         'total_transportation': total_transportation,
         'total_deductions': total_deductions,
+        'total_bonus_deductions': total_bonus_deductions,
+        'total_all_deductions': total_all_deductions,
         'total_net': total_net,
+        'total_bonus_net': total_bonus_net,
+        'total_all_net': total_all_net,
         'gross_minus_transport': gross_minus_transport,
         'avg_deduction_rate': round(avg_deduction_rate, 1),
         'count': current_year_plans.count(),

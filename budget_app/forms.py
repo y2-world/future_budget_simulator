@@ -153,7 +153,7 @@ class SimulationConfigForm(forms.ModelForm):
             'savings_start_month': forms.HiddenInput(),
         }
         labels = {
-            'initial_balance': '初期残高（円）',
+            'initial_balance': '現在残高（円）',
             'default_salary': 'デフォルト給与（円）',
             'default_food': 'デフォルト食費（円）',
             'default_view_card': 'VIEWカードデフォルト利用額（円）',
@@ -235,6 +235,7 @@ class MonthlyPlanForm(forms.ModelForm):
             'year_month',
             'salary', 'bonus',
             'gross_salary', 'deductions', 'transportation',
+            'bonus_gross_salary', 'bonus_deductions',
             'food', 'rent',
             'lake',
             'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
@@ -253,6 +254,8 @@ class MonthlyPlanForm(forms.ModelForm):
             'gross_salary': '総支給額',
             'deductions': '控除額',
             'transportation': '交通費',
+            'bonus_gross_salary': 'ボーナス総支給額',
+            'bonus_deductions': 'ボーナス控除額',
             'food': '食費',
             'rent': '家賃',
             'lake': 'レイク返済',
@@ -354,6 +357,10 @@ class MonthlyPlanForm(forms.ModelForm):
                 else:
                     if 'view_card_bonus' in self.fields:
                         self.fields['view_card_bonus'].label = f'VIEWボーナス払い（{year_int}年{month_name}4日）'
+
+                # ボーナス明細フィールドは常にフォームに含めるが、
+                # JavaScriptで表示/非表示を制御するため、削除しない
+                # （1月、8月、2025年2月のみ表示）
             except (ValueError, TypeError):
                 pass
 

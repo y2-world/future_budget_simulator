@@ -36,17 +36,23 @@
 
         <script>
             function toggleBonusField() {
+                const yearSelect = document.querySelector('select[name="year"]');
                 const monthSelect = document.querySelector('select[name="month"]');
                 const bonusWrapper = document.getElementById('bonus-field-wrapper');
 
-                if (!monthSelect || !bonusWrapper) {
+                if (!yearSelect || !monthSelect || !bonusWrapper) {
                     return;
                 }
 
+                const selectedYear = parseInt(yearSelect.value);
                 const selectedMonth = parseInt(monthSelect.value);
                 const bonusInput = bonusWrapper.querySelector('input');
 
-                if (selectedMonth === 6 || selectedMonth === 12) {
+                // 6月、12月、2025年2月の場合にボーナスフィールドを表示
+                const isBonusMonth = selectedMonth === 6 || selectedMonth === 12 ||
+                                    (selectedYear === 2025 && selectedMonth === 2);
+
+                if (isBonusMonth) {
                     bonusWrapper.style.display = 'block';
                     if (bonusInput) bonusInput.removeAttribute('required');
                 } else {
@@ -210,6 +216,31 @@
                 }
             }
 
+            function toggleBonusDetailFields() {
+                const yearSelect = document.querySelector('select[name="year"]');
+                const monthSelect = document.querySelector('select[name="month"]');
+                const bonusGrossSalaryWrapper = document.getElementById('bonus_gross_salary-field-wrapper');
+                const bonusDeductionsWrapper = document.getElementById('bonus_deductions-field-wrapper');
+
+                if (!yearSelect || !monthSelect) {
+                    return;
+                }
+
+                const selectedYear = parseInt(yearSelect.value);
+                const selectedMonth = parseInt(monthSelect.value);
+
+                // 6月、12月、2025年2月の場合にボーナス明細フィールドを表示
+                const isBonusMonth = selectedMonth === 6 || selectedMonth === 12 ||
+                                    (selectedYear === 2025 && selectedMonth === 2);
+
+                if (bonusGrossSalaryWrapper) {
+                    bonusGrossSalaryWrapper.style.display = isBonusMonth ? 'block' : 'none';
+                }
+                if (bonusDeductionsWrapper) {
+                    bonusDeductionsWrapper.style.display = isBonusMonth ? 'block' : 'none';
+                }
+            }
+
             // ページ読み込み時と年・月の選択変更時にラベルを更新
             document.addEventListener('DOMContentLoaded', function() {
                 updateLabels();
@@ -217,6 +248,7 @@
                 toggleBonusField(); // ページ読み込み時にボーナス表示を更新
                 toggleLakeField(); // ページ読み込み時にレイク返済表示を更新
                 toggleExpenseSection(); // ページ読み込み時に支出セクション表示を更新
+                toggleBonusDetailFields(); // ページ読み込み時にボーナス明細フィールド表示を更新
 
                 const yearSelect = document.querySelector('select[name="year"]');
                 const monthSelect = document.querySelector('select[name="month"]');
@@ -228,6 +260,7 @@
                         toggleBonusField(); // 年変更時にもボーナス表示を更新
                         toggleLakeField(); // 年変更時にレイク返済表示を更新
                         toggleExpenseSection(); // 年変更時に支出セクション表示を更新
+                        toggleBonusDetailFields(); // 年変更時にボーナス明細フィールド表示を更新
                     });
                 }
 
@@ -238,6 +271,7 @@
                         toggleBonusField(); // 月変更時にボーナス表示を更新
                         toggleLakeField(); // 月変更時にレイク返済表示を更新
                         toggleExpenseSection(); // 月変更時に支出セクション表示を更新
+                        toggleBonusDetailFields(); // 月変更時にボーナス明細フィールド表示を更新
                     });
                 }
 
@@ -256,6 +290,8 @@
                 <h3 class="font-bold text-lg md:text-xl mb-4 text-green-800 flex items-center">
                     <span class="mr-2">💰</span>収入
                 </h3>
+
+                <!-- 給与 -->
                 {% for field in form %}
                     {% if field.name == 'salary' %}
                         <div class="mb-4" id="{{ field.name }}-field-wrapper">
@@ -265,7 +301,51 @@
                                 <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
                             {% endif %}
                         </div>
-                    {% elif field.name == 'bonus' %}
+                    {% endif %}
+                {% endfor %}
+
+                <!-- 総支給額 -->
+                {% for field in form %}
+                    {% if field.name == 'gross_salary' %}
+                        <div class="mb-4" id="{{ field.name }}-field-wrapper">
+                            <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- 控除額 -->
+                {% for field in form %}
+                    {% if field.name == 'deductions' %}
+                        <div class="mb-4" id="{{ field.name }}-field-wrapper">
+                            <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- 交通費 -->
+                {% for field in form %}
+                    {% if field.name == 'transportation' %}
+                        <div class="mb-4" id="{{ field.name }}-field-wrapper">
+                            <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- ボーナス（6月、12月、2025年2月） -->
+                {% for field in form %}
+                    {% if field.name == 'bonus' %}
                         <div class="mb-4" id="bonus-field-wrapper" style="display: none;">
                             <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
@@ -273,8 +353,26 @@
                                 <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
                             {% endif %}
                         </div>
-                    {% elif field.name == 'gross_salary' or field.name == 'deductions' or field.name == 'transportation' %}
-                        <div class="mb-4" id="{{ field.name }}-field-wrapper">
+                    {% endif %}
+                {% endfor %}
+
+                <!-- ボーナス総支給額（6月、12月、2025年2月） -->
+                {% for field in form %}
+                    {% if field.name == 'bonus_gross_salary' %}
+                        <div class="mb-4" id="{{ field.name }}-field-wrapper" style="display: none;">
+                            <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- ボーナス控除額（6月、12月、2025年2月） -->
+                {% for field in form %}
+                    {% if field.name == 'bonus_deductions' %}
+                        <div class="mb-4" id="{{ field.name }}-field-wrapper" style="display: none;">
                             <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
                             {% if field.errors %}
@@ -290,7 +388,7 @@
                     <span class="mr-2">💳</span>支出
                 </h3>
                 {% for field in form %}
-                    {% if field.name != 'year_month' and field.name != 'salary' and field.name != 'bonus' and field.name != 'year' and field.name != 'month' and field.name != 'gross_salary' and field.name != 'deductions' and field.name != 'transportation' %}
+                    {% if field.name != 'year_month' and field.name != 'salary' and field.name != 'bonus' and field.name != 'year' and field.name != 'month' and field.name != 'gross_salary' and field.name != 'deductions' and field.name != 'transportation' and field.name != 'bonus_gross_salary' and field.name != 'bonus_deductions' %}
                         <div class="mb-4" id="{{ field.name }}-field-wrapper">
                             <label class="block text-gray-700 font-semibold mb-2 text-sm" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}

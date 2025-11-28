@@ -36,6 +36,10 @@ class MonthlyPlan(models.Model):
     deductions = models.IntegerField(default=0, verbose_name="控除額")
     transportation = models.IntegerField(default=0, verbose_name="交通費")
 
+    # ボーナス明細の詳細
+    bonus_gross_salary = models.IntegerField(default=0, verbose_name="ボーナス総支給額")
+    bonus_deductions = models.IntegerField(default=0, verbose_name="ボーナス控除額")
+
     # 支出
     food = models.IntegerField(default=0, verbose_name="食費")
     rent = models.IntegerField(default=0, verbose_name="家賃")
@@ -269,6 +273,14 @@ class DefaultChargeOverride(models.Model):
     default = models.ForeignKey(CreditDefault, on_delete=models.CASCADE, related_name='overrides')
     year_month = models.CharField('対象年月', max_length=7, help_text='YYYY-MM形式')
     amount = models.PositiveIntegerField('上書き金額')
+    card_type = models.CharField(
+        'カード種別',
+        max_length=20,
+        choices=CreditEstimate.CARD_TYPES,
+        null=True,
+        blank=True,
+        help_text='この月だけカード種別を変更する場合に指定'
+    )
 
     class Meta:
         verbose_name = '定期デフォルトの上書き'
