@@ -342,6 +342,10 @@ def plan_create(request):
             year_month_str = f"{year}-{month}"
             existing_plan = MonthlyPlan.objects.filter(year_month=year_month_str).first()
 
+        # デバッグ: POSTデータを確認
+        import logging
+        logger = logging.getLogger(__name__)
+
         # 過去月の場合はPastMonthlyPlanFormを使用
         if is_past_month:
             from .forms import PastMonthlyPlanForm
@@ -441,6 +445,9 @@ def plan_edit(request, pk):
         # 編集前の借入額を保存
         old_loan_borrowing = plan.loan_borrowing
 
+        # デバッグ: POSTデータを確認
+        logger.info(f"POST data: bonus_gross_salary={request.POST.get('bonus_gross_salary')}, bonus_deductions={request.POST.get('bonus_deductions')}")
+
         # 過去月の場合はPastMonthlyPlanFormを使用
         if is_past_month:
             from .forms import PastMonthlyPlanForm
@@ -449,6 +456,7 @@ def plan_edit(request, pk):
             form = MonthlyPlanForm(request.POST, instance=plan)
         if form.is_valid():
             plan = form.save()
+            logger.info(f"Saved: bonus_gross_salary={plan.bonus_gross_salary}, bonus_deductions={plan.bonus_deductions}")
 
             # マネーアシスト借入額が変更された場合、翌月の返済額を更新
             if plan.loan_borrowing != old_loan_borrowing:

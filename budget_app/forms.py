@@ -271,7 +271,7 @@ class MonthlyPlanForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # 年の選択肢を生成（現在の年から前後3年）
         current_year = datetime.now().year
         year_choices = [(str(year), str(year)) for year in range(current_year - 3, current_year + 4)]
@@ -360,7 +360,7 @@ class MonthlyPlanForm(forms.ModelForm):
 
                 # ボーナス明細フィールドは常にフォームに含めるが、
                 # JavaScriptで表示/非表示を制御するため、削除しない
-                # （1月、8月、2025年2月のみ表示）
+                # （6月、12月、2025年2月のみ表示）
             except (ValueError, TypeError):
                 pass
 
@@ -371,8 +371,8 @@ class MonthlyPlanForm(forms.ModelForm):
                     'class': 'w-full p-2 border rounded',
                     'placeholder': '0'
                 })
-                # 条件付きフィールド（bonus, view_card_bonus, lake）はrequiredをFalseに
-                if field_name in ['bonus', 'view_card_bonus', 'lake']:
+                # 条件付きフィールド（bonus, view_card_bonus, lake, bonus_gross_salary, bonus_deductions）はrequiredをFalseに
+                if field_name in ['bonus', 'view_card_bonus', 'lake', 'bonus_gross_salary', 'bonus_deductions']:
                     self.fields[field_name].required = False
 
     def clean(self):
@@ -731,6 +731,7 @@ class PastMonthlyPlanForm(forms.ModelForm):
             'year_month',
             'salary', 'bonus',
             'gross_salary', 'deductions', 'transportation',
+            'bonus_gross_salary', 'bonus_deductions',
         ]
 
         widgets = {
@@ -744,6 +745,8 @@ class PastMonthlyPlanForm(forms.ModelForm):
             'gross_salary': '総支給額',
             'deductions': '控除額',
             'transportation': '交通費',
+            'bonus_gross_salary': 'ボーナス総支給額',
+            'bonus_deductions': 'ボーナス控除額',
         }
 
     def __init__(self, *args, **kwargs):
