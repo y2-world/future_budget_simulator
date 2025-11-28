@@ -51,11 +51,17 @@ def attr(obj, name):
 
 @register.filter
 def deduction_rate(plan):
-    """控除率を計算（控除額 / (総支給額 - 交通費) * 100）"""
+    """控除率を計算（(給与控除額 + ボーナス控除額) / (総支給額 - 交通費) * 100）"""
     try:
-        gross_minus_transport = plan.gross_salary - plan.transportation
+        # 給与とボーナスの総支給額を合計
+        total_gross = plan.gross_salary + (plan.bonus_gross_salary or 0)
+        gross_minus_transport = total_gross - plan.transportation
+
+        # 給与とボーナスの控除額を合計
+        total_deductions = plan.deductions + (plan.bonus_deductions or 0)
+
         if gross_minus_transport > 0:
-            rate = (plan.deductions / gross_minus_transport) * 100
+            rate = (total_deductions / gross_minus_transport) * 100
             return f"{rate:.1f}"
         return "0.0"
     except (AttributeError, ZeroDivisionError, TypeError):
@@ -64,9 +70,20 @@ def deduction_rate(plan):
 
 @register.filter
 def gross_minus_transport(plan):
-    """総支給額-交通費を計算"""
+    """総支給額-交通費を計算（給与 + ボーナス）"""
     try:
-        return plan.gross_salary - plan.transportation
+        # 給与とボーナスの総支給額を合計
+        total_gross = plan.gross_salary + (plan.bonus_gross_salary or 0)
+        return total_gross - plan.transportation
     except (AttributeError, TypeError):
+        return 0
+
+
+@register.filter
+def subtract(value, arg):
+    """2つの数値の差を計算"""
+    try:
+        return int(value) - int(arg)
+    except (TypeError, ValueError):
         return 0
 
