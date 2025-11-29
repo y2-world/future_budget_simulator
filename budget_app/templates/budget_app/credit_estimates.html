@@ -104,7 +104,7 @@
     </div>
 
     <p class="text-xs text-gray-500 mt-6">
-        ※ VIEWカードは毎月4日、楽天/PayPayカードは27日、VERMILLION CARDは4日、Amazonカードは26日に設定されています。
+        ※ VIEWカードは毎月4日、楽天/PayPayカードは27日、VERMILLION CARDは4日、Amazonカード、Oliveは26日に設定されています。
     </p>
 </div>
 
@@ -204,6 +204,10 @@
                     <label class="block text-gray-700 font-bold mb-2">{{ default_edit_form.amount.label }}</label>
                     <input type="number" name="amount" id="default_edit_amount" class="w-full p-2 border rounded" min="0">
                 </div>
+                <div class="mb-4 flex items-center">
+                    <input type="checkbox" name="is_split_payment" id="default_edit_is_split_payment" class="rounded">
+                    <label class="ml-2 text-gray-700">分割2回払い</label>
+                </div>
                 <div class="flex justify-end space-x-2">
                     <button type="button" onclick="closeDefaultEditModal()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">キャンセル</button>
                     <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
@@ -262,7 +266,7 @@
         document.getElementById('editForm').reset();
     }
 
-    function openDefaultEditModal(id, label, amount, cardType, yearMonth) {
+    function openDefaultEditModal(id, label, amount, cardType, yearMonth, isSplitPayment) {
         const modal = document.getElementById('defaultEditModal');
 
         // フォームのフィールドに値を設定
@@ -271,6 +275,7 @@
         document.getElementById('default_edit_year_month').value = yearMonth;
         document.getElementById('default_edit_hidden_label').value = label; // hiddenフィールドにも値を設定
         document.getElementById('default_edit_amount').value = amount;
+        document.getElementById('default_edit_is_split_payment').checked = isSplitPayment || false;
 
         // カード種別を設定
         const cardTypeSelect = document.getElementById('default_edit_card_type');
@@ -440,8 +445,9 @@
                 const amount = this.dataset.amount;
                 const cardType = this.dataset.cardType;
                 const yearMonth = this.dataset.yearMonth;
+                const isSplit = this.dataset.split === 'true';
 
-                openDefaultEditModal(id, label, amount, cardType, yearMonth);
+                openDefaultEditModal(id, label, amount, cardType, yearMonth, isSplit);
             });
         });
 

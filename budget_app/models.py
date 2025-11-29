@@ -281,6 +281,11 @@ class DefaultChargeOverride(models.Model):
         blank=True,
         help_text='この月だけカード種別を変更する場合に指定'
     )
+    is_split_payment = models.BooleanField(
+        default=False,
+        verbose_name='2回払い',
+        help_text='この月だけ2回払いにする場合にチェック'
+    )
 
     class Meta:
         verbose_name = '定期デフォルトの上書き'

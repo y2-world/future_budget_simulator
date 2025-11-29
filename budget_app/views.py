@@ -550,9 +550,9 @@ def credit_estimate_list(request):
     from collections import OrderedDict
     from django.http import JsonResponse
 
-    # 事前に上書きデータを取得して辞書に格納（金額とカード種別）
+    # 事前に上書きデータを取得して辞書に格納（金額、カード種別、2回払い）
     overrides = DefaultChargeOverride.objects.all()
-    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type} for ov in overrides}
+    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment} for ov in overrides}
     estimates = list(CreditEstimate.objects.all().order_by('year_month', 'card_type', 'due_date', 'created_at'))
     credit_defaults = list(CreditDefault.objects.filter(is_active=True))
 
@@ -689,25 +689,75 @@ def credit_estimate_list(request):
 
             # 疑似的なCreditEstimateオブジェクトを作成
             class DefaultEntry:
-                def __init__(self, default_obj, year_month, override_data, actual_card_type):
+                def __init__(self, default_obj, entry_year_month, override_data, actual_card_type, split_part=None, total_amount=None, original_year_month=None):
                     self.pk = None  # 削除・編集不可を示すためにNone
                     # 上書きされた金額とカード種別があればそれを使用
-                    self.year_month = year_month
+                    self.year_month = entry_year_month
                     self.card_type = actual_card_type
-                    self.description = default_obj.label
-                    self.amount = override_data.get('amount') if override_data else default_obj.amount
+                    # 定期項目で分割の場合、説明に「(月分)」を追加
+                    if split_part and original_year_month:
+                        # 元の年月を「MM月分」形式で追加
+                        original_month = int(original_year_month.split('-')[1])
+                        self.description = f"{default_obj.label} ({original_month}月分)"
+                    else:
+                        self.description = default_obj.label
+                    # 2回払いの場合は金額を分割
+                    if split_part and total_amount is not None:
+                        # 2回目の金額を10の位まで0にする（100で切り捨て）
+                        second_payment = (total_amount // 2) // 100 * 100
+                        if split_part == 2:
+                            self.amount = second_payment
+                        else:
+                            # 1回目: 残り
+                            self.amount = total_amount - second_payment
+                    else:
+                        self.amount = override_data.get('amount') if override_data else default_obj.amount
                     self.is_overridden = override_data is not None # 上書きされているかどうかのフラグ
                     self.due_date = None
-                    self.is_split_payment = False
+                    # 上書きデータにis_split_paymentがあればそれを使用、なければFalse
+                    self.is_split_payment = override_data.get('is_split_payment', False) if override_data else False
+                    self.split_payment_part = split_part  # 1 or 2
                     self.is_bonus_payment = False
                     self.is_default = True  # デフォルトエントリーであることを示すフラグ
                     self.default_id = default_obj.id  # デフォルト項目のID
 
-            default_entry = DefaultEntry(default, year_month, override_data, actual_card_type)
-            # 金額が0の場合は追加しない（削除された定期項目）
-            if default_entry.amount > 0:
-                card_group['entries'].append(default_entry)
-                card_group['total'] += default_entry.amount
+            # 2回払いの場合は2つのエントリを作成
+            is_split = override_data.get('is_split_payment', False) if override_data else False
+            if is_split:
+                total_amount = override_data.get('amount') if override_data else default.amount
+
+                # 1回目（当月）
+                default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month)
+                if default_entry_1.amount > 0:
+                    card_group['entries'].append(default_entry_1)
+                    card_group['total'] += default_entry_1.amount
+
+                # 2回目（次月）
+                current_date = datetime.strptime(year_month, '%Y-%m')
+                next_month_date = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
+                next_month_str = next_month_date.strftime('%Y-%m')
+
+                # 次月のカードグループを取得または作成
+                next_month_group = summary.setdefault(next_month_str, OrderedDict())
+                next_card_group = next_month_group.setdefault(actual_card_type, {
+                    'label': get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=next_month_str),
+                    'total': 0,
+                    'entries': [],
+                    'year_month': next_month_str,
+                    'is_bonus_section': False,
+                })
+
+                default_entry_2 = DefaultEntry(default, next_month_str, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month)
+                if default_entry_2.amount > 0:
+                    next_card_group['entries'].append(default_entry_2)
+                    next_card_group['total'] += default_entry_2.amount
+            else:
+                # 通常の1回払い
+                default_entry = DefaultEntry(default, year_month, override_data, actual_card_type)
+                # 金額が0の場合は追加しない（削除された定期項目）
+                if default_entry.amount > 0:
+                    card_group['entries'].append(default_entry)
+                    card_group['total'] += default_entry.amount
 
     # 各カードのエントリーを支払日順にソート（定期デフォルトは最後）
     for year_month, month_group in summary.items():
@@ -772,6 +822,7 @@ def credit_estimate_list(request):
             year_month = request.POST.get('year_month')
             amount_str = request.POST.get('amount')
             card_type = request.POST.get('card_type')
+            is_split_payment = request.POST.get('is_split_payment') == 'on'
 
             try:
                 amount = int(amount_str)
@@ -782,6 +833,8 @@ def credit_estimate_list(request):
                 # カード種別は常に保存する（上書きで管理）
                 if card_type:
                     defaults_dict['card_type'] = card_type
+                # 2回払いフラグを保存
+                defaults_dict['is_split_payment'] = is_split_payment
 
                 override, created = DefaultChargeOverride.objects.update_or_create(
                     default=default_instance,
