@@ -87,3 +87,13 @@ def subtract(value, arg):
     except (TypeError, ValueError):
         return 0
 
+
+@register.filter
+def filter_by_year(plans, year):
+    """指定された年の月次計画をフィルタリング"""
+    try:
+        year_str = str(year)
+        return [plan for plan in plans if plan.year_month.startswith(year_str)]
+    except (AttributeError, TypeError):
+        return []
+
