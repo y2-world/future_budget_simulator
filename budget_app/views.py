@@ -887,31 +887,6 @@ def credit_estimate_list(request):
             except CreditDefault.DoesNotExist:
                 return JsonResponse({'status': 'error', 'message': '削除対象の定期項目が見つかりません。'}, status=404)
 
-        elif action == 'edit_default':
-            default_id = request.POST.get('id')
-            year_month = request.POST.get('year_month')
-            new_amount = request.POST.get('amount')
-
-            try:
-                default_instance = get_object_or_404(CreditDefault, pk=default_id)
-                default_label = default_instance.label
-
-                # この月だけの金額上書きを作成
-                DefaultChargeOverride.objects.update_or_create(
-                    default=default_instance,
-                    year_month=year_month,
-                    defaults={'amount': new_amount}
-                )
-
-                return JsonResponse({
-                    'status': 'success',
-                    'message': f'{format_year_month_display(year_month)}の「{default_label}」を{new_amount}円に変更しました。'
-                })
-            except CreditDefault.DoesNotExist:
-                return JsonResponse({'status': 'error', 'message': '編集対象の定期項目が見つかりません。'}, status=404)
-            except Exception as e:
-                return JsonResponse({'status': 'error', 'message': f'エラーが発生しました: {str(e)}'}, status=500)
-
         elif action == 'reflect_card':
             year_month = request.POST.get('year_month')
             card_type = request.POST.get('card_type')
