@@ -1324,7 +1324,6 @@ def credit_default_delete(request, pk):
 
 def salary_list(request):
     """給与一覧"""
-    from datetime import datetime
     from django.db.models import Q
 
     # 給与明細データまたはボーナス明細データがある月次計画を取得（新しい順）
@@ -1332,52 +1331,61 @@ def salary_list(request):
         Q(gross_salary__gt=0) | Q(bonus_gross_salary__gt=0)
     ).order_by('-year_month')
 
-    # 年間集計を計算
-    current_year = datetime.now().year
+    # 全ての年を取得
+    all_years = set()
+    for plan in plans_with_salary:
+        year = int(plan.year_month.split('-')[0])
+        all_years.add(year)
 
-    # 今年のデータを取得
-    current_year_plans = plans_with_salary.filter(year_month__startswith=str(current_year))
+    # 年を降順でソート（新しい年が先）
+    sorted_years = sorted(all_years, reverse=True)
 
-    # 今年の集計（通常給与 + ボーナス）
-    total_gross = sum(p.gross_salary for p in current_year_plans)
-    total_bonus_gross = sum(p.bonus_gross_salary or 0 for p in current_year_plans)
-    total_transportation = sum(p.transportation for p in current_year_plans)
-    total_deductions = sum(p.deductions for p in current_year_plans)
-    total_bonus_deductions = sum(p.bonus_deductions or 0 for p in current_year_plans)
-    total_net = sum(p.salary for p in current_year_plans)
-    total_bonus_net = sum((p.bonus or 0) for p in current_year_plans)
+    # 各年の年間集計を計算
+    annual_summaries = []
+    for year in sorted_years:
+        # その年のデータを取得
+        year_plans = plans_with_salary.filter(year_month__startswith=str(year))
 
-    # 合計
-    total_all_gross = total_gross + total_bonus_gross
-    total_all_deductions = total_deductions + total_bonus_deductions
-    total_all_net = total_net + total_bonus_net
-    gross_minus_transport = total_all_gross - total_transportation
+        # その年の集計（通常給与 + ボーナス）
+        total_gross = sum(p.gross_salary for p in year_plans)
+        total_bonus_gross = sum(p.bonus_gross_salary or 0 for p in year_plans)
+        total_transportation = sum(p.transportation for p in year_plans)
+        total_deductions = sum(p.deductions for p in year_plans)
+        total_bonus_deductions = sum(p.bonus_deductions or 0 for p in year_plans)
+        total_net = sum(p.salary for p in year_plans)
+        total_bonus_net = sum((p.bonus or 0) for p in year_plans)
 
-    # 平均控除率を計算
-    avg_deduction_rate = 0.0
-    if gross_minus_transport > 0:
-        avg_deduction_rate = (total_all_deductions / gross_minus_transport) * 100
+        # 合計
+        total_all_gross = total_gross + total_bonus_gross
+        total_all_deductions = total_deductions + total_bonus_deductions
+        total_all_net = total_net + total_bonus_net
+        gross_minus_transport = total_all_gross - total_transportation
 
-    annual_summary = {
-        'year': current_year,
-        'total_gross': total_gross,
-        'total_bonus_gross': total_bonus_gross,
-        'total_all_gross': total_all_gross,
-        'total_transportation': total_transportation,
-        'total_deductions': total_deductions,
-        'total_bonus_deductions': total_bonus_deductions,
-        'total_all_deductions': total_all_deductions,
-        'total_net': total_net,
-        'total_bonus_net': total_bonus_net,
-        'total_all_net': total_all_net,
-        'gross_minus_transport': gross_minus_transport,
-        'avg_deduction_rate': round(avg_deduction_rate, 1),
-        'count': current_year_plans.count(),
-    }
+        # 平均控除率を計算
+        avg_deduction_rate = 0.0
+        if gross_minus_transport > 0:
+            avg_deduction_rate = (total_all_deductions / gross_minus_transport) * 100
+
+        annual_summaries.append({
+            'year': year,
+            'total_gross': total_gross,
+            'total_bonus_gross': total_bonus_gross,
+            'total_all_gross': total_all_gross,
+            'total_transportation': total_transportation,
+            'total_deductions': total_deductions,
+            'total_bonus_deductions': total_bonus_deductions,
+            'total_all_deductions': total_all_deductions,
+            'total_net': total_net,
+            'total_bonus_net': total_bonus_net,
+            'total_all_net': total_all_net,
+            'gross_minus_transport': gross_minus_transport,
+            'avg_deduction_rate': round(avg_deduction_rate, 1),
+            'count': year_plans.count(),
+        })
 
     context = {
         'salary_plans': plans_with_salary,
-        'annual_summary': annual_summary,
+        'annual_summaries': annual_summaries,
     }
     return render(request, 'budget_app/salary_list.html', context)
 

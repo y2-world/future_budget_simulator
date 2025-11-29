@@ -126,50 +126,127 @@
 </div>
 
 <!-- デフォルト項目編集モーダル -->
-<div id="defaultEditModal" class="hidden fixed inset-0 bg-black bg-opacity-60 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-    <div class="relative w-full max-w-md bg-white shadow-2xl rounded-2xl transform transition-all">
-        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-t-2xl px-6 py-4">
-            <h3 class="text-xl font-bold text-white">定期項目編集</h3>
+<div id="defaultEditModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+    <div class="relative w-full max-w-lg bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[95vh] overflow-y-auto">
+        <!-- ヘッダー -->
+        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-t-2xl px-4 py-3 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-white">定期項目編集</h3>
+            <button type="button" onclick="closeDefaultEditModal()" class="text-white hover:text-gray-200 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
-        <div class="p-6">
-            <form id="defaultEditForm" method="post" action="{% url 'budget_app:credit_defaults' %}" class="space-y-4">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="update">
-                <input type="hidden" name="id" id="default_edit_id">
 
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2 text-sm">項目名</label>
-                    <input type="text" name="label" id="default_edit_label" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="項目名">
+        <!-- ボディ -->
+        <form id="defaultEditForm" method="post" action="{% url 'budget_app:credit_defaults' %}" class="p-4 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="id" id="default_edit_id">
+
+            <!-- 項目名 -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">項目名</label>
+                <input type="text" name="label" id="default_edit_label" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm" placeholder="項目名">
+            </div>
+
+            <!-- カード種別（カード形式） -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">カード種別</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="relative cursor-pointer card-type-label" data-value="view">
+                        <input type="radio" name="card_type" value="view" class="hidden card-type-radio">
+                        <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-green-400 hover:bg-green-50 card-type-box">
+                            <div class="flex items-center">
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden radio-dot"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">VIEWカード</span>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="relative cursor-pointer card-type-label" data-value="rakuten">
+                        <input type="radio" name="card_type" value="rakuten" class="hidden card-type-radio">
+                        <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-green-400 hover:bg-green-50 card-type-box">
+                            <div class="flex items-center">
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden radio-dot"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">楽天カード</span>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="relative cursor-pointer card-type-label" data-value="paypay">
+                        <input type="radio" name="card_type" value="paypay" class="hidden card-type-radio">
+                        <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-green-400 hover:bg-green-50 card-type-box">
+                            <div class="flex items-center">
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden radio-dot"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">PayPayカード</span>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="relative cursor-pointer card-type-label" data-value="vermillion">
+                        <input type="radio" name="card_type" value="vermillion" class="hidden card-type-radio">
+                        <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-green-400 hover:bg-green-50 card-type-box">
+                            <div class="flex items-center">
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden radio-dot"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">VERMILLION</span>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="relative cursor-pointer card-type-label" data-value="amazon">
+                        <input type="radio" name="card_type" value="amazon" class="hidden card-type-radio">
+                        <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-green-400 hover:bg-green-50 card-type-box">
+                            <div class="flex items-center">
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden radio-dot"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Amazonカード</span>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="relative cursor-pointer card-type-label" data-value="olive">
+                        <input type="radio" name="card_type" value="olive" class="hidden card-type-radio">
+                        <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-green-400 hover:bg-green-50 card-type-box">
+                            <div class="flex items-center">
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden radio-dot"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Olive</span>
+                            </div>
+                        </div>
+                    </label>
                 </div>
+            </div>
 
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2 text-sm">カード種別</label>
-                    <select name="card_type" id="default_edit_card_type" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        <option value="view">VIEWカード</option>
-                        <option value="rakuten">楽天カード</option>
-                        <option value="paypay">PayPayカード</option>
-                        <option value="vermillion">VERMILLION CARD</option>
-                        <option value="amazon">Amazonカード</option>
-                        <option value="olive">Olive</option>
-                    </select>
-                </div>
+            <!-- 金額 -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">金額（円）</label>
+                <input type="number" name="amount" id="modal_edit_amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm" min="0" placeholder="30000">
+            </div>
 
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2 text-sm">金額（円）</label>
-                    <input type="number" name="amount" id="modal_edit_amount" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" min="0">
-                </div>
-
-                <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+            <!-- チェックボックス -->
+            <div>
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
                     <input type="checkbox" name="apply_odd_months_only" id="default_edit_apply_odd_months_only" class="w-4 h-4 text-green-600 rounded focus:ring-green-500">
-                    <label class="ml-2 text-gray-700 text-sm">奇数月のみ適用（例：水道代）</label>
-                </div>
+                    <span class="ml-2 text-sm font-medium text-gray-700">奇数月のみ適用（例：水道代）</span>
+                </label>
+            </div>
 
-                <div class="flex gap-3 pt-4">
-                    <button type="button" onclick="closeDefaultEditModal()" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition">キャンセル</button>
-                    <button type="submit" class="flex-1 px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium transition">保存</button>
-                </div>
-            </form>
-        </div>
+            <!-- ボタン -->
+            <div class="flex gap-2 pt-3">
+                <button type="button" onclick="closeDefaultEditModal()" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition text-sm">
+                    キャンセル
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 font-medium transition shadow-md text-sm">
+                    保存
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -183,17 +260,28 @@ function openDefaultEditModal(id, label, amount, cardType, applyOddMonthsOnly) {
     document.getElementById('modal_edit_amount').value = amount;
     document.getElementById('default_edit_apply_odd_months_only').checked = applyOddMonthsOnly;
 
-    // カード種別を設定（最後に設定）
-    const cardTypeSelect = document.getElementById('default_edit_card_type');
-    if (cardTypeSelect) {
-        // 明示的に値を設定
-        cardTypeSelect.value = cardType;
-        // 念のため、optionが存在するか確認
-        const selectedOption = cardTypeSelect.querySelector(`option[value="${cardType}"]`);
-        if (selectedOption) {
-            selectedOption.selected = true;
+    // カード種別を設定（ラジオボタン形式）
+    document.querySelectorAll('#defaultEditModal .card-type-radio').forEach(radio => {
+        radio.checked = (radio.value === cardType);
+        const label = radio.closest('.card-type-label');
+        const box = label.querySelector('.card-type-box');
+        const indicator = label.querySelector('.radio-indicator');
+        const dot = label.querySelector('.radio-dot');
+
+        if (radio.checked) {
+            box.classList.add('border-green-600', 'bg-green-50');
+            box.classList.remove('border-gray-300');
+            indicator.classList.add('border-green-600');
+            indicator.classList.remove('border-gray-400');
+            dot.classList.remove('hidden');
+        } else {
+            box.classList.remove('border-green-600', 'bg-green-50');
+            box.classList.add('border-gray-300');
+            indicator.classList.remove('border-green-600');
+            indicator.classList.add('border-gray-400');
+            dot.classList.add('hidden');
         }
-    }
+    });
 
     modal.classList.remove('hidden');
 }
@@ -211,6 +299,40 @@ function formatNumberWithCommas(value) {
 // 背景クリックでモーダルを閉じる
 document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('defaultEditModal');
+
+    // カード種別ラジオボタンのクリックイベント
+    document.querySelectorAll('#defaultEditModal .card-type-label').forEach(label => {
+        label.addEventListener('click', function() {
+            const radio = this.querySelector('.card-type-radio');
+
+            // 全てのカード種別の選択状態をリセット
+            document.querySelectorAll('#defaultEditModal .card-type-label').forEach(l => {
+                const r = l.querySelector('.card-type-radio');
+                const box = l.querySelector('.card-type-box');
+                const indicator = l.querySelector('.radio-indicator');
+                const dot = l.querySelector('.radio-dot');
+
+                r.checked = false;
+                box.classList.remove('border-green-600', 'bg-green-50');
+                box.classList.add('border-gray-300');
+                indicator.classList.remove('border-green-600');
+                indicator.classList.add('border-gray-400');
+                dot.classList.add('hidden');
+            });
+
+            // クリックされたカード種別を選択状態に
+            radio.checked = true;
+            const box = this.querySelector('.card-type-box');
+            const indicator = this.querySelector('.radio-indicator');
+            const dot = this.querySelector('.radio-dot');
+
+            box.classList.add('border-green-600', 'bg-green-50');
+            box.classList.remove('border-gray-300');
+            indicator.classList.add('border-green-600');
+            indicator.classList.remove('border-gray-400');
+            dot.classList.remove('hidden');
+        });
+    });
 
     // 金額入力フィールドにカンマ区切りを適用
     document.querySelectorAll('.amount-input').forEach(input => {
