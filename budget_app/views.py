@@ -674,6 +674,24 @@ def credit_estimate_list(request):
             # 上書きデータを確認
             override_data = override_map.get((default.id, year_month))
 
+            # 上書きデータが存在しない場合、自動作成する（初回表示時にスナップショットを取る）
+            if not override_data:
+                # DefaultChargeOverrideを作成して、現在のデフォルト値をコピー
+                new_override = DefaultChargeOverride.objects.create(
+                    default=default,
+                    year_month=year_month,
+                    amount=default.amount,
+                    card_type=default.card_type,
+                    is_split_payment=False  # 初回はデフォルトで分割払いなし
+                )
+                # override_mapとoverride_dataを更新
+                override_data = {
+                    'amount': new_override.amount,
+                    'card_type': new_override.card_type,
+                    'is_split_payment': new_override.is_split_payment
+                }
+                override_map[(default.id, year_month)] = override_data
+
             # 実際に使用するカード種別を決定（上書きがあればそれを使用）
             actual_card_type = override_data.get('card_type') if override_data and override_data.get('card_type') else default.card_type
 
