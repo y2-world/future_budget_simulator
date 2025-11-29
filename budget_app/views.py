@@ -694,6 +694,8 @@ def credit_estimate_list(request):
                     # 上書きされた金額とカード種別があればそれを使用
                     self.year_month = entry_year_month
                     self.card_type = actual_card_type
+                    # 元の年月を保持（編集時に使用）
+                    self.original_year_month = original_year_month if original_year_month else entry_year_month
                     # 定期項目で分割の場合、説明に「(月分)」を追加
                     if split_part and original_year_month:
                         # 元の年月を「MM月分」形式で追加
@@ -710,8 +712,12 @@ def credit_estimate_list(request):
                         else:
                             # 1回目: 残り
                             self.amount = total_amount - second_payment
+                        # 元の合計金額を保持（編集時に使用）
+                        self.original_amount = total_amount
                     else:
                         self.amount = override_data.get('amount') if override_data else default_obj.amount
+                        # 元の金額も同じ
+                        self.original_amount = self.amount
                     self.is_overridden = override_data is not None # 上書きされているかどうかのフラグ
                     self.due_date = None
                     # 上書きデータにis_split_paymentがあればそれを使用、なければFalse

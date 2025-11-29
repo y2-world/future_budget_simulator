@@ -107,13 +107,13 @@
                                             <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs">削除</button>
                                         </form>
                                     {% else %}
-                                        <button type="button" data-default-id="{{ item.default_id }}" data-label="{{ item.description }}" data-amount="{{ item.amount }}" data-card-type="{{ item.card_type }}" data-year-month="{{ item.year_month }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" class="default-edit-btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1">編集</button>
+                                        <button type="button" data-default-id="{{ item.default_id }}" data-label="{{ item.description }}" data-amount="{{ item.original_amount }}" data-card-type="{{ item.card_type }}" data-year-month="{{ item.original_year_month }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" class="default-edit-btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1">編集</button>
                                         {# 定期項目をこの月だけ非表示にするための削除フォーム #}
                                         <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline delete-default-form">
                                             {% csrf_token %}
                                             <input type="hidden" name="action" value="delete_default_for_month">
                                             <input type="hidden" name="default_id" value="{{ item.default_id }}">
-                                            <input type="hidden" name="year_month" value="{{ item.year_month }}">
+                                            <input type="hidden" name="year_month" value="{{ item.original_year_month }}">
                                             <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs">削除</button>
                                         </form>
                                     {% endif %}
@@ -194,14 +194,14 @@
                                         </button>
                                     </form>
                                 {% else %}
-                                    <button type="button" data-default-id="{{ item.default_id }}" data-label="{{ item.description }}" data-amount="{{ item.amount }}" data-card-type="{{ item.card_type }}" data-year-month="{{ item.year_month }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" class="default-edit-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2 rounded-md hover:bg-blue-600 font-medium">
+                                    <button type="button" data-default-id="{{ item.default_id }}" data-label="{{ item.description }}" data-amount="{{ item.original_amount }}" data-card-type="{{ item.card_type }}" data-year-month="{{ item.original_year_month }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" class="default-edit-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2 rounded-md hover:bg-blue-600 font-medium">
                                         編集
                                     </button>
                                     <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="delete-default-form flex-1">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete_default_for_month">
                                         <input type="hidden" name="default_id" value="{{ item.default_id }}">
-                                        <input type="hidden" name="year_month" value="{{ item.year_month }}">
+                                        <input type="hidden" name="year_month" value="{{ item.original_year_month }}">
                                         <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2 rounded-md hover:bg-red-600 font-medium">
                                             削除
                                         </button>
