@@ -285,6 +285,12 @@
 
                     const data = await response.json();
 
+                    // 既存データがある場合はアラートを表示
+                    if (data.exists) {
+                        const monthName = ('0' + month).slice(-2);
+                        alert(`${year}年${monthName}月の月次計画はすでに登録済みです。\n\n登録を続けると既存のデータが上書きされます。`);
+                    }
+
                     // フォームの各フィールドに値を設定
                     const fields = [
                         'salary', 'gross_salary', 'transportation', 'deductions',
