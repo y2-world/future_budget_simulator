@@ -48,9 +48,17 @@
                 const selectedMonth = parseInt(monthSelect.value);
                 const bonusInput = bonusWrapper.querySelector('input');
 
-                // 6月、12月、2025年2月の場合にボーナスフィールドを表示
-                const isBonusMonth = selectedMonth === 6 || selectedMonth === 12 ||
-                                    (selectedYear === 2025 && selectedMonth === 2);
+                // ボーナスフィールドの表示ロジック:
+                // 2025年2月以前: 2月と8月
+                // 2025年3月以降: 6月と12月
+                let isBonusMonth = false;
+                if (selectedYear < 2025 || (selectedYear === 2025 && selectedMonth <= 2)) {
+                    // 2025年2月以前
+                    isBonusMonth = selectedMonth === 2 || selectedMonth === 8;
+                } else {
+                    // 2025年3月以降
+                    isBonusMonth = selectedMonth === 6 || selectedMonth === 12;
+                }
 
                 if (isBonusMonth) {
                     bonusWrapper.style.display = 'block';
@@ -229,10 +237,17 @@
                 const selectedYear = parseInt(yearSelect.value);
                 const selectedMonth = parseInt(monthSelect.value);
 
-                // 6月、12月、2025年2月の場合にボーナス明細フィールドを表示
-                const isBonusMonth = selectedMonth === 6 || selectedMonth === 12 ||
-                                    (selectedYear === 2025 && selectedMonth === 2);
-
+                // ボーナス明細フィールドの表示ロジック:
+                // 2025年2月以前: 2月と8月
+                // 2025年3月以降: 6月と12月
+                let isBonusMonth = false;
+                if (selectedYear < 2025 || (selectedYear === 2025 && selectedMonth <= 2)) {
+                    // 2025年2月以前
+                    isBonusMonth = selectedMonth === 2 || selectedMonth === 8;
+                } else {
+                    // 2025年3月以降
+                    isBonusMonth = selectedMonth === 6 || selectedMonth === 12;
+                }
 
                 if (bonusGrossSalaryWrapper) {
                     bonusGrossSalaryWrapper.style.display = isBonusMonth ? 'block' : 'none';
