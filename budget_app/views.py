@@ -1423,10 +1423,6 @@ def past_transactions_list(request):
         from datetime import date
         year = plan.year_month[:4]
 
-        # 2024年以前のデータは除外
-        if int(year) < 2025:
-            continue
-
         if year not in yearly_data:
             yearly_data[year] = {
                 'months': [],
@@ -1521,10 +1517,6 @@ def past_transactions_list(request):
     # クレカ見積りデータを月別→カード別にグループ化
     for estimate in past_credit_estimates:
         year = estimate.year_month[:4]
-
-        # 2024年以前のデータは除外
-        if int(year) < 2025:
-            continue
 
         if year not in yearly_data:
             yearly_data[year] = {
