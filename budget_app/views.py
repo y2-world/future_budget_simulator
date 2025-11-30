@@ -1346,6 +1346,10 @@ def salary_list(request):
         # その年のデータを取得
         year_plans = plans_with_salary.filter(year_month__startswith=str(year))
 
+        # データがない年はスキップ
+        if year_plans.count() == 0:
+            continue
+
         # その年の集計（通常給与 + ボーナス）
         total_gross = sum(p.gross_salary for p in year_plans)
         total_bonus_gross = sum(p.bonus_gross_salary or 0 for p in year_plans)
@@ -1360,6 +1364,10 @@ def salary_list(request):
         total_all_deductions = total_deductions + total_bonus_deductions
         total_all_net = total_net + total_bonus_net
         gross_minus_transport = total_all_gross - total_transportation
+
+        # 総支給額が0円の年もスキップ
+        if total_all_gross == 0:
+            continue
 
         # 平均控除率を計算
         avg_deduction_rate = 0.0
@@ -1414,6 +1422,10 @@ def past_transactions_list(request):
     for plan in past_plans:
         from datetime import date
         year = plan.year_month[:4]
+
+        # 2024年以前のデータは除外
+        if int(year) < 2025:
+            continue
 
         if year not in yearly_data:
             yearly_data[year] = {
@@ -1509,6 +1521,10 @@ def past_transactions_list(request):
     # クレカ見積りデータを月別→カード別にグループ化
     for estimate in past_credit_estimates:
         year = estimate.year_month[:4]
+
+        # 2024年以前のデータは除外
+        if int(year) < 2025:
+            continue
 
         if year not in yearly_data:
             yearly_data[year] = {
