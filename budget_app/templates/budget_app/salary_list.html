@@ -13,7 +13,12 @@
 
         <!-- 年ごとのセクション -->
         <div class="bg-white rounded-lg shadow-md p-4">
-            <h3 class="text-lg font-bold text-gray-800 mb-3">{{ annual_summary.year }}年（{{ annual_summary.count }}ヶ月分）</h3>
+            <button type="button" onclick="toggleDetails('details-{{ annual_summary.year }}')" class="w-full flex items-center justify-between mb-3 hover:bg-gray-50 -mx-4 px-4 py-2 rounded-t-lg transition">
+                <h3 class="text-lg font-bold text-gray-800">{{ annual_summary.year }}年（{{ annual_summary.count }}ヶ月分）</h3>
+                <svg id="details-{{ annual_summary.year }}-icon" class="w-5 h-5 transform transition-transform rotate-180 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
 
             <!-- 年間集計（常に表示） -->
             <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg mb-3">
@@ -86,15 +91,7 @@
                 </div>
 
                 <!-- 月別明細（折りたたみ可能） -->
-                <div class="mt-3">
-                    <button type="button" onclick="toggleDetails('details-{{ annual_summary.year }}')" class="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                        <span class="text-sm font-semibold text-gray-700">月別明細</span>
-                        <svg id="details-{{ annual_summary.year }}-icon" class="w-4 h-4 transform transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
-
-                    <div id="details-{{ annual_summary.year }}" class="mt-3">
+                <div id="details-{{ annual_summary.year }}" class="mt-3">
                     {% with year_plans=salary_plans|filter_by_year:annual_summary.year %}
                     {% if year_plans %}
                     <!-- デスクトップ表示：テーブル -->
@@ -275,7 +272,6 @@
                     <p class="text-gray-600">給与明細データがありません。</p>
                     {% endif %}
                     {% endwith %}
-                    </div>
                 </div>
         </div>
 
