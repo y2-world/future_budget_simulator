@@ -460,16 +460,31 @@ def plan_create(request):
                     'other': existing_plan.other,
                 }
             else:
-                # 既存のプランがない場合、デフォルト値を設定
-                initial_data = {
-                    'year': current_year,
-                    'month': current_month,
-                    'salary': default_salary,
-                    'food': default_food,
-                    'view_card': default_view_card,
-                    'lake': 8000,
-                    'rent': 74396,
-                }
+                # 既存のプランがない場合
+                from datetime import date
+                today = date.today()
+                selected_month_int = int(current_month)
+
+                # 選択された年月が過去かどうか判定
+                is_past_month = (current_year < today.year) or (current_year == today.year and selected_month_int < today.month)
+
+                if is_past_month:
+                    # 過去の月の場合はすべて0を設定
+                    initial_data = {
+                        'year': current_year,
+                        'month': current_month,
+                    }
+                else:
+                    # 未来の月の場合はデフォルト値を設定
+                    initial_data = {
+                        'year': current_year,
+                        'month': current_month,
+                        'salary': default_salary,
+                        'food': default_food,
+                        'view_card': default_view_card,
+                        'lake': 8000,
+                        'rent': 74396,
+                    }
             form = MonthlyPlanForm(initial=initial_data)
 
     return render(request, 'budget_app/plan_form.html', {
@@ -520,20 +535,70 @@ def get_plan_by_month(request):
             }
             return JsonResponse(data)
         else:
-            # 既存のプランがない場合、デフォルト値を返す
-            config = SimulationConfig.objects.filter(is_active=True).first()
-            default_salary = config.default_salary if config else 271919
-            default_food = config.default_food if config else 50000
-            default_view_card = config.default_view_card if config else 0
+            # 既存のプランがない場合
+            from datetime import date
+            today = date.today()
+            selected_year = int(year)
+            selected_month = int(month)
 
-            data = {
-                'exists': False,
-                'salary': default_salary,
-                'food': default_food,
-                'view_card': default_view_card,
-                'lake': 8000,
-                'rent': 74396,
-            }
+            # 選択された年月が過去かどうか判定
+            is_past_month = (selected_year < today.year) or (selected_year == today.year and selected_month < today.month)
+
+            if is_past_month:
+                # 過去の月の場合はすべて0を返す
+                data = {
+                    'exists': False,
+                    'salary': 0,
+                    'gross_salary': 0,
+                    'transportation': 0,
+                    'deductions': 0,
+                    'bonus': 0,
+                    'bonus_gross_salary': 0,
+                    'bonus_deductions': 0,
+                    'food': 0,
+                    'rent': 0,
+                    'lake': 0,
+                    'view_card': 0,
+                    'view_card_bonus': 0,
+                    'rakuten_card': 0,
+                    'paypay_card': 0,
+                    'vermillion_card': 0,
+                    'amazon_card': 0,
+                    'olive_card': 0,
+                    'loan': 0,
+                    'loan_borrowing': 0,
+                    'other': 0,
+                }
+            else:
+                # 未来の月の場合はデフォルト値を返す
+                config = SimulationConfig.objects.filter(is_active=True).first()
+                default_salary = config.default_salary if config else 271919
+                default_food = config.default_food if config else 50000
+                default_view_card = config.default_view_card if config else 0
+
+                data = {
+                    'exists': False,
+                    'salary': default_salary,
+                    'gross_salary': 0,
+                    'transportation': 0,
+                    'deductions': 0,
+                    'bonus': 0,
+                    'bonus_gross_salary': 0,
+                    'bonus_deductions': 0,
+                    'food': default_food,
+                    'rent': 74396,
+                    'lake': 8000,
+                    'view_card': default_view_card,
+                    'view_card_bonus': 0,
+                    'rakuten_card': 0,
+                    'paypay_card': 0,
+                    'vermillion_card': 0,
+                    'amazon_card': 0,
+                    'olive_card': 0,
+                    'loan': 0,
+                    'loan_borrowing': 0,
+                    'other': 0,
+                }
             return JsonResponse(data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
