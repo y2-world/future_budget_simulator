@@ -1586,11 +1586,22 @@ def past_transactions_list(request):
 
         yearly_data[year]['credit_months'] = credit_months_list
 
+    # 給与データ以外（支出データ）がない年を除外
+    filtered_yearly_data = {}
+    for year, data in yearly_data.items():
+        # 月次計画の支出データがあるか、またはクレカ見積りがあるかをチェック
+        has_expense_data = (
+            len(data['months']) > 0 or  # 月次計画の支出データ（支出が0円の月は既にスキップされている）
+            len(data['credit_months']) > 0  # クレカ見積りデータ
+        )
+        if has_expense_data:
+            filtered_yearly_data[year] = data
+
     # 年ごとに降順ソート
-    sorted_years = sorted(yearly_data.keys(), reverse=True)
+    sorted_years = sorted(filtered_yearly_data.keys(), reverse=True)
 
     context = {
-        'yearly_data': yearly_data,
+        'yearly_data': filtered_yearly_data,
         'sorted_years': sorted_years,
     }
     return render(request, 'budget_app/past_transactions.html', context)
