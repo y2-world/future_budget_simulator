@@ -129,10 +129,13 @@
                 // 末日を計算
                 const lastDay = getLastDay(year, month);
 
+                // 給料日の決定: 2025年5月以前は15日、それ以降は25日
+                const salaryDay = (year < 2025 || (year === 2025 && month <= 5)) ? 15 : 25;
+
                 // ラベルを更新
                 const labels = {
                     'bonus': `ボーナス（${year}年${monthName}）`,
-                    'salary': `給与（${year}年${monthName}25日）`,
+                    'salary': `給与（${year}年${monthName}${salaryDay}日）`,
                     'food': `食費（${year}年${monthName}1日）`,
                     'rent': `家賃（${year}年${monthName}27日）`,
                     'lake': `レイク返済（${year}年${monthName}27日）`,
@@ -257,6 +260,51 @@
                 }
             }
 
+            // 年月に基づいて既存データを取得してフォームに反映
+            async function loadPlanData() {
+                const yearSelect = document.querySelector('select[name="year"]');
+                const monthSelect = document.querySelector('select[name="month"]');
+
+                if (!yearSelect || !monthSelect) {
+                    return;
+                }
+
+                const year = yearSelect.value;
+                const month = monthSelect.value;
+
+                if (!year || !month) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/plans/get-by-month/?year=${year}&month=${month}`);
+                    if (!response.ok) {
+                        console.error('Failed to load plan data');
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    // フォームの各フィールドに値を設定
+                    const fields = [
+                        'salary', 'gross_salary', 'transportation', 'deductions',
+                        'bonus', 'bonus_gross_salary', 'bonus_deductions',
+                        'food', 'rent', 'lake', 'view_card', 'view_card_bonus',
+                        'rakuten_card', 'paypay_card', 'vermillion_card',
+                        'amazon_card', 'olive_card', 'loan', 'loan_borrowing', 'other'
+                    ];
+
+                    fields.forEach(field => {
+                        const input = document.querySelector(`input[name="${field}"]`);
+                        if (input && data.hasOwnProperty(field)) {
+                            input.value = data[field] || 0;
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error loading plan data:', error);
+                }
+            }
+
             // ページ読み込み時と年・月の選択変更時にラベルを更新
             document.addEventListener('DOMContentLoaded', function() {
                 updateLabels();
@@ -277,6 +325,7 @@
                         toggleLakeField(); // 年変更時にレイク返済表示を更新
                         toggleExpenseSection(); // 年変更時に支出セクション表示を更新
                         toggleBonusDetailFields(); // 年変更時にボーナス明細フィールド表示を更新
+                        loadPlanData(); // 年変更時に既存データを読み込み
                     });
                 }
 
@@ -288,6 +337,7 @@
                         toggleLakeField(); // 月変更時にレイク返済表示を更新
                         toggleExpenseSection(); // 月変更時に支出セクション表示を更新
                         toggleBonusDetailFields(); // 月変更時にボーナス明細フィールド表示を更新
+                        loadPlanData(); // 月変更時に既存データを読み込み
                     });
                 }
 

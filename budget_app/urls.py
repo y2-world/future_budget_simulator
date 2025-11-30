@@ -16,6 +16,7 @@ urlpatterns = [
     path('plans/create/', views.plan_create, name='plan_create'),
     path('plans/<int:pk>/edit/', views.plan_edit, name='plan_edit'),
     path('plans/<int:pk>/delete/', views.plan_delete, name='plan_delete'),
+    path('api/plans/get-by-month/', views.get_plan_by_month, name='get_plan_by_month'),
 
     # 給与一覧
     path('salaries/', views.salary_list, name='salary_list'),

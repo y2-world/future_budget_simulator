@@ -479,6 +479,66 @@ def plan_create(request):
     })
 
 
+def get_plan_by_month(request):
+    """年月に基づいて既存の月次計画データを取得するAPI"""
+    from django.http import JsonResponse
+
+    year = request.GET.get('year')
+    month = request.GET.get('month')
+
+    if not year or not month:
+        return JsonResponse({'error': 'Year and month are required'}, status=400)
+
+    try:
+        year_month_str = f"{year}-{int(month):02d}"
+        plan = MonthlyPlan.objects.filter(year_month=year_month_str).first()
+
+        if plan:
+            # 既存のプランがある場合、データを返す
+            data = {
+                'exists': True,
+                'salary': plan.salary or 0,
+                'gross_salary': plan.gross_salary or 0,
+                'transportation': plan.transportation or 0,
+                'deductions': plan.deductions or 0,
+                'bonus': plan.bonus or 0,
+                'bonus_gross_salary': plan.bonus_gross_salary or 0,
+                'bonus_deductions': plan.bonus_deductions or 0,
+                'food': plan.food or 0,
+                'rent': plan.rent or 0,
+                'lake': plan.lake or 0,
+                'view_card': plan.view_card or 0,
+                'view_card_bonus': plan.view_card_bonus or 0,
+                'rakuten_card': plan.rakuten_card or 0,
+                'paypay_card': plan.paypay_card or 0,
+                'vermillion_card': plan.vermillion_card or 0,
+                'amazon_card': plan.amazon_card or 0,
+                'olive_card': plan.olive_card or 0,
+                'loan': plan.loan or 0,
+                'loan_borrowing': plan.loan_borrowing or 0,
+                'other': plan.other or 0,
+            }
+            return JsonResponse(data)
+        else:
+            # 既存のプランがない場合、デフォルト値を返す
+            config = SimulationConfig.objects.filter(is_active=True).first()
+            default_salary = config.default_salary if config else 271919
+            default_food = config.default_food if config else 50000
+            default_view_card = config.default_view_card if config else 0
+
+            data = {
+                'exists': False,
+                'salary': default_salary,
+                'food': default_food,
+                'view_card': default_view_card,
+                'lake': 8000,
+                'rent': 74396,
+            }
+            return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 def plan_edit(request, pk):
     """月次計画編集"""
     plan = get_object_or_404(MonthlyPlan, pk=pk)
