@@ -127,6 +127,13 @@ def adjust_to_next_business_day(target_date):
     return target_date
 
 
+def get_salary_day(year: int, month: int) -> int:
+    """給料日を取得: 2025年5月以前は15日、それ以降は25日"""
+    if year < 2025 or (year == 2025 and month <= 5):
+        return 15
+    return 25
+
+
 def plan_list(request):
     """月次計画一覧"""
     from datetime import date
@@ -190,7 +197,8 @@ def plan_list(request):
             return min(max(day, 1), last_day)
 
         # 給与日（土日祝なら前の営業日）
-        salary_date = adjust_to_previous_business_day(date(year, month, clamp_day(SALARY_DAY)))
+        salary_day = get_salary_day(year, month)
+        salary_date = adjust_to_previous_business_day(date(year, month, clamp_day(salary_day)))
         bonus_date = adjust_to_previous_business_day(date(year, month, clamp_day(BONUS_DAY)))
         food_date = adjust_to_previous_business_day(date(year, month, clamp_day(FOOD_EXPENSE_DAY)))
 
@@ -379,9 +387,13 @@ def plan_create(request):
                 next_plan.loan += plan.loan_borrowing
                 next_plan.save()
 
+            # 成功メッセージを年月付きで作成
+            year_month_display = format_year_month_display(plan.year_month)
+            success_message = f'{year_month_display}の月次計画を登録しました。'
+
             if is_ajax:
-                return JsonResponse({'status': 'success', 'message': '月次計画を作成しました。'})
-            messages.success(request, '月次計画を作成しました。')
+                return JsonResponse({'status': 'success', 'message': success_message})
+            messages.success(request, success_message)
             # 過去月の場合は給与一覧にリダイレクト
             if is_past_month:
                 return redirect('budget_app:salary_list')
@@ -409,16 +421,55 @@ def plan_create(request):
             current_year = now.year
             current_month = f"{now.month:02d}"
 
-            # デフォルト値を設定（年月も含める）
-            initial_data = {
-                'year': current_year,
-                'month': current_month,
-                'salary': default_salary,
-                'food': default_food,
-                'view_card': default_view_card,
-                'lake': 8000,
-                'rent': 74396,
-            }
+            # URLパラメータで年月が指定されている場合はそれを使用
+            param_year = request.GET.get('year')
+            param_month = request.GET.get('month')
+            if param_year:
+                current_year = int(param_year)
+            if param_month:
+                current_month = f"{int(param_month):02d}"
+
+            # 既存の同じ年月のプランがあれば、その値を初期値として使用
+            year_month_str = f"{current_year}-{current_month}"
+            existing_plan = MonthlyPlan.objects.filter(year_month=year_month_str).first()
+
+            if existing_plan:
+                # 既存のプランがある場合、その値を初期値として使用
+                initial_data = {
+                    'year': current_year,
+                    'month': current_month,
+                    'salary': existing_plan.salary,
+                    'gross_salary': existing_plan.gross_salary,
+                    'transportation': existing_plan.transportation,
+                    'deductions': existing_plan.deductions,
+                    'bonus': existing_plan.bonus,
+                    'bonus_gross_salary': existing_plan.bonus_gross_salary,
+                    'bonus_deductions': existing_plan.bonus_deductions,
+                    'food': existing_plan.food,
+                    'rent': existing_plan.rent,
+                    'lake': existing_plan.lake,
+                    'view_card': existing_plan.view_card,
+                    'view_card_bonus': existing_plan.view_card_bonus,
+                    'rakuten_card': existing_plan.rakuten_card,
+                    'paypay_card': existing_plan.paypay_card,
+                    'vermillion_card': existing_plan.vermillion_card,
+                    'amazon_card': existing_plan.amazon_card,
+                    'olive_card': existing_plan.olive_card,
+                    'loan': existing_plan.loan,
+                    'loan_borrowing': existing_plan.loan_borrowing,
+                    'other': existing_plan.other,
+                }
+            else:
+                # 既存のプランがない場合、デフォルト値を設定
+                initial_data = {
+                    'year': current_year,
+                    'month': current_month,
+                    'salary': default_salary,
+                    'food': default_food,
+                    'view_card': default_view_card,
+                    'lake': 8000,
+                    'rent': 74396,
+                }
             form = MonthlyPlanForm(initial=initial_data)
 
     return render(request, 'budget_app/plan_form.html', {
@@ -1454,7 +1505,8 @@ def past_transactions_list(request):
             return min(max(day, 1), last_day)
 
         # 支払日・給与日の日付オブジェクトを生成
-        salary_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(SALARY_DAY)))
+        salary_day = get_salary_day(plan_year, plan_month)
+        salary_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(salary_day)))
         bonus_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(BONUS_DAY)))
         food_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(FOOD_EXPENSE_DAY)))
         rent_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(RENT_DUE_DAY)))

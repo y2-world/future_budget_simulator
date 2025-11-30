@@ -3,7 +3,15 @@
 
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
-    <h2 class="text-2xl md:text-3xl font-bold mb-3 text-gray-800">給与一覧</h2>
+    <div class="flex justify-between items-center mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-800">給与一覧</h2>
+        <a href="{% url 'budget_app:plan_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            月次計画を作成
+        </a>
+    </div>
 
     <!-- 年間集計と明細 -->
     {% if annual_summaries %}
@@ -110,24 +118,6 @@
                             </thead>
                             <tbody>
                                 {% for plan in year_plans %}
-                                {% if plan.gross_salary and plan.gross_salary > 0 %}
-                                <tr class="border-b hover:bg-gray-50">
-                                    <td class="px-4 py-3 font-medium">{{ plan.year_month|format_year_month }}</td>
-                                    <td class="px-4 py-3 text-right text-green-700 font-semibold">{{ plan.gross_salary|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-blue-700">{{ plan.gross_salary|subtract:plan.transportation|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-purple-700 font-semibold">{{ plan.salary|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-teal-700">{{ plan.transportation|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-red-700">{{ plan.deductions|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-orange-700">
-                                        {% if plan.gross_salary and plan.transportation %}
-                                            {% widthratio plan.deductions plan.gross_salary|subtract:plan.transportation 100 as deduction_pct %}
-                                            {{ deduction_pct|floatformat:2 }}%
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endif %}
                                 {% if plan.bonus and plan.bonus > 0 %}
                                 <tr class="border-b hover:bg-gray-50">
                                     <td class="px-4 py-3 font-medium">賞与 ({{ plan.year_month|format_year_month }})</td>
@@ -164,6 +154,24 @@
                                     </td>
                                 </tr>
                                 {% endif %}
+                                {% if plan.gross_salary and plan.gross_salary > 0 %}
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="px-4 py-3 font-medium">{{ plan.year_month|format_year_month }}</td>
+                                    <td class="px-4 py-3 text-right text-green-700 font-semibold">{{ plan.gross_salary|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-blue-700">{{ plan.gross_salary|subtract:plan.transportation|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-purple-700 font-semibold">{{ plan.salary|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-teal-700">{{ plan.transportation|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-red-700">{{ plan.deductions|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-orange-700">
+                                        {% if plan.gross_salary and plan.transportation %}
+                                            {% widthratio plan.deductions plan.gross_salary|subtract:plan.transportation 100 as deduction_pct %}
+                                            {{ deduction_pct|floatformat:2 }}%
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -172,44 +180,6 @@
                     <!-- モバイル表示：カード形式 -->
                     <div class="md:hidden space-y-2">
                         {% for plan in year_plans %}
-                        {% if plan.gross_salary and plan.gross_salary > 0 %}
-                        <div class="border rounded-lg p-4 bg-white shadow-sm">
-                            <div class="font-bold text-lg mb-2 text-gray-800">{{ plan.year_month|format_year_month }}</div>
-                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">総支給額</div>
-                                    <div class="font-semibold text-green-700">{{ plan.gross_salary|yen }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">総支給額-交通費</div>
-                                    <div class="font-semibold text-blue-700">{{ plan.gross_salary|subtract:plan.transportation|yen }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">差引支給額</div>
-                                    <div class="font-semibold text-purple-700">{{ plan.salary|yen }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">交通費</div>
-                                    <div class="font-semibold text-teal-700">{{ plan.transportation|yen }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">控除合計</div>
-                                    <div class="font-semibold text-red-700">{{ plan.deductions|yen }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">控除率</div>
-                                    <div class="font-semibold text-orange-700">
-                                        {% if plan.gross_salary and plan.transportation %}
-                                            {% widthratio plan.deductions plan.gross_salary|subtract:plan.transportation 100 as deduction_pct %}
-                                            {{ deduction_pct|floatformat:2 }}%
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
                         {% if plan.bonus and plan.bonus > 0 %}
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
                             <div class="font-bold text-lg mb-2 text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
@@ -258,6 +228,44 @@
                                         {% if plan.bonus_gross_salary and plan.bonus_gross_salary > 0 %}
                                             {% widthratio plan.bonus_deductions plan.bonus_gross_salary 100 as bonus_deduction_pct %}
                                             {{ bonus_deduction_pct|floatformat:2 }}%
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if plan.gross_salary and plan.gross_salary > 0 %}
+                        <div class="border rounded-lg p-4 bg-white shadow-sm">
+                            <div class="font-bold text-lg mb-2 text-gray-800">{{ plan.year_month|format_year_month }}</div>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                    <div class="text-xs text-gray-600 mb-1">総支給額</div>
+                                    <div class="font-semibold text-green-700">{{ plan.gross_salary|yen }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-600 mb-1">総支給額-交通費</div>
+                                    <div class="font-semibold text-blue-700">{{ plan.gross_salary|subtract:plan.transportation|yen }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-600 mb-1">差引支給額</div>
+                                    <div class="font-semibold text-purple-700">{{ plan.salary|yen }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-600 mb-1">交通費</div>
+                                    <div class="font-semibold text-teal-700">{{ plan.transportation|yen }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-600 mb-1">控除合計</div>
+                                    <div class="font-semibold text-red-700">{{ plan.deductions|yen }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-600 mb-1">控除率</div>
+                                    <div class="font-semibold text-orange-700">
+                                        {% if plan.gross_salary and plan.transportation %}
+                                            {% widthratio plan.deductions plan.gross_salary|subtract:plan.transportation 100 as deduction_pct %}
+                                            {{ deduction_pct|floatformat:2 }}%
                                         {% else %}
                                             -
                                         {% endif %}
