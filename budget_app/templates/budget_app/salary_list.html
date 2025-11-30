@@ -12,17 +12,11 @@
         {% if annual_summary.count > 0 %}
 
         <!-- 年ごとのセクション -->
-        <div class="bg-white rounded-lg shadow-md">
-            <button type="button" onclick="toggleSection('year-{{ annual_summary.year }}')" class="w-full flex items-center justify-between p-6 text-xl font-bold text-gray-800 hover:text-gray-900 transition">
-                <span>{{ annual_summary.year }}年（{{ annual_summary.count }}ヶ月分）</span>
-                <svg id="year-{{ annual_summary.year }}-icon" class="w-6 h-6 transform transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </button>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">{{ annual_summary.year }}年（{{ annual_summary.count }}ヶ月分）</h3>
 
-            <div id="year-{{ annual_summary.year }}" class="year-section px-6 pb-6">
-                <!-- 年間集計 -->
-                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl mb-6">
+            <!-- 年間集計（常に表示） -->
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl mb-6">
                     <h3 class="text-lg font-bold mb-3 text-blue-800">年間集計</h3>
 
                     <!-- デスクトップ表示 -->
@@ -92,9 +86,16 @@
                     </div>
                 </div>
 
-                <!-- 月別明細 -->
+                <!-- 月別明細（折りたたみ可能） -->
                 <div class="mt-6">
-                    <h3 class="text-lg font-bold mb-3 text-gray-800">月別明細</h3>
+                    <button type="button" onclick="toggleDetails('details-{{ annual_summary.year }}')" class="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <span class="text-lg font-bold text-gray-800">月別明細</span>
+                        <svg id="details-{{ annual_summary.year }}-icon" class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+
+                    <div id="details-{{ annual_summary.year }}" class="hidden mt-4">
                     {% with year_plans=salary_plans|filter_by_year:annual_summary.year %}
                     {% if year_plans %}
                     <!-- デスクトップ表示：テーブル -->
@@ -275,8 +276,8 @@
                     <p class="text-gray-600">給与明細データがありません。</p>
                     {% endif %}
                     {% endwith %}
+                    </div>
                 </div>
-            </div>
         </div>
 
         {% endif %}
@@ -288,16 +289,16 @@
 </div>
 
 <script>
-    // 年ごとのセクション折りたたみ/展開
-    function toggleSection(sectionId) {
-        const section = document.getElementById(sectionId);
-        const icon = document.getElementById(sectionId + '-icon');
+    // 月別明細の折りたたみ/展開
+    function toggleDetails(detailsId) {
+        const details = document.getElementById(detailsId);
+        const icon = document.getElementById(detailsId + '-icon');
 
-        if (section.classList.contains('hidden')) {
-            section.classList.remove('hidden');
+        if (details.classList.contains('hidden')) {
+            details.classList.remove('hidden');
             icon.classList.add('rotate-180');
         } else {
-            section.classList.add('hidden');
+            details.classList.add('hidden');
             icon.classList.remove('rotate-180');
         }
     }
