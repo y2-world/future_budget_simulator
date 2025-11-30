@@ -3,17 +3,17 @@
 
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
-    <h2 class="text-2xl md:text-3xl font-bold mb-6 text-gray-800">給与一覧</h2>
+    <h2 class="text-2xl md:text-3xl font-bold mb-3 text-gray-800">給与一覧</h2>
 
     <!-- 年間集計と明細 -->
     {% if annual_summaries %}
-    <div class="space-y-6">
+    <div class="space-y-3">
         {% for annual_summary in annual_summaries %}
         {% if annual_summary.count > 0 %}
 
         <!-- 年ごとのセクション -->
         <div class="bg-white rounded-lg shadow-md p-4">
-            <button type="button" onclick="toggleDetails('details-{{ annual_summary.year }}')" class="w-full flex items-center justify-between mb-3 hover:bg-gray-50 -mx-4 px-4 py-2 rounded-t-lg transition">
+            <button type="button" onclick="toggleDetails('details-{{ annual_summary.year }}')" class="w-full flex items-center justify-between mb-2 hover:bg-gray-50 -mx-4 px-4 py-2 rounded-t-lg transition">
                 <h3 class="text-lg font-bold text-gray-800">{{ annual_summary.year }}年（{{ annual_summary.count }}ヶ月分）</h3>
                 <svg id="details-{{ annual_summary.year }}-icon" class="w-5 h-5 transform transition-transform rotate-180 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -21,7 +21,7 @@
             </button>
 
             <!-- 年間集計（常に表示） -->
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg mb-3">
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg mb-2">
 
                     <!-- デスクトップ表示 -->
                     <div class="hidden md:block overflow-x-auto">
@@ -54,7 +54,7 @@
                     </div>
 
                     <!-- モバイル表示 -->
-                    <div class="md:hidden grid grid-cols-2 gap-3">
+                    <div class="md:hidden grid grid-cols-2 gap-2">
                     <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">給与総支給額</div>
                         <div class="text-base font-bold text-green-700">{{ annual_summary.total_gross|yen }}</div>
@@ -91,7 +91,7 @@
                 </div>
 
                 <!-- 月別明細（折りたたみ可能） -->
-                <div id="details-{{ annual_summary.year }}" class="mt-3">
+                <div id="details-{{ annual_summary.year }}" class="mt-2">
                     {% with year_plans=salary_plans|filter_by_year:annual_summary.year %}
                     {% if year_plans %}
                     <!-- デスクトップ表示：テーブル -->
@@ -170,12 +170,12 @@
                     </div>
 
                     <!-- モバイル表示：カード形式 -->
-                    <div class="md:hidden space-y-4">
+                    <div class="md:hidden space-y-2">
                         {% for plan in year_plans %}
                         {% if plan.gross_salary and plan.gross_salary > 0 %}
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
-                            <div class="font-bold text-lg mb-3 text-gray-800">{{ plan.year_month|format_year_month }}</div>
-                            <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="font-bold text-lg mb-2 text-gray-800">{{ plan.year_month|format_year_month }}</div>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">総支給額</div>
                                     <div class="font-semibold text-green-700">{{ plan.gross_salary|yen }}</div>
@@ -212,8 +212,8 @@
                         {% endif %}
                         {% if plan.bonus and plan.bonus > 0 %}
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
-                            <div class="font-bold text-lg mb-3 text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
-                            <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="font-bold text-lg mb-2 text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">総支給額</div>
                                     <div class="font-semibold text-emerald-700">
