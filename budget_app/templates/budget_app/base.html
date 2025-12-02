@@ -11,9 +11,31 @@
 
     <style>
         /* トーストの閉じるボタンのスタイル調整 */
-        .toastify-close,
-        .toastify button.toast-close {
-            font-weight: normal !important;
+        .toastify-close {
+            opacity: 0.8;
+            font-size: 18px !important;
+            font-weight: 300 !important;
+            line-height: 1 !important;
+        }
+        .toastify-close:hover {
+            opacity: 1;
+        }
+        /* 閉じるアイコンを別のものに変更 */
+        .toastify-close::before {
+            content: "✕" !important;
+            font-size: 20px;
+            display: inline-block;
+        }
+        .toastify-close {
+            text-indent: -9999px;
+            position: relative;
+        }
+        .toastify-close::before {
+            text-indent: 0;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
         }
     </style>
 </head>

@@ -223,7 +223,7 @@ class SimulationConfig(models.Model):
         help_text="定期預金機能のオン/オフ"
     )
     savings_amount = models.IntegerField(
-        default=0,
+        default=50000,
         verbose_name="定期預金額（円）",
         help_text="毎月の定期預金額"
     )
