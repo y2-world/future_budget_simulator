@@ -120,16 +120,6 @@
                             <label class="block text-sm font-medium mb-1">給与</label>
                             <input type="number" name="salary" value="{{ plan.salary }}" class="w-full p-2 border rounded">
                         </div>
-                        {% with month_str=plan.year_month|slice:"5:7" %}
-                        {% if month_str == '06' or month_str == '12' %}
-                        <div>
-                            <label class="block text-sm font-medium mb-1">ボーナス</label>
-                            <input type="number" name="bonus" value="{{ plan.bonus }}" class="w-full p-2 border rounded">
-                        </div>
-                        {% else %}
-                        <input type="hidden" name="bonus" value="{{ plan.bonus }}">
-                        {% endif %}
-                        {% endwith %}
                         <div>
                             <label class="block text-sm font-medium mb-1">総支給額</label>
                             <input type="number" name="gross_salary" value="{{ plan.gross_salary }}" class="w-full p-2 border rounded">
@@ -138,8 +128,16 @@
                             <label class="block text-sm font-medium mb-1">控除額</label>
                             <input type="number" name="deductions" value="{{ plan.deductions }}" class="w-full p-2 border rounded">
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">交通費</label>
+                            <input type="number" name="transportation" value="{{ plan.transportation }}" class="w-full p-2 border rounded">
+                        </div>
                         {% with month_str=plan.year_month|slice:"5:7" %}
                         {% if month_str == '06' or month_str == '12' %}
+                        <div>
+                            <label class="block text-sm font-medium mb-1">ボーナス</label>
+                            <input type="number" name="bonus" value="{{ plan.bonus }}" class="w-full p-2 border rounded">
+                        </div>
                         <div>
                             <label class="block text-sm font-medium mb-1">ボーナス総支給額</label>
                             <input type="number" name="bonus_gross_salary" value="{{ plan.bonus_gross_salary }}" class="w-full p-2 border rounded">
@@ -149,14 +147,11 @@
                             <input type="number" name="bonus_deductions" value="{{ plan.bonus_deductions }}" class="w-full p-2 border rounded">
                         </div>
                         {% else %}
+                        <input type="hidden" name="bonus" value="{{ plan.bonus }}">
                         <input type="hidden" name="bonus_gross_salary" value="{{ plan.bonus_gross_salary }}">
                         <input type="hidden" name="bonus_deductions" value="{{ plan.bonus_deductions }}">
                         {% endif %}
                         {% endwith %}
-                        <div>
-                            <label class="block text-sm font-medium mb-1">交通費</label>
-                            <input type="number" name="transportation" value="{{ plan.transportation }}" class="w-full p-2 border rounded">
-                        </div>
                     </div>
                 </div>
 

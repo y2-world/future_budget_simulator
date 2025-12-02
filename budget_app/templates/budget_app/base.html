@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}家計シミュレーター{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Toastify CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
     <style>
         /* トーストの閉じるボタンのスタイル調整 */
         .toastify-close,
@@ -54,8 +58,19 @@
         </div>
     </nav>
 
-    <!-- Toastify CSS -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-gradient-to-r from-gray-800 to-gray-900 text-white py-6 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-sm text-gray-400">&copy; 2025 家計シミュレーター</p>
+                <p class="text-xs text-gray-500 mt-2 md:mt-0">未来の家計を賢く管理</p>
+            </div>
+        </div>
+    </footer>
+
     <!-- Toastify JS -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
@@ -72,18 +87,5 @@
             menu.classList.toggle('hidden');
         });
     </script>
-
-    <main class="container mx-auto px-4 py-8">
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer class="bg-gradient-to-r from-gray-800 to-gray-900 text-white py-6 mt-12">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <p class="text-sm text-gray-400">&copy; 2025 家計シミュレーター</p>
-                <p class="text-xs text-gray-500 mt-2 md:mt-0">未来の家計を賢く管理</p>
-            </div>
-        </div>
-    </footer>
 </body>
 </html>
