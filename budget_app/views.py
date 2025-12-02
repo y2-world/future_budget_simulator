@@ -1693,37 +1693,37 @@ def past_transactions_list(request):
         # 収入・支出の明細を作成
         transactions = []
         if plan.salary > 0:
-            transactions.append({'date': salary_date, 'name': '給与', 'amount': plan.salary, 'type': 'income'})
+            transactions.append({'date': salary_date, 'name': '給与', 'amount': plan.salary, 'type': 'income', 'priority': 0})
         if plan.bonus > 0:
-            transactions.append({'date': bonus_date, 'name': 'ボーナス', 'amount': plan.bonus, 'type': 'income'})
+            transactions.append({'date': bonus_date, 'name': 'ボーナス', 'amount': plan.bonus, 'type': 'income', 'priority': 1})
         if plan.food > 0:
-            transactions.append({'date': food_date, 'name': '食費', 'amount': plan.food, 'type': 'expense'})
+            transactions.append({'date': food_date, 'name': '食費', 'amount': plan.food, 'type': 'expense', 'priority': 0})
         if plan.rent > 0:
-            transactions.append({'date': rent_date, 'name': '家賃', 'amount': plan.rent, 'type': 'expense'})
+            transactions.append({'date': rent_date, 'name': '家賃', 'amount': plan.rent, 'type': 'expense', 'priority': 0})
         if plan.lake > 0:
-            transactions.append({'date': lake_date, 'name': 'レイク', 'amount': plan.lake, 'type': 'expense'})
+            transactions.append({'date': lake_date, 'name': 'レイク', 'amount': plan.lake, 'type': 'expense', 'priority': 0})
         if plan.view_card > 0:
-            transactions.append({'date': view_card_date, 'name': 'ビューカード', 'amount': plan.view_card, 'type': 'expense'})
+            transactions.append({'date': view_card_date, 'name': 'ビューカード', 'amount': plan.view_card, 'type': 'expense', 'priority': 0})
         if plan.view_card_bonus > 0:
-            transactions.append({'date': view_card_date, 'name': 'ビューカード(ボーナス)', 'amount': plan.view_card_bonus, 'type': 'expense'})
+            transactions.append({'date': view_card_date, 'name': 'ビューカード(ボーナス)', 'amount': plan.view_card_bonus, 'type': 'expense', 'priority': 0})
         if plan.rakuten_card > 0:
-            transactions.append({'date': rakuten_card_date, 'name': '楽天カード', 'amount': plan.rakuten_card, 'type': 'expense'})
+            transactions.append({'date': rakuten_card_date, 'name': '楽天カード', 'amount': plan.rakuten_card, 'type': 'expense', 'priority': 0})
         if plan.paypay_card > 0:
-            transactions.append({'date': paypay_card_date, 'name': 'PayPayカード', 'amount': plan.paypay_card, 'type': 'expense'})
+            transactions.append({'date': paypay_card_date, 'name': 'PayPayカード', 'amount': plan.paypay_card, 'type': 'expense', 'priority': 0})
         if plan.vermillion_card > 0:
-            transactions.append({'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': plan.vermillion_card, 'type': 'expense'})
+            transactions.append({'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': plan.vermillion_card, 'type': 'expense', 'priority': 0})
         if plan.amazon_card > 0:
-            transactions.append({'date': amazon_card_date, 'name': 'Amazonカード', 'amount': plan.amazon_card, 'type': 'expense'})
+            transactions.append({'date': amazon_card_date, 'name': 'Amazonカード', 'amount': plan.amazon_card, 'type': 'expense', 'priority': 0})
         if plan.olive_card > 0:
-            transactions.append({'date': olive_card_date, 'name': 'Olive', 'amount': plan.olive_card, 'type': 'expense'})
+            transactions.append({'date': olive_card_date, 'name': 'Olive', 'amount': plan.olive_card, 'type': 'expense', 'priority': 0})
         if plan.loan_borrowing > 0:
-            transactions.append({'date': loan_borrowing_date, 'name': '借入', 'amount': plan.loan_borrowing, 'type': 'expense'})
+            transactions.append({'date': loan_borrowing_date, 'name': '借入', 'amount': plan.loan_borrowing, 'type': 'expense', 'priority': 0})
         if plan.other > 0:
-            transactions.append({'date': None, 'name': 'その他', 'amount': plan.other, 'type': 'expense'})
+            transactions.append({'date': None, 'name': 'その他', 'amount': plan.other, 'type': 'expense', 'priority': 0})
 
-        # 日付順にソート（日付がないものは最後、同日は収入が先）
+        # 日付順にソート（日付がないものは最後、同日は収入が先、同タイプはpriorityで並べる）
         def sort_key(x):
-            return (x['date'] if x['date'] is not None else date.max, 1 if x['type'] == 'expense' else 0)
+            return (x['date'] if x['date'] is not None else date.max, 1 if x['type'] == 'expense' else 0, x.get('priority', 0))
         transactions.sort(key=sort_key)
 
         # 期限が過ぎた明細のみをフィルタリング
