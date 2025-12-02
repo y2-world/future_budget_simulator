@@ -63,7 +63,7 @@ def index(request):
 
 
 def config_view(request):
-    """シミュレーション設定"""
+    """設定"""
     from datetime import date
 
     config = SimulationConfig.objects.filter(is_active=True).first()
@@ -79,7 +79,7 @@ def config_view(request):
                 new_config.start_date = date.today()
                 new_config.simulation_months = 12
             new_config.save()
-            messages.success(request, 'シミュレーション設定を保存しました。')
+            messages.success(request, '設定を保存しました。')
             return redirect('budget_app:config')
     else:
         form = SimulationConfigForm(instance=config)
@@ -100,7 +100,7 @@ def update_initial_balance(request):
                 config.save()
                 messages.success(request, f'現在残高を{initial_balance:,}円に更新しました。')
             else:
-                messages.error(request, 'シミュレーション設定が見つかりません。')
+                messages.error(request, '設定が見つかりません。')
         except ValueError:
             messages.error(request, '無効な金額です。')
 
@@ -798,7 +798,7 @@ def credit_estimate_list(request):
 
     summary = OrderedDict()
 
-    # シミュレーション設定からVIEWカードのデフォルト値を取得
+    # 設定からVIEWカードのデフォルト値を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
 
     # 全ての年月を取得
@@ -986,14 +986,50 @@ def credit_estimate_list(request):
         summary[year_month] = sorted_cards
 
     # summaryを現在、未来、過去に分割
-    current_month_str = datetime.now().strftime('%Y-%m')
+    today = datetime.now()
+    current_month_str = today.strftime('%Y-%m')
+    current_day = today.day
     current_month_summary = OrderedDict()
     future_summary = OrderedDict()
     past_summary = OrderedDict()
 
+    # VIEWカードは5日締めなので、5日までは先月の見積りを表示
+    view_display_month = current_month_str
+    if current_day <= 5:
+        # 先月を計算
+        prev_month_date = (today.replace(day=1) - timedelta(days=1))
+        view_display_month = prev_month_date.strftime('%Y-%m')
+
     for ym, cards in summary.items():
         # ymが '2024-08_bonus' のような形式の場合、年月部分を取得
         ym_date_part = ym.split('_')[0]
+
+        # VIEWカードとVERMILLIONカード(同じ締め日)の特別処理
+        if current_day <= 5 and ym_date_part == view_display_month:
+            # 5日までは、先月のVIEW/VERMILLIONカードを当月として扱う
+            has_view_or_vermillion = any(card_type in ['view', 'view_bonus', 'vermillion', 'vermillion_bonus'] for card_type in cards.keys())
+            if has_view_or_vermillion:
+                # VIEW/VERMILLIONカードのみを当月に移動
+                view_cards = OrderedDict()
+                other_cards = OrderedDict()
+                for card_type, card_data in cards.items():
+                    if card_type in ['view', 'view_bonus', 'vermillion', 'vermillion_bonus']:
+                        view_cards[card_type] = card_data
+                    else:
+                        other_cards[card_type] = card_data
+
+                # VIEW/VERMILLIONカードを当月に追加
+                if view_cards:
+                    if ym not in current_month_summary:
+                        current_month_summary[ym] = OrderedDict()
+                    current_month_summary[ym].update(view_cards)
+
+                # その他のカードは過去として扱う
+                if other_cards:
+                    if ym not in past_summary:
+                        past_summary[ym] = OrderedDict()
+                    past_summary[ym].update(other_cards)
+                continue
 
         if ym_date_part == current_month_str:
             current_month_summary[ym] = cards
@@ -1576,9 +1612,10 @@ def salary_list(request):
 
 def past_transactions_list(request):
     """過去の明細一覧（アーカイブ）"""
-    from datetime import datetime
+    from datetime import datetime, date as dt_date
     import calendar
 
+    current_date = datetime.now().date()
     current_year_month = datetime.now().strftime('%Y-%m')
 
     # 当月を含む全てのMonthlyPlanを取得（年月で降順ソート）
@@ -1586,9 +1623,9 @@ def past_transactions_list(request):
         year_month__lte=current_year_month
     ).order_by('-year_month')
 
-    # 過去のクレカ見積りを取得（当月は除外）
+    # 過去のクレカ見積りを取得（当月を含む）
     past_credit_estimates = CreditEstimate.objects.filter(
-        year_month__lt=current_year_month
+        year_month__lte=current_year_month
     ).order_by('-year_month')
 
     # 年ごとにグループ化して、月ごとの収入・支出を集計
@@ -1681,18 +1718,31 @@ def past_transactions_list(request):
             return (x['date'] if x['date'] is not None else date.max, 1 if x['type'] == 'expense' else 0)
         transactions.sort(key=sort_key)
 
-        yearly_data[year]['months'].append({
-            'year_month': plan.year_month,
-            'income': income,
-            'expenses': expenses,
-            'transactions': transactions,
-            'plan': plan
-        })
-        yearly_data[year]['total_income'] += income
-        yearly_data[year]['total_expenses'] += expenses
+        # 期限が過ぎた明細のみをフィルタリング
+        past_transactions = [t for t in transactions if t['date'] is None or t['date'] <= current_date]
+
+        # 過去の明細がある場合のみ追加
+        if past_transactions:
+            # 実際の収入・支出を再計算
+            actual_income = sum(t['amount'] for t in past_transactions if t['type'] == 'income')
+            actual_expenses = sum(t['amount'] for t in past_transactions if t['type'] == 'expense')
+
+            yearly_data[year]['months'].append({
+                'year_month': plan.year_month,
+                'income': actual_income,
+                'expenses': actual_expenses,
+                'transactions': past_transactions,
+                'plan': plan
+            })
+            yearly_data[year]['total_income'] += actual_income
+            yearly_data[year]['total_expenses'] += actual_expenses
 
     # クレカ見積りデータを月別→カード別にグループ化
     for estimate in past_credit_estimates:
+        # 期限が過ぎた見積りのみをフィルタリング（due_dateがNoneの場合は表示する）
+        if estimate.due_date and estimate.due_date > current_date:
+            continue
+
         year = estimate.year_month[:4]
 
         if year not in yearly_data:

@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}家計シミュレーター{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* トーストの閉じるボタンのスタイル調整 */
+        .toastify-close,
+        .toastify button.toast-close {
+            font-weight: normal !important;
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
     <nav class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl sticky top-0 z-50">

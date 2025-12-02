@@ -115,7 +115,7 @@
                                                                     <div class="bg-white p-2 rounded border border-gray-200 flex justify-between items-center">
                                                                         <div class="flex items-center gap-2">
                                                                             <span class="text-gray-500">
-                                                                                {{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% if est.estimate.due_date %}/{{ est.estimate.due_date|date:"j" }}{% endif %}
+                                                                                {% if est.estimate.due_date %}{{ est.estimate.due_date|date:"Y/m/j" }}{% else %}{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% endif %}
                                                                             </span>
                                                                             <span class="font-medium text-gray-700">{{ est.memo|default:"（明細名なし）" }}</span>
                                                                             {% if est.estimate.is_split_payment %}
@@ -237,7 +237,7 @@
                                                             <div class="bg-gray-50 p-2 rounded text-xs flex justify-between items-center">
                                                                 <div class="flex items-center gap-1 flex-wrap">
                                                                     <span class="text-gray-500">
-                                                                        {{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% if est.estimate.due_date %}/{{ est.estimate.due_date|date:"j" }}{% endif %}
+                                                                        {% if est.estimate.due_date %}{{ est.estimate.due_date|date:"Y/m/j" }}{% else %}{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% endif %}
                                                                     </span>
                                                                     <span class="font-medium text-gray-700">{{ est.memo|default:"（明細名なし）" }}</span>
                                                                     {% if est.estimate.is_split_payment %}

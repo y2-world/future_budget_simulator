@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
-    <h2 class="text-2xl font-bold mb-6">シミュレーション設定</h2>
+    <h2 class="text-2xl font-bold mb-6">設定</h2>
 
     <form method="post">
         {% csrf_token %}
@@ -86,30 +86,38 @@
         const savingsMonthSelect = document.querySelector('select[name="savings_month"]');
 
         function toggleSavingsFields() {
+            if (!savingsEnabledCheckbox) return;
+
             const isEnabled = savingsEnabledCheckbox.checked;
 
             // 見た目を変更
             if (isEnabled) {
-                savingsFields.classList.remove('opacity-50');
+                if (savingsFields) savingsFields.classList.remove('opacity-50');
             } else {
-                savingsFields.classList.add('opacity-50');
+                if (savingsFields) savingsFields.classList.add('opacity-50');
                 // 無効時はフィールドの値をクリア
-                savingsAmountField.value = '0';
+                if (savingsAmountField) savingsAmountField.value = '0';
                 if (savingsYearSelect) savingsYearSelect.value = '';
                 if (savingsMonthSelect) savingsMonthSelect.value = '';
             }
         }
 
         // 初期状態を設定
-        toggleSavingsFields();
-
-        // チェックボックスの変更を監視
-        savingsEnabledCheckbox.addEventListener('change', toggleSavingsFields);
+        if (savingsEnabledCheckbox) {
+            toggleSavingsFields();
+            // チェックボックスの変更を監視
+            savingsEnabledCheckbox.addEventListener('change', toggleSavingsFields);
+        }
 
         // Djangoメッセージをトーストとして表示
         {% if messages %}
             {% for message in messages %}
-                window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+                if (typeof window.showToast === 'function') {
+                    window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+                } else {
+                    console.error('window.showToast is not defined');
+                    alert("{{ message|escapejs }}");
+                }
             {% endfor %}
         {% endif %}
     });
