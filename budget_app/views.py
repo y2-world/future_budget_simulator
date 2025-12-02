@@ -1618,14 +1618,14 @@ def past_transactions_list(request):
     current_date = datetime.now().date()
     current_year_month = datetime.now().strftime('%Y-%m')
 
-    # 当月を含む全てのMonthlyPlanを取得（年月で降順ソート）
+    # 過去のMonthlyPlanを取得（当月は含まない、年月で降順ソート）
     past_plans = MonthlyPlan.objects.filter(
-        year_month__lte=current_year_month
+        year_month__lt=current_year_month
     ).order_by('-year_month')
 
-    # 過去のクレカ見積りを取得（当月を含む）
+    # 過去のクレカ見積りを取得（当月は含まない）
     past_credit_estimates = CreditEstimate.objects.filter(
-        year_month__lte=current_year_month
+        year_month__lt=current_year_month
     ).order_by('-year_month')
 
     # 年ごとにグループ化して、月ごとの収入・支出を集計
