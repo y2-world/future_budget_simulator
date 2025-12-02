@@ -113,7 +113,6 @@ class SimulationConfigForm(forms.ModelForm):
     class Meta:
         model = SimulationConfig
         fields = [
-            'initial_balance',
             'default_salary',
             'default_food',
             'default_view_card',
@@ -122,10 +121,6 @@ class SimulationConfigForm(forms.ModelForm):
             'savings_start_month',
         ]
         widgets = {
-            'initial_balance': forms.NumberInput(attrs={
-                'class': 'w-full p-2 border rounded',
-                'placeholder': '例: 500000'
-            }),
             'default_salary': forms.NumberInput(attrs={
                 'class': 'w-full p-2 border rounded',
                 'placeholder': '例: 271919'
@@ -153,7 +148,6 @@ class SimulationConfigForm(forms.ModelForm):
             'savings_start_month': forms.HiddenInput(),
         }
         labels = {
-            'initial_balance': '現在残高（円）',
             'default_salary': 'デフォルト給与（円）',
             'default_food': 'デフォルト食費（円）',
             'default_view_card': 'VIEWカードデフォルト利用額（円）',
