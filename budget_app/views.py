@@ -1790,14 +1790,15 @@ def past_transactions_list(request):
         for month_data in credit_months_list:
             cards_list = []
             for card_name, card_data in month_data['cards'].items():
-                # 各カードの明細を引落日順にソート
+                # 各カードの明細を引落日順にソート（年月日全体で）
                 def get_sort_key(est):
                     due = est['estimate'].due_date
                     if due is None:
-                        day = 99
+                        # due_dateがない場合は最後に表示
+                        return (dt_date.max, est['estimate'].id)
                     else:
-                        day = due.day if hasattr(due, 'day') else due
-                    return (day, est['estimate'].id)
+                        # due_date全体（年月日）でソート
+                        return (due, est['estimate'].id)
 
                 card_data['estimates'] = sorted(card_data['estimates'], key=get_sort_key)
                 cards_list.append(card_data)
