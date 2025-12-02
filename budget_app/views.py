@@ -1649,6 +1649,7 @@ def past_transactions_list(request):
                 'credit_months': {},
                 'total_income': 0,
                 'total_expenses': 0,
+                'total_net_income': 0,
                 'total_credit': 0
             }
 
@@ -1733,16 +1734,19 @@ def past_transactions_list(request):
             # 実際の収入・支出を再計算
             actual_income = sum(t['amount'] for t in past_transactions if t['type'] == 'income')
             actual_expenses = sum(t['amount'] for t in past_transactions if t['type'] == 'expense')
+            net_income = actual_income - actual_expenses
 
             yearly_data[year]['months'].append({
                 'year_month': plan.year_month,
                 'income': actual_income,
                 'expenses': actual_expenses,
+                'net_income': net_income,
                 'transactions': past_transactions,
                 'plan': plan
             })
             yearly_data[year]['total_income'] += actual_income
             yearly_data[year]['total_expenses'] += actual_expenses
+            yearly_data[year]['total_net_income'] += net_income
 
     # クレカ見積りデータを月別→カード別にグループ化
     for estimate in past_credit_estimates:
@@ -1758,6 +1762,7 @@ def past_transactions_list(request):
                 'credit_months': {},
                 'total_income': 0,
                 'total_expenses': 0,
+                'total_net_income': 0,
                 'total_credit': 0
             }
 
