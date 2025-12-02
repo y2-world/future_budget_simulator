@@ -81,6 +81,13 @@ def config_view(request):
             new_config.save()
             messages.success(request, '設定を保存しました。')
             return redirect('budget_app:config')
+        else:
+            # バリデーションエラーをログに出力
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Form validation errors: {form.errors}")
+            logger.error(f"POST data: {request.POST}")
+            messages.error(request, 'エラーが発生しました。入力内容を確認してください。')
     else:
         form = SimulationConfigForm(instance=config)
 
