@@ -37,10 +37,13 @@
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 {% for item in yearly_data|get_item:year|get_item:'months' %}
-                                    <tr class="hover:bg-gray-50 cursor-pointer" onclick="toggleDetails('desktop-plan-{{ year }}-{{ forloop.counter }}')">
+                                    <tr class="hover:bg-gray-50">
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                            {{ item.year_month|format_year_month }}
-                                            <span class="text-xs text-gray-400 ml-1">▼</span>
+                                            <span class="cursor-pointer" onclick="toggleDetails('desktop-plan-{{ year }}-{{ forloop.counter }}')">
+                                                {{ item.year_month|format_year_month }}
+                                                <span class="text-xs text-gray-400 ml-1">▼</span>
+                                            </span>
+                                            <button type="button" onclick="toggleEdit('edit-form-{{ item.plan.pk }}')" class="ml-2 text-xs text-blue-600 hover:text-blue-800">編集</button>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 font-medium">
                                             {{ item.income|yen }}
@@ -68,6 +71,54 @@
                                                     </div>
                                                 {% endfor %}
                                             </div>
+                                        </td>
+                                    </tr>
+                                    <!-- 編集フォーム -->
+                                    <tr id="edit-form-{{ item.plan.pk }}" class="hidden bg-yellow-50">
+                                        <td colspan="4" class="px-4 py-4">
+                                            <form method="post" action="{% url 'budget_app:plan_edit' item.plan.pk %}">
+                                                {% csrf_token %}
+                                                <div class="text-sm font-semibold text-gray-700 mb-3">{{ item.year_month|format_year_month }} の収入情報を編集</div>
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1">給与（円）</label>
+                                                        <input type="number" name="salary" value="{{ item.plan.salary }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1">総支給額（円）</label>
+                                                        <input type="number" name="gross_salary" value="{{ item.plan.gross_salary }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1">控除額（円）</label>
+                                                        <input type="number" name="deductions" value="{{ item.plan.deductions }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1">交通費（円）</label>
+                                                        <input type="number" name="transportation" value="{{ item.plan.transportation }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    {% with month_str=item.year_month|slice:"5:7" %}
+                                                    {% if month_str == '06' or month_str == '12' %}
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1">ボーナス（円）</label>
+                                                        <input type="number" name="bonus" value="{{ item.plan.bonus }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1">ボーナス総支給額（円）</label>
+                                                        <input type="number" name="bonus_gross_salary" value="{{ item.plan.bonus_gross_salary }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1">ボーナス控除額（円）</label>
+                                                        <input type="number" name="bonus_deductions" value="{{ item.plan.bonus_deductions }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    {% endif %}
+                                                    {% endwith %}
+                                                </div>
+                                                <input type="hidden" name="year_month" value="{{ item.plan.year_month }}">
+                                                <div class="flex gap-2 mt-4">
+                                                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">保存</button>
+                                                    <button type="button" onclick="toggleEdit('edit-form-{{ item.plan.pk }}')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm">キャンセル</button>
+                                                </div>
+                                            </form>
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -167,9 +218,12 @@
                         <h3 class="font-semibold text-blue-800 bg-blue-100 px-3 py-2 rounded">月次計画</h3>
                         {% for item in yearly_data|get_item:year|get_item:'months' %}
                             <div class="bg-white rounded-lg shadow p-4">
-                                <div class="font-semibold text-gray-800 mb-3 pb-2 border-b cursor-pointer" onclick="toggleDetails('mobile-plan-{{ year }}-{{ forloop.counter }}')">
-                                    {{ item.year_month|format_year_month }}
-                                    <span class="text-xs text-gray-400 ml-1">▼</span>
+                                <div class="font-semibold text-gray-800 mb-3 pb-2 border-b flex justify-between items-center">
+                                    <span class="cursor-pointer" onclick="toggleDetails('mobile-plan-{{ year }}-{{ forloop.counter }}')">
+                                        {{ item.year_month|format_year_month }}
+                                        <span class="text-xs text-gray-400 ml-1">▼</span>
+                                    </span>
+                                    <button type="button" onclick="toggleEdit('mobile-edit-form-{{ item.plan.pk }}')" class="text-xs text-blue-600 hover:text-blue-800">編集</button>
                                 </div>
                                 <div class="space-y-2">
                                     <div class="flex justify-between items-center">
@@ -200,6 +254,53 @@
                                             </div>
                                         {% endfor %}
                                     </div>
+                                </div>
+
+                                <!-- モバイル編集フォーム -->
+                                <div id="mobile-edit-form-{{ item.plan.pk }}" class="hidden mt-3 pt-3 border-t border-gray-300 bg-yellow-50 -mx-4 -mb-4 p-4 rounded-b-lg">
+                                    <form method="post" action="{% url 'budget_app:plan_edit' item.plan.pk %}">
+                                        {% csrf_token %}
+                                        <div class="text-sm font-semibold text-gray-700 mb-3">収入情報を編集</div>
+                                        <div class="space-y-3 text-sm">
+                                            <div>
+                                                <label class="block text-gray-600 mb-1">給与（円）</label>
+                                                <input type="number" name="salary" value="{{ item.plan.salary }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1">総支給額（円）</label>
+                                                <input type="number" name="gross_salary" value="{{ item.plan.gross_salary }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1">控除額（円）</label>
+                                                <input type="number" name="deductions" value="{{ item.plan.deductions }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1">交通費（円）</label>
+                                                <input type="number" name="transportation" value="{{ item.plan.transportation }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            {% with month_str=item.year_month|slice:"5:7" %}
+                                            {% if month_str == '06' or month_str == '12' %}
+                                            <div>
+                                                <label class="block text-gray-600 mb-1">ボーナス（円）</label>
+                                                <input type="number" name="bonus" value="{{ item.plan.bonus }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1">ボーナス総支給額（円）</label>
+                                                <input type="number" name="bonus_gross_salary" value="{{ item.plan.bonus_gross_salary }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1">ボーナス控除額（円）</label>
+                                                <input type="number" name="bonus_deductions" value="{{ item.plan.bonus_deductions }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            {% endif %}
+                                            {% endwith %}
+                                        </div>
+                                        <input type="hidden" name="year_month" value="{{ item.plan.year_month }}">
+                                        <div class="flex gap-2 mt-4">
+                                            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">保存</button>
+                                            <button type="button" onclick="toggleEdit('mobile-edit-form-{{ item.plan.pk }}')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm">キャンセル</button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         {% endfor %}
@@ -299,6 +400,13 @@
 
 <script>
 function toggleDetails(id) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.classList.toggle('hidden');
+    }
+}
+
+function toggleEdit(id) {
     const element = document.getElementById(id);
     if (element) {
         element.classList.toggle('hidden');

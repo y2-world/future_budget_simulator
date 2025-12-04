@@ -667,9 +667,9 @@ def plan_edit(request, pk):
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': f'{display_month} の計画を更新しました。'})
             messages.success(request, f'{display_month} の計画を更新しました。')
-            # 過去月の場合は給与一覧にリダイレクト
+            # 過去月の場合は過去の明細にリダイレクト
             if is_past_month:
-                return redirect('budget_app:salary_list')
+                return redirect('budget_app:past_transactions_list')
             return redirect('budget_app:plan_list')
         else:
             # フォームエラーをログに出力
