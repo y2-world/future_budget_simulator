@@ -66,6 +66,53 @@ def get_bonus_month_from_date(purchase_date) -> str:
     return None
 
 
+def get_bonus_due_date_from_purchase(purchase_date):
+    """購入日からボーナス払いの支払日（due_date）を計算
+    - 12/6〜6/5の購入 → 8/4支払い
+    - 7/6〜11/5の購入 → 1/4支払い
+    """
+    from datetime import date
+
+    if isinstance(purchase_date, str):
+        from datetime import datetime
+        purchase_date = datetime.strptime(purchase_date, '%Y-%m-%d').date()
+
+    if not isinstance(purchase_date, date):
+        return None
+
+    year = purchase_date.year
+    month = purchase_date.month
+    day = purchase_date.day
+
+    # 対象外期間のチェック
+    if month == 6 and day >= 6:
+        return None
+    if month == 7 and day <= 5:
+        return None
+    if month == 11 and day >= 6:
+        return None
+    if month == 12 and day <= 5:
+        return None
+
+    # 12/6〜6/5 → 8/4支払い
+    if month == 12 and day >= 6:
+        return date(year + 1, 8, 4)
+    elif 1 <= month <= 5:
+        return date(year, 8, 4)
+    elif month == 6 and day <= 5:
+        return date(year, 8, 4)
+
+    # 7/6〜11/5 → 1/4支払い
+    elif month == 7 and day >= 6:
+        return date(year + 1, 1, 4)
+    elif 8 <= month <= 10:
+        return date(year + 1, 1, 4)
+    elif month == 11 and day <= 5:
+        return date(year + 1, 1, 4)
+
+    return None
+
+
 def get_next_bonus_month(year_month: str) -> str:
     """指定された購入月から請求月を返す
     - 12/6〜6/5の購入 → 8/4請求（同年または翌年の8月）
@@ -417,7 +464,7 @@ class CreditEstimateForm(forms.ModelForm):
 
     class Meta:
         model = CreditEstimate
-        fields = ['year_month', 'card_type', 'description', 'amount', 'due_date', 'is_split_payment', 'is_bonus_payment']
+        fields = ['year_month', 'card_type', 'description', 'amount', 'due_date', 'purchase_date', 'is_split_payment', 'is_bonus_payment']
         widgets = {
             'year_month': forms.HiddenInput(),
             'card_type': forms.Select(attrs={
@@ -436,6 +483,10 @@ class CreditEstimateForm(forms.ModelForm):
                 'class': 'w-full p-2 border rounded',
                 'type': 'date',
             }),
+            'purchase_date': forms.DateInput(attrs={
+                'class': 'w-full p-2 border rounded',
+                'type': 'date',
+            }),
             'is_split_payment': forms.CheckboxInput(attrs={
                 'class': 'rounded',
             }),
@@ -449,6 +500,7 @@ class CreditEstimateForm(forms.ModelForm):
             'description': 'メモ（任意）',
             'amount': '見積額（円）',
             'due_date': '利用日（任意）',
+            'purchase_date': '購入日（ボーナス払い時）',
             'is_split_payment': '分割2回払い',
             'is_bonus_payment': 'ボーナス払い',
         }
@@ -533,21 +585,32 @@ class CreditEstimateForm(forms.ModelForm):
             # 請求月の再計算条件：
             # 1. 新規作成、または
             # 2. 通常払い→ボーナス払いへの変更、または
-            # 3. ボーナス払いでdue_dateが変更された場合
+            # 3. ボーナス払いでpurchase_dateが変更された場合
+            original_purchase_date = None
+            if instance.pk:
+                try:
+                    original = CreditEstimate.objects.get(pk=instance.pk)
+                    original_purchase_date = original.purchase_date
+                except CreditEstimate.DoesNotExist:
+                    pass
+
             should_recalculate = (
                 not instance.pk or  # 新規作成
                 not was_bonus_payment or  # 通常払い→ボーナス払い
-                (was_bonus_payment and original_due_date != instance.due_date)  # due_date変更
+                (was_bonus_payment and original_purchase_date != instance.purchase_date)  # purchase_date変更
             )
 
             if should_recalculate:
-                # due_dateがある場合は、それから請求月を計算
-                if instance.due_date:
-                    calculated_month = get_bonus_month_from_date(instance.due_date)
+                # purchase_dateから請求月とdue_dateを計算
+                if instance.purchase_date:
+                    calculated_month = get_bonus_month_from_date(instance.purchase_date)
+                    calculated_due_date = get_bonus_due_date_from_purchase(instance.purchase_date)
                     if calculated_month:
                         instance.year_month = calculated_month
+                    if calculated_due_date:
+                        instance.due_date = calculated_due_date
                 else:
-                    # due_dateがない場合は、year_monthから計算
+                    # purchase_dateがない場合は、year_monthから計算
                     instance.year_month = get_next_bonus_month(instance.year_month)
 
         # 既に分割済みのエントリーかチェック（split_payment_partが設定されているか）
