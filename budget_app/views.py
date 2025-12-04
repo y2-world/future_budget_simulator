@@ -822,6 +822,11 @@ def credit_estimate_list(request):
     all_months.add(next_month)
 
     for est in estimates:
+        # ボーナス払いで支払日が過ぎた場合はスキップ
+        if est.is_bonus_payment and est.due_date:
+            if today.date() >= est.due_date:
+                continue
+
         month_group = summary.setdefault(est.year_month, OrderedDict())
 
         if est.is_bonus_payment:
