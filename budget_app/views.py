@@ -849,7 +849,13 @@ def credit_estimate_list(request):
             if today.date() >= est.due_date:
                 continue
 
-        month_group = summary.setdefault(est.year_month, OrderedDict())
+        # ボーナス払いは支払月でグルーピング、通常払いは利用月でグルーピング
+        if est.is_bonus_payment and est.due_date:
+            display_month = est.due_date.strftime('%Y-%m')
+        else:
+            display_month = est.year_month
+
+        month_group = summary.setdefault(display_month, OrderedDict())
 
         if est.is_bonus_payment:
             card_key = f'{est.card_type}_bonus'
@@ -862,7 +868,7 @@ def credit_estimate_list(request):
             'label': card_label, # 'VIEWカード' または 'VIEWカード（ボーナス払い）'
             'total': 0,
             'entries': [],
-            'year_month': est.year_month,  # 元の年月を保持
+            'year_month': display_month,  # 表示月（ボーナス払いは支払月、通常払いは利用月）
             'is_bonus_section': est.is_bonus_payment,  # ボーナス払いセクションかどうか
         })
         card_group['total'] += est.amount
