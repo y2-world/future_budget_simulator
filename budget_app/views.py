@@ -995,6 +995,28 @@ def credit_estimate_list(request):
         ))
         summary[year_month] = sorted_cards
 
+    # ボーナス払いの項目しかない場合、定期項目のみの通常払いセクションを非表示
+    for year_month, month_group in list(summary.items()):
+        cards_to_remove = []
+        for card_key, card_data in list(month_group.items()):
+            # 通常払いセクション（_bonusで終わらない）の場合
+            if not card_key.endswith('_bonus'):
+                # 対応するボーナス払いセクションが存在するか確認
+                bonus_key = f'{card_key}_bonus'
+                if bonus_key in month_group and month_group[bonus_key]['entries']:
+                    # 通常払いセクションの全てのエントリが定期項目かチェック
+                    all_default = all(
+                        hasattr(entry, 'is_default') and entry.is_default
+                        for entry in card_data['entries']
+                    )
+                    # 全てが定期項目で、ボーナス払いが存在する場合は通常払いセクションを削除
+                    if all_default and card_data['entries']:
+                        cards_to_remove.append(card_key)
+
+        # 該当するカードを削除
+        for card_key in cards_to_remove:
+            del month_group[card_key]
+
     # summaryを現在、未来、過去に分割
     today = datetime.now()
     current_month_str = today.strftime('%Y-%m')
