@@ -601,12 +601,12 @@ class CreditEstimateForm(forms.ModelForm):
             )
 
             if should_recalculate:
-                # purchase_dateから請求月とdue_dateを計算
+                # purchase_dateからyear_month（利用月）とdue_date（支払日）を設定
                 if instance.purchase_date:
-                    calculated_month = get_bonus_month_from_date(instance.purchase_date)
+                    # year_monthは購入月（利用月）
+                    instance.year_month = instance.purchase_date.strftime('%Y-%m')
+                    # due_dateは支払日を計算
                     calculated_due_date = get_bonus_due_date_from_purchase(instance.purchase_date)
-                    if calculated_month:
-                        instance.year_month = calculated_month
                     if calculated_due_date:
                         instance.due_date = calculated_due_date
                 else:
