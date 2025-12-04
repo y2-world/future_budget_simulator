@@ -114,6 +114,7 @@
                                     <th class="px-4 py-3 text-right font-semibold">交通費</th>
                                     <th class="px-4 py-3 text-right font-semibold">控除合計</th>
                                     <th class="px-4 py-3 text-right font-semibold">控除率</th>
+                                    <th class="px-4 py-3 text-center font-semibold">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -152,6 +153,9 @@
                                             -
                                         {% endif %}
                                     </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-xs">編集</a>
+                                    </td>
                                 </tr>
                                 {% endif %}
                                 {% if plan.gross_salary and plan.gross_salary > 0 %}
@@ -170,6 +174,9 @@
                                             -
                                         {% endif %}
                                     </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-xs">編集</a>
+                                    </td>
                                 </tr>
                                 {% endif %}
                                 {% endfor %}
@@ -182,7 +189,10 @@
                         {% for plan in year_plans %}
                         {% if plan.bonus and plan.bonus > 0 %}
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
-                            <div class="font-bold text-lg mb-2 text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="font-bold text-lg text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
+                                <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">編集</a>
+                            </div>
                             <div class="grid grid-cols-2 gap-2 text-sm">
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">総支給額</div>
@@ -238,7 +248,10 @@
                         {% endif %}
                         {% if plan.gross_salary and plan.gross_salary > 0 %}
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
-                            <div class="font-bold text-lg mb-2 text-gray-800">{{ plan.year_month|format_year_month }}</div>
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="font-bold text-lg text-gray-800">{{ plan.year_month|format_year_month }}</div>
+                                <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">編集</a>
+                            </div>
                             <div class="grid grid-cols-2 gap-2 text-sm">
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">総支給額</div>

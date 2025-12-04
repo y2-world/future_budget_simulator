@@ -704,7 +704,7 @@ class CreditDefaultForm(forms.ModelForm):
 
 
 class PastMonthlyPlanForm(forms.ModelForm):
-    """過去月次計画フォーム（収入項目のみ）"""
+    """過去月次計画フォーム（収入・支出項目）"""
 
     year = forms.ChoiceField(
         label='年',
@@ -726,6 +726,10 @@ class PastMonthlyPlanForm(forms.ModelForm):
             'salary', 'bonus',
             'gross_salary', 'deductions', 'transportation',
             'bonus_gross_salary', 'bonus_deductions',
+            'food', 'rent', 'lake',
+            'view_card', 'view_card_bonus', 'rakuten_card',
+            'paypay_card', 'vermillion_card', 'amazon_card',
+            'olive_card', 'loan_borrowing', 'other',
         ]
 
         widgets = {
@@ -741,6 +745,18 @@ class PastMonthlyPlanForm(forms.ModelForm):
             'transportation': '交通費',
             'bonus_gross_salary': 'ボーナス総支給額',
             'bonus_deductions': 'ボーナス控除額',
+            'food': '食費',
+            'rent': '家賃',
+            'lake': 'レイク',
+            'view_card': 'VIEWカード',
+            'view_card_bonus': 'VIEWカード（ボーナス）',
+            'rakuten_card': '楽天カード',
+            'paypay_card': 'PayPayカード',
+            'vermillion_card': 'VERMILLION CARD',
+            'amazon_card': 'Amazonカード',
+            'olive_card': 'Olive',
+            'loan_borrowing': 'マネーアシスト（借入）',
+            'other': 'その他',
         }
 
     def __init__(self, *args, **kwargs):
