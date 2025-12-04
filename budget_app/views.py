@@ -822,8 +822,30 @@ def credit_estimate_list(request):
     all_months.add(next_month)
 
     for est in estimates:
-        # ボーナス払いで支払日が過ぎた場合はスキップ
-        if est.is_bonus_payment and est.due_date:
+        # 通常払いの場合、締め日が過ぎたら非表示
+        if not est.is_bonus_payment:
+            year, month = map(int, est.year_month.split('-'))
+            from datetime import date
+            import calendar
+
+            if est.card_type in ['view', 'vermillion']:
+                # VIEW/VERMILLIONカードは5日締め（翌月5日）
+                closing_month = month + 1
+                closing_year = year
+                if closing_month > 12:
+                    closing_month = 1
+                    closing_year += 1
+                closing_date = date(closing_year, closing_month, 5)
+            else:
+                # その他のカード（楽天、PayPay、Amazon、Olive）は月末締め
+                last_day = calendar.monthrange(year, month)[1]
+                closing_date = date(year, month, last_day)
+
+            # 締め日の翌日以降は非表示
+            if today.date() > closing_date:
+                continue
+        # ボーナス払いは支払日が過ぎたら非表示
+        elif est.is_bonus_payment and est.due_date:
             if today.date() >= est.due_date:
                 continue
 
