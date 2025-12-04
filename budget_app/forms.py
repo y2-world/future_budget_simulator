@@ -1,5 +1,5 @@
 from django import forms
-from datetime import datetime
+from datetime import datetime, timedelta
 import calendar
 from .models import SimulationConfig, MonthlyPlan, CreditEstimate, CreditDefault
 
@@ -919,7 +919,6 @@ class PastSalaryForm(forms.ModelForm):
 
         # デフォルト値（先月）
         if not selected_year or not selected_month:
-            from datetime import datetime, timedelta
             last_month = datetime.now() - timedelta(days=30)
             selected_year = str(last_month.year)
             selected_month = f"{last_month.month:02d}"
