@@ -266,9 +266,15 @@ class MonthlyPlanForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # 年の選択肢を生成（現在の年から前後3年）
+        # 年の選択肢を生成
         current_year = datetime.now().year
-        year_choices = [(str(year), str(year)) for year in range(current_year - 3, current_year + 4)]
+        # 新規作成時は今年以降、編集時は過去も含む
+        if self.instance and self.instance.pk:
+            # 編集時: 既存データの年も含める（過去の計画を編集できるように）
+            year_choices = [(str(year), str(year)) for year in range(current_year - 3, current_year + 4)]
+        else:
+            # 新規作成時: 今年以降のみ（今月以降の計画のみ作成可能）
+            year_choices = [(str(year), str(year)) for year in range(current_year, current_year + 4)]
         self.fields['year'].choices = year_choices
         
         # 月の選択肢を生成
@@ -382,6 +388,13 @@ class MonthlyPlanForm(forms.ModelForm):
                 cleaned_data['year_month'] = f"{year}-{month}"
             else:
                 raise forms.ValidationError('年と月を選択してください。')
+
+        # 新規作成時のみ、今月以降の月次計画のみ許可（編集時は制限しない）
+        if not self.instance.pk:
+            current_year_month = datetime.now().strftime('%Y-%m')
+            selected_year_month = cleaned_data.get('year_month')
+            if selected_year_month and selected_year_month < current_year_month:
+                raise forms.ValidationError('今月以降の月次計画のみ作成できます。過去の給与情報は「過去の給与新規作成」から登録してください。')
 
         return cleaned_data
 
@@ -827,5 +840,123 @@ class PastMonthlyPlanForm(forms.ModelForm):
                 cleaned_data['year_month'] = f"{year}-{month}"
             else:
                 raise forms.ValidationError('年と月を選択してください。')
+
+        return cleaned_data
+
+
+class PastSalaryForm(forms.ModelForm):
+    """過去の給与情報新規作成フォーム（収入のみ）"""
+
+    year = forms.ChoiceField(
+        label='年',
+        widget=forms.Select(attrs={
+            'class': 'w-full p-2 border rounded'
+        })
+    )
+    month = forms.ChoiceField(
+        label='月',
+        widget=forms.Select(attrs={
+            'class': 'w-full p-2 border rounded'
+        })
+    )
+
+    class Meta:
+        model = MonthlyPlan
+        fields = [
+            'year_month',
+            'salary', 'bonus',
+            'gross_salary', 'deductions', 'transportation',
+            'bonus_gross_salary', 'bonus_deductions',
+        ]
+
+        widgets = {
+            'year_month': forms.HiddenInput(),
+        }
+
+        labels = {
+            'year_month': '年月（YYYY-MM）',
+            'salary': '給与',
+            'bonus': 'ボーナス',
+            'gross_salary': '総支給額',
+            'deductions': '控除額',
+            'transportation': '交通費',
+            'bonus_gross_salary': 'ボーナス総支給額',
+            'bonus_deductions': 'ボーナス控除額',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # 年の選択肢を生成（過去10年分、現在の月は含めない）
+        current_year = datetime.now().year
+        year_choices = [(str(year), str(year)) for year in range(current_year - 10, current_year + 1)]
+        self.fields['year'].choices = year_choices
+
+        # 月の選択肢を生成
+        month_choices = [
+            ('01', '1月'), ('02', '2月'), ('03', '3月'), ('04', '4月'),
+            ('05', '5月'), ('06', '6月'), ('07', '7月'), ('08', '8月'),
+            ('09', '9月'), ('10', '10月'), ('11', '11月'), ('12', '12月')
+        ]
+        self.fields['month'].choices = month_choices
+
+        # 既存のインスタンスがある場合、年と月を設定
+        if self.instance and self.instance.pk and self.instance.year_month:
+            try:
+                selected_year, selected_month = self.instance.year_month.split('-')
+                self.fields['year'].initial = selected_year
+                self.fields['month'].initial = selected_month
+            except ValueError:
+                pass
+
+        # POSTデータから年月を取得（新規作成時）
+        selected_year = None
+        selected_month = None
+        if args and len(args) > 0:
+            post_data = args[0]
+            selected_year = post_data.get('year')
+            selected_month = post_data.get('month')
+
+        # デフォルト値（先月）
+        if not selected_year or not selected_month:
+            from datetime import datetime, timedelta
+            last_month = datetime.now() - timedelta(days=30)
+            selected_year = str(last_month.year)
+            selected_month = f"{last_month.month:02d}"
+            self.fields['year'].initial = selected_year
+            self.fields['month'].initial = selected_month
+
+        # すべての数値入力フィールドに共通のクラスを適用
+        for field_name in self.fields:
+            if field_name not in ['year_month', 'year', 'month']:
+                self.fields[field_name].widget.attrs.update({
+                    'class': 'w-full p-2 border rounded',
+                    'placeholder': '0'
+                })
+                # bonus, transportation, bonus関連フィールドは任意項目
+                if field_name in ['bonus', 'transportation', 'bonus_gross_salary', 'bonus_deductions']:
+                    self.fields[field_name].required = False
+                else:
+                    self.fields[field_name].required = False  # 過去の給与は全て任意
+
+    def clean(self):
+        cleaned_data = super().clean()
+        year = cleaned_data.get('year')
+        month = cleaned_data.get('month')
+        year_month = cleaned_data.get('year_month')
+
+        # year_monthが既に設定されている場合（編集時）はそのまま使用
+        # 設定されていない場合（新規作成時）はyearとmonthから生成
+        if not year_month:
+            if year and month:
+                cleaned_data['year_month'] = f"{year}-{month}"
+            else:
+                raise forms.ValidationError('年と月を選択してください。')
+
+        # 過去の月のみ許可（現在の月以降はエラー）
+        current_year_month = datetime.now().strftime('%Y-%m')
+        selected_year_month = cleaned_data.get('year_month')
+        if selected_year_month and selected_year_month >= current_year_month:
+            raise forms.ValidationError('過去の月のみ選択できます。今月以降の計画は月次計画作成から登録してください。')
 
         return cleaned_data

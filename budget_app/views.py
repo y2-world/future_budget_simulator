@@ -361,10 +361,10 @@ def plan_create(request):
         import logging
         logger = logging.getLogger(__name__)
 
-        # 過去月の場合はPastMonthlyPlanFormを使用
+        # 過去月の場合はPastSalaryFormを使用
         if is_past_month:
-            from .forms import PastMonthlyPlanForm
-            form = PastMonthlyPlanForm(request.POST, instance=existing_plan)
+            from .forms import PastSalaryForm
+            form = PastSalaryForm(request.POST, instance=existing_plan)
         else:
             form = MonthlyPlanForm(request.POST, instance=existing_plan)
 
@@ -396,7 +396,10 @@ def plan_create(request):
 
             # 成功メッセージを年月付きで作成
             year_month_display = format_year_month_display(plan.year_month)
-            success_message = f'{year_month_display}の月次計画を登録しました。'
+            if is_past_month:
+                success_message = f'{year_month_display}の給与情報を登録しました。'
+            else:
+                success_message = f'{year_month_display}の月次計画を登録しました。'
 
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': success_message})
@@ -414,8 +417,8 @@ def plan_create(request):
         is_past_mode = request.GET.get('past_mode') == 'true'
 
         if is_past_mode:
-            from .forms import PastMonthlyPlanForm
-            form = PastMonthlyPlanForm()
+            from .forms import PastSalaryForm
+            form = PastSalaryForm()
         else:
             # 設定からデフォルト給与と食費を取得
             config = SimulationConfig.objects.filter(is_active=True).first()
@@ -1398,14 +1401,25 @@ def credit_estimate_edit(request, pk):
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': 'クレカ見積りを更新しました。'})
             messages.success(request, 'クレカ見積りを更新しました。')
+            # リファラーをチェックして適切なページにリダイレクト
+            referer = request.META.get('HTTP_REFERER', '')
+            if 'past-transactions' in referer:
+                return redirect('budget_app:past_transactions_list')
             return redirect('budget_app:credit_estimates')
         else:
             if is_ajax:
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
             messages.error(request, '更新に失敗しました。入力内容を確認してください。')
+            # リファラーをチェックして適切なページにリダイレクト
+            referer = request.META.get('HTTP_REFERER', '')
+            if 'past-transactions' in referer:
+                return redirect('budget_app:past_transactions_list')
             return redirect('budget_app:credit_estimates')
 
     # GETリクエストやAjaxでないPOSTの場合は、ここでは何も返さず、リダイレクトさせる
+    referer = request.META.get('HTTP_REFERER', '')
+    if 'past-transactions' in referer:
+        return redirect('budget_app:past_transactions_list')
     return redirect('budget_app:credit_estimates')
 
 

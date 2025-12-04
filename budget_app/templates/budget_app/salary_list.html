@@ -5,11 +5,11 @@
 <div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-7xl mx-auto">
     <div class="flex justify-between items-center mb-3">
         <h2 class="text-2xl md:text-3xl font-bold text-gray-800">給与一覧</h2>
-        <a href="{% url 'budget_app:plan_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center">
+        <a href="{% url 'budget_app:plan_create' %}?past_mode=true" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
-            月次計画を作成
+            過去の給与新規作成
         </a>
     </div>
 

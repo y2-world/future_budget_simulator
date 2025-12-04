@@ -203,6 +203,11 @@
             }
 
             function toggleExpenseSection() {
+                {% if is_past_mode %}
+                // 過去給与モードでは支出セクションは常に非表示
+                return;
+                {% endif %}
+
                 const yearSelect = document.querySelector('select[name="year"]');
                 const monthSelect = document.querySelector('select[name="month"]');
                 const expenseSection = document.getElementById('expense-section');
@@ -305,8 +310,123 @@
                 }
             }
 
+            function restrictMonthChoices() {
+                {% if is_past_mode %}
+                // 過去給与モード: 現在月より前の月のみ選択可能
+                const yearSelect = document.querySelector('select[name="year"]');
+                const monthSelect = document.querySelector('select[name="month"]');
+
+                if (!yearSelect || !monthSelect) return;
+
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth() + 1;
+                const selectedYear = parseInt(yearSelect.value);
+
+                // 全ての月の選択肢
+                const allMonths = [
+                    {value: '01', label: '1月'}, {value: '02', label: '2月'},
+                    {value: '03', label: '3月'}, {value: '04', label: '4月'},
+                    {value: '05', label: '5月'}, {value: '06', label: '6月'},
+                    {value: '07', label: '7月'}, {value: '08', label: '8月'},
+                    {value: '09', label: '9月'}, {value: '10', label: '10月'},
+                    {value: '11', label: '11月'}, {value: '12', label: '12月'}
+                ];
+
+                // 現在選択されている月を保存
+                const currentSelectedMonth = monthSelect.value;
+
+                // 月の選択肢をクリア
+                monthSelect.innerHTML = '';
+
+                // 選択可能な月を追加
+                if (selectedYear < currentYear) {
+                    // 過去の年: 全ての月を表示
+                    allMonths.forEach(month => {
+                        const option = document.createElement('option');
+                        option.value = month.value;
+                        option.textContent = month.label;
+                        monthSelect.appendChild(option);
+                    });
+                } else if (selectedYear === currentYear) {
+                    // 今年: 先月までを表示
+                    allMonths.forEach(month => {
+                        if (parseInt(month.value) < currentMonth) {
+                            const option = document.createElement('option');
+                            option.value = month.value;
+                            option.textContent = month.label;
+                            monthSelect.appendChild(option);
+                        }
+                    });
+                }
+
+                // 以前の選択を復元（可能なら）
+                if (monthSelect.querySelector(`option[value="${currentSelectedMonth}"]`)) {
+                    monthSelect.value = currentSelectedMonth;
+                } else if (monthSelect.options.length > 0) {
+                    monthSelect.selectedIndex = monthSelect.options.length - 1; // 最後の月（最新の過去月）を選択
+                }
+                {% else %}
+                // 月次計画モード: 今月以降の月のみ選択可能
+                const yearSelect = document.querySelector('select[name="year"]');
+                const monthSelect = document.querySelector('select[name="month"]');
+
+                if (!yearSelect || !monthSelect) return;
+
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth() + 1;
+                const selectedYear = parseInt(yearSelect.value);
+
+                // 全ての月の選択肢
+                const allMonths = [
+                    {value: '01', label: '1月'}, {value: '02', label: '2月'},
+                    {value: '03', label: '3月'}, {value: '04', label: '4月'},
+                    {value: '05', label: '5月'}, {value: '06', label: '6月'},
+                    {value: '07', label: '7月'}, {value: '08', label: '8月'},
+                    {value: '09', label: '9月'}, {value: '10', label: '10月'},
+                    {value: '11', label: '11月'}, {value: '12', label: '12月'}
+                ];
+
+                // 現在選択されている月を保存
+                const currentSelectedMonth = monthSelect.value;
+
+                // 月の選択肢をクリア
+                monthSelect.innerHTML = '';
+
+                // 選択可能な月を追加
+                if (selectedYear > currentYear) {
+                    // 未来の年: 全ての月を表示
+                    allMonths.forEach(month => {
+                        const option = document.createElement('option');
+                        option.value = month.value;
+                        option.textContent = month.label;
+                        monthSelect.appendChild(option);
+                    });
+                } else if (selectedYear === currentYear) {
+                    // 今年: 今月以降を表示
+                    allMonths.forEach(month => {
+                        if (parseInt(month.value) >= currentMonth) {
+                            const option = document.createElement('option');
+                            option.value = month.value;
+                            option.textContent = month.label;
+                            monthSelect.appendChild(option);
+                        }
+                    });
+                }
+
+                // 以前の選択を復元（可能なら）
+                if (monthSelect.querySelector(`option[value="${currentSelectedMonth}"]`)) {
+                    monthSelect.value = currentSelectedMonth;
+                } else if (monthSelect.options.length > 0) {
+                    monthSelect.selectedIndex = 0; // 最初の月を選択
+                }
+                {% endif %}
+            }
+
             // ページ読み込み時と年・月の選択変更時にラベルを更新
             document.addEventListener('DOMContentLoaded', function() {
+                restrictMonthChoices(); // 月の選択肢を制限
                 updateLabels();
                 updateYearMonth();
                 toggleBonusField(); // ページ読み込み時にボーナス表示を更新
@@ -320,6 +440,7 @@
 
                 if (yearSelect) {
                     yearSelect.addEventListener('change', function() {
+                        restrictMonthChoices(); // 年が変更されたら月の選択肢を更新
                         updateLabels();
                         updateYearMonth();
                         toggleBonusField(); // 年変更時にもボーナス表示を更新
@@ -378,7 +499,7 @@
             });
         </script>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 {% if not is_past_mode %}lg:grid-cols-2{% endif %} gap-6">
             <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-4 md:p-6 rounded-xl shadow-sm">
                 <h3 class="font-bold text-lg md:text-xl mb-4 text-green-800 flex items-center">
                     <span class="mr-2">💰</span>収入
@@ -476,6 +597,7 @@
                 {% endfor %}
             </div>
 
+            {% if not is_past_mode %}
             <div id="expense-section" class="bg-gradient-to-br from-red-50 to-pink-50 p-4 md:p-6 rounded-xl shadow-sm">
                 <h3 class="font-bold text-lg md:text-xl mb-4 text-red-800 flex items-center">
                     <span class="mr-2">💳</span>支出
@@ -492,6 +614,7 @@
                     {% endif %}
                 {% endfor %}
             </div>
+            {% endif %}
         </div>
 
         <div class="mt-6 flex flex-col sm:flex-row gap-3">
