@@ -1445,13 +1445,27 @@ def credit_estimate_delete(request, pk):
                 estimate.delete()
                 message = 'クレカ見積りを削除しました。'
 
-            return JsonResponse({'status': 'success', 'message': message})
+            if is_ajax:
+                return JsonResponse({'status': 'success', 'message': message})
+            else:
+                messages.success(request, message)
+                # リファラーをチェックして適切なページにリダイレクト
+                referer = request.META.get('HTTP_REFERER', '')
+                if 'past-transactions' in referer:
+                    return redirect('budget_app:past_transactions_list')
+                return redirect('budget_app:credit_estimates')
 
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': f'削除中にエラーが発生しました: {str(e)}'}, status=500)
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': f'削除中にエラーが発生しました: {str(e)}'}, status=500)
+            else:
+                messages.error(request, f'削除中にエラーが発生しました: {str(e)}')
+                referer = request.META.get('HTTP_REFERER', '')
+                if 'past-transactions' in referer:
+                    return redirect('budget_app:past_transactions_list')
+                return redirect('budget_app:credit_estimates')
 
     # POST以外のリクエストはリダイレクト
-
     return redirect('budget_app:credit_estimates')
 
 
