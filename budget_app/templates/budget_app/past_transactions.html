@@ -916,10 +916,18 @@ document.querySelectorAll('form[action*="/plans/"][action*="/edit/"]').forEach(f
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showToast(data.message);
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json().then(data => ({
+                ok: response.ok,
+                status: response.status,
+                data: data
+            }));
+        })
+        .then(result => {
+            console.log('Response data:', result.data);
+            if (result.ok && result.data.status === 'success') {
+                showToast(result.data.message);
                 // 編集フォームを閉じる
                 const planId = this.action.match(/\/plans\/(\d+)\/edit\//)[1];
                 const editFormId = document.getElementById(`edit-form-${planId}`);
@@ -931,12 +939,24 @@ document.querySelectorAll('form[action*="/plans/"][action*="/edit/"]').forEach(f
                     window.location.reload();
                 }, 500);
             } else {
-                showToast('更新に失敗しました。入力内容を確認してください。', 'error');
+                // エラーメッセージを表示
+                let errorMsg = '更新に失敗しました。';
+                if (result.data.errors) {
+                    console.error('Form errors:', result.data.errors);
+                    const errorList = [];
+                    for (const [field, errors] of Object.entries(result.data.errors)) {
+                        errorList.push(...errors);
+                    }
+                    if (errorList.length > 0) {
+                        errorMsg = errorList.join(', ');
+                    }
+                }
+                showToast(errorMsg, 'error');
             }
         })
         .catch(error => {
-            showToast('エラーが発生しました。', 'error');
             console.error('Error:', error);
+            showToast('エラーが発生しました。コンソールを確認してください。', 'error');
         });
     });
 });
