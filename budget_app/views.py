@@ -1757,14 +1757,20 @@ def past_transactions_list(request):
     ).order_by('-year_month')
 
     # 過去のクレカ見積りを取得
-    # billing_month（引き落とし月）ベースで取得
-    # 先月以前、または当月で締め日/支払日が過ぎたもの
+    # 締め日が過ぎたものを表示するため、未来の引き落とし月も含めて取得
+    # （例：11月利用分は1月引き落とし、締め日は12月5日 → 12月6日には過去の明細に表示）
     # billing_monthがない古いデータにも対応するため、year_monthもチェック
     from django.db.models import Q
+    from dateutil.relativedelta import relativedelta
+
+    # 当月から3ヶ月先までのデータを取得（VIEWカードは翌々月払いなので）
+    future_limit_date = current_date + relativedelta(months=3)
+    future_limit_year_month = future_limit_date.strftime('%Y-%m')
+
     past_credit_estimates = CreditEstimate.objects.filter(
-        Q(billing_month__lte=current_year_month) |
-        Q(billing_month__isnull=True, year_month__lte=current_year_month) |
-        Q(billing_month='', year_month__lte=current_year_month)
+        Q(billing_month__lte=future_limit_year_month) |
+        Q(billing_month__isnull=True, year_month__lte=future_limit_year_month) |
+        Q(billing_month='', year_month__lte=future_limit_year_month)
     ).order_by('-billing_month', '-year_month')
 
     # 年ごとにグループ化して、月ごとの収入・支出を集計
@@ -1884,35 +1890,35 @@ def past_transactions_list(request):
     # billing_month（引き落とし月）でグループ化
     for estimate in past_credit_estimates:
         # クレカ見積もりと同じロジックで、締め日/支払日が過ぎたかチェック
+        # 締め日が過ぎていないものは表示しない
+
+        # 通常払いの場合、締め日が過ぎたかチェック
+        if not estimate.is_bonus_payment:
+            year, month = map(int, estimate.year_month.split('-'))
+            import calendar
+
+            if estimate.card_type in ['view', 'vermillion']:
+                # VIEW/VERMILLIONカードは5日締め（翌月5日）
+                closing_month = month + 1
+                closing_year = year
+                if closing_month > 12:
+                    closing_month = 1
+                    closing_year += 1
+                closing_date = dt_date(closing_year, closing_month, 5)
+            else:
+                # その他のカード（楽天、PayPay、Amazon、Olive）は月末締め
+                last_day = calendar.monthrange(year, month)[1]
+                closing_date = dt_date(year, month, last_day)
+
+            # 締め日の翌日以降のみ表示
+            if current_date <= closing_date:
+                continue
+        # ボーナス払いの場合、支払日が過ぎたかチェック
+        elif estimate.is_bonus_payment and estimate.due_date:
+            if current_date < estimate.due_date:
+                continue
+
         billing_month = estimate.billing_month or estimate.year_month
-
-        # 当月の場合のみチェック（先月以前は無条件で表示）
-        if billing_month == current_year_month:
-            # 通常払いの場合、締め日が過ぎたかチェック
-            if not estimate.is_bonus_payment:
-                year, month = map(int, estimate.year_month.split('-'))
-                import calendar
-
-                if estimate.card_type in ['view', 'vermillion']:
-                    # VIEW/VERMILLIONカードは5日締め（翌月5日）
-                    closing_month = month + 1
-                    closing_year = year
-                    if closing_month > 12:
-                        closing_month = 1
-                        closing_year += 1
-                    closing_date = dt_date(closing_year, closing_month, 5)
-                else:
-                    # その他のカード（楽天、PayPay、Amazon、Olive）は月末締め
-                    last_day = calendar.monthrange(year, month)[1]
-                    closing_date = dt_date(year, month, last_day)
-
-                # 締め日の翌日以降のみ表示
-                if current_date <= closing_date:
-                    continue
-            # ボーナス払いの場合、支払日が過ぎたかチェック
-            elif estimate.is_bonus_payment and estimate.due_date:
-                if current_date < estimate.due_date:
-                    continue
 
         # billing_monthベースで年を取得
         billing_month = estimate.billing_month or estimate.year_month
