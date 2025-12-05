@@ -1277,6 +1277,17 @@ def credit_estimate_list(request):
         ))
         summary[year_month] = sorted_cards
 
+    # 空のカードグループ（エントリーが0件のカード）を削除
+    for year_month in list(summary.keys()):
+        month_group = summary[year_month]
+        # エントリーが空のカードを削除
+        cards_to_remove = [card_type for card_type, card_data in month_group.items() if len(card_data.get('entries', [])) == 0]
+        for card_type in cards_to_remove:
+            del month_group[card_type]
+        # 月全体が空になったら削除
+        if len(month_group) == 0:
+            del summary[year_month]
+
     # summaryを現在、未来、過去に分割
     today = datetime.now()
     current_month_str = today.strftime('%Y-%m')
