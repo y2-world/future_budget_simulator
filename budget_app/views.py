@@ -885,11 +885,33 @@ def credit_estimate_list(request):
     existing_billing_months = set(summary.keys())
 
     # 定期デフォルトを追加する利用月を決定
-    # 当月から3ヶ月分の利用月を候補とする
-    candidate_usage_months = []
-    for i in range(6):  # 少し多めに候補を用意
-        month_date = (today.replace(day=1) + timedelta(days=32 * i)).replace(day=1)
-        candidate_usage_months.append(month_date.strftime('%Y-%m'))
+    # 既存の引き落とし月から逆算して、対応する利用月を計算
+    candidate_usage_months = set()
+    for billing_month in existing_billing_months:
+        # ボーナス払いのキー（"YYYY-MM_bonus"形式）はスキップ
+        if '_bonus' in billing_month:
+            continue
+
+        billing_year, billing_month_num = map(int, billing_month.split('-'))
+
+        # VIEW/VERMILLIONカード用の利用月を計算（引き落とし月の2ヶ月前）
+        view_usage_month_num = billing_month_num - 2
+        view_usage_year = billing_year
+        if view_usage_month_num < 1:
+            view_usage_month_num += 12
+            view_usage_year -= 1
+        candidate_usage_months.add(f"{view_usage_year}-{view_usage_month_num:02d}")
+
+        # その他のカード用の利用月を計算（引き落とし月の1ヶ月前）
+        other_usage_month_num = billing_month_num - 1
+        other_usage_year = billing_year
+        if other_usage_month_num < 1:
+            other_usage_month_num += 12
+            other_usage_year -= 1
+        candidate_usage_months.add(f"{other_usage_year}-{other_usage_month_num:02d}")
+
+    # セットをリストに変換してソート
+    candidate_usage_months = sorted(list(candidate_usage_months))
 
     # 各年月の各カードに定期デフォルトを追加
     for year_month in candidate_usage_months:

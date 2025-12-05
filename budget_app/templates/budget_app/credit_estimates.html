@@ -86,10 +86,12 @@
         {% comment %} 登録済み見積もりを「今月」「未来」「過去」に分けて表示 {% endcomment %}
 
         <div class="space-y-8">
+            {% if current_month_summary %}
             <div>
                 <h3 class="text-xl font-bold mb-4">今月の見積もり（{{ current_month_str|format_year_month }}）</h3>
                 {% include 'budget_app/_summary_section.html' with summary_data=current_month_summary title='今月' %}
             </div>
+            {% endif %}
 
             <div>
                 <h3 class="text-xl font-bold mb-4">今後の見積もり</h3>
