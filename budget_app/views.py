@@ -850,23 +850,31 @@ def credit_estimate_list(request):
 
         month_group = summary.setdefault(display_month, OrderedDict())
 
-        # ボーナス払いも通常払いも同じカードキーを使用（ソートのため）
-        card_key = est.card_type
-
-        # カード名 + 支払日を表示
-        due_day = card_due_days.get(est.card_type, '')
-        if due_day and display_month:
-            billing_year, billing_month = map(int, display_month.split('-'))
-            card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)"
+        if est.is_bonus_payment:
+            card_key = f'{est.card_type}_bonus'
+            # ボーナス払いの場合もカード名 + 支払日を表示
+            due_day = card_due_days.get(est.card_type, '')
+            if due_day and display_month:
+                billing_year, billing_month = map(int, display_month.split('-'))
+                card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)（ボーナス払い）"
+            else:
+                card_label = card_labels.get(est.card_type, est.card_type) + '（ボーナス払い）'
         else:
-            card_label = card_labels.get(est.card_type, est.card_type)
+            card_key = est.card_type
+            # 通常払いの場合、カード名 + 支払日を表示
+            due_day = card_due_days.get(est.card_type, '')
+            if due_day and display_month:
+                billing_year, billing_month = map(int, display_month.split('-'))
+                card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)"
+            else:
+                card_label = card_labels.get(est.card_type, est.card_type)
 
         card_group = month_group.setdefault(card_key, {
             'label': card_label,
             'total': 0,
             'entries': [],
             'year_month': display_month,  # 表示月（ボーナス払いは支払月、通常払いは利用月）
-            'is_bonus_section': False,  # ボーナス払いと通常払いを混在させる
+            'is_bonus_section': est.is_bonus_payment,  # ボーナス払いセクションかどうか
         })
         card_group['total'] += est.amount
         # 通常のCreditEstimateオブジェクトにis_defaultフラグを追加
@@ -1078,14 +1086,23 @@ def credit_estimate_list(request):
                 x.default_id if (hasattr(x, 'is_default') and x.is_default and hasattr(x, 'default_id')) else (x.pk if hasattr(x, 'pk') and x.pk else float('inf'))
             ))
 
-    # カードタイプの表示順序をモデルの定義から動的に生成
-    card_order = {card_type: i for i, (card_type, _) in enumerate(CreditEstimate.CARD_TYPES)}
-
-    # 各月のカードをカードタイプ順にソート
+    # 各月のカードを支払日順にソート
     for year_month, month_group in summary.items():
+        def get_card_sort_key(item):
+            card_key, card_data = item
+            # カードのエントリーから最小の支払日を取得
+            min_date = datetime.max.date()
+            for entry in card_data['entries']:
+                if hasattr(entry, 'due_date') and entry.due_date:
+                    if entry.due_date < min_date:
+                        min_date = entry.due_date
+            # ボーナス払いかどうかをセカンダリキーにする（同じ日付なら通常払いを先に）
+            is_bonus = '_bonus' in card_key
+            return (min_date, is_bonus)
+
         sorted_cards = OrderedDict(sorted(
             month_group.items(),
-            key=lambda item: card_order.get(item[0], 99)  # カードタイプ順でソート
+            key=get_card_sort_key
         ))
         summary[year_month] = sorted_cards
 
