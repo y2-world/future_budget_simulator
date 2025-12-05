@@ -253,7 +253,7 @@
                                                                             <div class="flex items-center gap-2">
                                                                                 <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
                                                                                 <div class="flex gap-1">
-                                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
                                                                                     <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？');">
                                                                                         {% csrf_token %}
                                                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
@@ -512,7 +512,7 @@
                                                                     <span class="text-red-600 font-medium whitespace-nowrap">{{ est.amount|yen }}</span>
                                                                 </div>
                                                                 <div class="flex gap-2 justify-end">
-                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
                                                                     <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？');">
                                                                         {% csrf_token %}
                                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
@@ -725,7 +725,7 @@
     }
 })();
 
-function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, isSplitPayment, isBonusPayment) {
+function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment) {
     const modal = document.getElementById('editModal');
     const form = document.getElementById('editForm');
 
@@ -763,7 +763,14 @@ function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, is
     // その他のフィールドを設定
     document.getElementById('edit_description').value = description || '';
     document.getElementById('edit_amount').value = amount || '';
-    document.getElementById('edit_due_date').value = dueDate || '';
+
+    // ボーナス払いの場合は購入日（利用日）を表示、それ以外は支払日を表示
+    if (isBonusPayment && purchaseDate) {
+        document.getElementById('edit_due_date').value = purchaseDate;
+    } else {
+        document.getElementById('edit_due_date').value = dueDate || '';
+    }
+
     document.getElementById('edit_is_split_payment').checked = isSplitPayment;
     document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
 
@@ -818,6 +825,26 @@ document.querySelectorAll('#editModal .card-type-label').forEach(label => {
         indicator.classList.remove('border-gray-400');
         dot.classList.remove('hidden');
     });
+});
+
+// 編集フォームの送信処理
+const editForm = document.getElementById('editForm');
+editForm.addEventListener('submit', function(e) {
+    const formData = new FormData(editForm);
+
+    // ボーナス払いの場合、due_date（利用日）をpurchase_date（購入日）としても送信
+    const isBonusPayment = formData.get('is_bonus_payment');
+    if (isBonusPayment) {
+        const dueDate = formData.get('due_date');
+        if (dueDate) {
+            // purchase_dateフィールドを追加
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'purchase_date';
+            hiddenInput.value = dueDate;
+            editForm.appendChild(hiddenInput);
+        }
+    }
 });
 </script>
 {% endblock %}
