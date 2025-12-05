@@ -586,10 +586,7 @@ class CreditEstimateForm(forms.ModelForm):
                     invalid_period = True
 
                 if invalid_period:
-                    raise forms.ValidationError(
-                        'ボーナス払いの対象外期間です。\n'
-                        '対象期間: 12/6〜6/5 (8/4支払) または 6/6〜11/5 (1/4支払)'
-                    )
+                    self.add_error('due_date', 'ボーナス払いの対象外期間です。対象期間: 12/6〜6/5 (8/4支払) または 6/6〜11/5 (1/4支払)')
 
         return cleaned_data
 
