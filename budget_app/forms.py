@@ -569,6 +569,27 @@ class CreditEstimateForm(forms.ModelForm):
 
         instance = super().save(commit=False)
 
+        # 引き落とし月を計算
+        def calculate_billing_month(usage_month, card_type, split_part=None):
+            """利用月から引き落とし月を計算"""
+            usage_date = datetime.strptime(usage_month, '%Y-%m')
+
+            # 基本: 翌々月（2ヶ月後）
+            months_offset = 2
+
+            # 分割2回目の場合はさらに+1ヶ月
+            if split_part == 2:
+                months_offset = 3
+
+            # 月を加算
+            new_month = usage_date.month + months_offset
+            new_year = usage_date.year
+            while new_month > 12:
+                new_month -= 12
+                new_year += 1
+
+            return f"{new_year}-{new_month:02d}"
+
         # ボーナス払いの場合、年月を調整
         if instance.is_bonus_payment:
             # 既存エントリーの場合は、元々ボーナス払いだったかチェック
@@ -634,18 +655,15 @@ class CreditEstimateForm(forms.ModelForm):
                 instance.amount = first_payment
                 instance.split_payment_part = 1
                 instance.split_payment_group = group_id
+                instance.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=1)
 
                 if commit:
                     instance.save()
 
-                # 次月を計算
-                current_date = datetime.strptime(instance.year_month, '%Y-%m')
-                next_month_date = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
-                next_month_str = next_month_date.strftime('%Y-%m')
-
-                # 次月のエントリー（2回目）を作成
+                # 2回目のエントリー（2回目）を作成（利用月は同じ）
                 CreditEstimate.objects.create(
-                    year_month=next_month_str,
+                    year_month=instance.year_month,  # 利用月は1回目と同じ
+                    billing_month=calculate_billing_month(instance.year_month, instance.card_type, split_part=2),
                     card_type=instance.card_type,
                     description=instance.description,
                     amount=second_payment,
@@ -658,10 +676,8 @@ class CreditEstimateForm(forms.ModelForm):
             else:
                 # 既に分割済みのエントリーを編集する場合、2回目のエントリーも更新
                 if instance.split_payment_part == 1 and instance.split_payment_group:
-                    # 次月を計算
-                    current_date = datetime.strptime(instance.year_month, '%Y-%m')
-                    next_month_date = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
-                    next_month_str = next_month_date.strftime('%Y-%m')
+                    # 1回目のbilling_monthを設定
+                    instance.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=1)
 
                     # 2回目のエントリーを取得して更新
                     second_payment = CreditEstimate.objects.filter(
@@ -670,12 +686,16 @@ class CreditEstimateForm(forms.ModelForm):
                     ).first()
 
                     if second_payment:
-                        second_payment.year_month = next_month_str
+                        second_payment.year_month = instance.year_month  # 利用月は1回目と同じ
+                        second_payment.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=2)
                         second_payment.card_type = instance.card_type
                         second_payment.description = instance.description
                         second_payment.due_date = instance.due_date
                         second_payment.is_bonus_payment = instance.is_bonus_payment
                         second_payment.save()
+                elif instance.split_payment_part == 2 and instance.split_payment_group:
+                    # 2回目のみ編集する場合
+                    instance.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=2)
         else:
             # 分割払いチェックボックスがオフの場合
             if is_already_split:
@@ -720,6 +740,10 @@ class CreditEstimateForm(forms.ModelForm):
                 # 分割払い情報をクリア
                 instance.split_payment_part = None
                 instance.split_payment_group = None
+
+        # 通常払い（分割なし）の場合、billing_monthを設定
+        if not instance.is_split_payment or not instance.split_payment_part:
+            instance.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=None)
 
         if commit:
             instance.save()

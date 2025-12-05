@@ -106,7 +106,8 @@ class CreditEstimate(models.Model):
         ('olive', 'Olive'),
     ]
 
-    year_month = models.CharField(max_length=7, verbose_name="請求月（YYYY-MM）")
+    year_month = models.CharField(max_length=7, verbose_name="利用月（YYYY-MM）")
+    billing_month = models.CharField(max_length=7, verbose_name="引き落とし月（YYYY-MM）", null=True, blank=True)
     card_type = models.CharField(max_length=10, choices=CARD_TYPES, verbose_name="カード種別")
     description = models.CharField(max_length=100, blank=True, verbose_name="メモ")
     amount = models.IntegerField(verbose_name="見積額（円）")
