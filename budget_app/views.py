@@ -1102,33 +1102,28 @@ def credit_estimate_list(request):
             # カード種別を取得（_bonusサフィックスを除去）
             base_card_type = card_key.replace('_bonus', '')
 
-            # カードのエントリーから最小の支払日を取得
-            min_date = None
-            for entry in card_data['entries']:
-                if hasattr(entry, 'due_date') and entry.due_date:
-                    if min_date is None or entry.due_date < min_date:
-                        min_date = entry.due_date
-
-            # due_dateがない場合（DefaultEntryなど）、billing_monthとカード種別から計算
-            if min_date is None:
-                from datetime import date
-                import calendar
-                due_day = card_due_days.get(base_card_type)
-                if due_day:
-                    billing_year, billing_month = map(int, year_month.split('-'))
-                    # 月の最終日を取得
-                    last_day = calendar.monthrange(billing_year, billing_month)[1]
-                    # 支払日が月の日数を超える場合は最終日に調整
-                    actual_due_day = min(due_day, last_day)
-                    # 営業日調整
-                    min_date = adjust_to_next_business_day(date(billing_year, billing_month, actual_due_day))
-                else:
-                    # due_dayがない場合は月初
-                    min_date = date(billing_year, billing_month, 1)
+            # 支払日をbilling_monthとカード種別から計算
+            # 注意: due_dateは通常払いの場合は利用日、ボーナス払いの場合は支払日を意味するため、
+            #       ソートには使えない。billing_monthとcard_typeから支払日を計算する。
+            from datetime import date
+            import calendar
+            due_day = card_due_days.get(base_card_type)
+            if due_day:
+                billing_year, billing_month = map(int, year_month.split('-'))
+                # 月の最終日を取得
+                last_day = calendar.monthrange(billing_year, billing_month)[1]
+                # 支払日が月の日数を超える場合は最終日に調整
+                actual_due_day = min(due_day, last_day)
+                # 営業日調整
+                payment_date = adjust_to_next_business_day(date(billing_year, billing_month, actual_due_day))
+            else:
+                # due_dayがない場合は月初
+                billing_year, billing_month = map(int, year_month.split('-'))
+                payment_date = date(billing_year, billing_month, 1)
 
             # ボーナス払いかどうかをセカンダリキーにする（同じ日付なら通常払いを先に）
             is_bonus = '_bonus' in card_key
-            return (min_date, is_bonus)
+            return (payment_date, is_bonus)
 
         sorted_cards = OrderedDict(sorted(
             month_group.items(),
