@@ -655,7 +655,27 @@ class CreditEstimateForm(forms.ModelForm):
                     split_payment_part=2,
                     split_payment_group=group_id,
                 )
-            # else: 既に分割済みの場合は何もしない（金額の編集のみ許可）
+            else:
+                # 既に分割済みのエントリーを編集する場合、2回目のエントリーも更新
+                if instance.split_payment_part == 1 and instance.split_payment_group:
+                    # 次月を計算
+                    current_date = datetime.strptime(instance.year_month, '%Y-%m')
+                    next_month_date = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
+                    next_month_str = next_month_date.strftime('%Y-%m')
+
+                    # 2回目のエントリーを取得して更新
+                    second_payment = CreditEstimate.objects.filter(
+                        split_payment_group=instance.split_payment_group,
+                        split_payment_part=2
+                    ).first()
+
+                    if second_payment:
+                        second_payment.year_month = next_month_str
+                        second_payment.card_type = instance.card_type
+                        second_payment.description = instance.description
+                        second_payment.due_date = instance.due_date
+                        second_payment.is_bonus_payment = instance.is_bonus_payment
+                        second_payment.save()
         else:
             # 分割払いチェックボックスがオフの場合
             if is_already_split:
