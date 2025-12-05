@@ -247,7 +247,13 @@
                                                                         <div class="flex justify-between items-center">
                                                                             <div class="flex items-center gap-2">
                                                                                 <span class="text-gray-500">
-                                                                                    {% if est.estimate.due_date %}{{ est.estimate.due_date|date:"Y/n/j" }}{% else %}{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% endif %}
+                                                                                    {% if est.estimate.is_bonus_payment and est.estimate.purchase_date %}
+                                                                                        {{ est.estimate.purchase_date|date:"Y/n/j" }}
+                                                                                    {% elif est.estimate.due_date %}
+                                                                                        {{ est.estimate.due_date|date:"Y/n/j" }}
+                                                                                    {% else %}
+                                                                                        {{ est.estimate.year_month }}
+                                                                                    {% endif %}
                                                                                 </span>
                                                                                 <span class="font-medium text-gray-700">{{ est.memo|default:"（明細名なし）" }}</span>
                                                                                 {% if est.estimate.is_split_payment %}
@@ -503,7 +509,13 @@
                                                                 <div class="flex justify-between items-start mb-1">
                                                                     <div class="flex items-center gap-1 flex-wrap">
                                                                         <span class="text-gray-500">
-                                                                            {% if est.estimate.due_date %}{{ est.estimate.due_date|date:"Y/n/j" }}{% else %}{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% endif %}
+                                                                            {% if est.estimate.is_bonus_payment and est.estimate.purchase_date %}
+                                                                                {{ est.estimate.purchase_date|date:"Y/n/j" }}
+                                                                            {% elif est.estimate.due_date %}
+                                                                                {{ est.estimate.due_date|date:"Y/n/j" }}
+                                                                            {% else %}
+                                                                                {{ est.estimate.year_month }}
+                                                                            {% endif %}
                                                                         </span>
                                                                         <span class="font-medium text-gray-700">{{ est.memo|default:"（明細名なし）" }}</span>
                                                                         {% if est.estimate.is_split_payment %}
@@ -730,6 +742,26 @@
         }
     }
 })();
+
+// 分割払いとボーナス払いを排他的にする
+document.addEventListener('DOMContentLoaded', function() {
+    const splitCheckbox = document.getElementById('edit_is_split_payment');
+    const bonusCheckbox = document.getElementById('edit_is_bonus_payment');
+
+    if (splitCheckbox && bonusCheckbox) {
+        splitCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                bonusCheckbox.checked = false;
+            }
+        });
+
+        bonusCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                splitCheckbox.checked = false;
+            }
+        });
+    }
+});
 
 function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment) {
     const modal = document.getElementById('editModal');

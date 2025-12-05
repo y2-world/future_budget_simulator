@@ -127,6 +127,7 @@
         <form id="editForm" method="post" class="p-4 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="year_month" id="edit_year_month_hidden">
+            <input type="hidden" name="card_type" id="edit_card_type_hidden" disabled>
 
             <!-- 年月 -->
             <div class="grid grid-cols-2 gap-3">
@@ -219,6 +220,13 @@
                         </div>
                     </label>
                 </div>
+                <!-- 分割払いの場合の注意メッセージ -->
+                <p id="edit_split_payment_notice" class="text-sm text-amber-600 mt-2 hidden">
+                    <svg class="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    分割払いのため、カード種別は変更できません
+                </p>
             </div>
 
             <!-- 内容 -->
@@ -406,12 +414,34 @@
         document.getElementById('edit_year_month_hidden').value = yearMonth;
 
         // カード種別を設定（ラジオボタン形式）
+        const cardTypeHidden = document.getElementById('edit_card_type_hidden');
+
+        // 分割払いの場合はhiddenフィールドを有効化し、ラジオボタンを無効化
+        if (isSplitPayment) {
+            cardTypeHidden.disabled = false;
+            cardTypeHidden.value = cardType;
+        } else {
+            cardTypeHidden.disabled = true;
+            cardTypeHidden.value = '';
+        }
+
         document.querySelectorAll('#editModal .card-type-radio').forEach(radio => {
             radio.checked = (radio.value === cardType);
             const label = radio.closest('.card-type-label');
             const box = label.querySelector('.card-type-box');
             const indicator = label.querySelector('.radio-indicator');
             const dot = label.querySelector('.radio-dot');
+
+            // 分割払いの場合はカード種別を変更不可にする
+            if (isSplitPayment) {
+                radio.disabled = true;
+                label.classList.remove('cursor-pointer');
+                label.classList.add('cursor-not-allowed', 'opacity-60');
+            } else {
+                radio.disabled = false;
+                label.classList.add('cursor-pointer');
+                label.classList.remove('cursor-not-allowed', 'opacity-60');
+            }
 
             if (radio.checked) {
                 box.classList.add('border-blue-600', 'bg-blue-50');
@@ -441,6 +471,16 @@
 
         document.getElementById('edit_is_split_payment').checked = isSplitPayment;
         document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
+
+        // 分割払いの場合の注意メッセージ表示を更新
+        const splitNotice = document.getElementById('edit_split_payment_notice');
+        if (splitNotice) {
+            if (isSplitPayment) {
+                splitNotice.classList.remove('hidden');
+            } else {
+                splitNotice.classList.add('hidden');
+            }
+        }
 
         // ボーナス払いチェックボックスの表示を更新
         const editBonusWrapper = document.getElementById('edit_bonus_payment_wrapper');

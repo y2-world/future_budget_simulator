@@ -154,7 +154,8 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-xs">編集</a>
+                                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</a>
+                                        <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                     </td>
                                 </tr>
                                 {% endif %}
@@ -175,7 +176,8 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-xs">編集</a>
+                                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</a>
+                                        <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                     </td>
                                 </tr>
                                 {% endif %}
@@ -191,7 +193,10 @@
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
                             <div class="flex justify-between items-center mb-2">
                                 <div class="font-bold text-lg text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
-                                <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">編集</a>
+                                <div class="flex gap-2">
+                                    <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">編集</a>
+                                    <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-sm">
                                 <div>
@@ -250,7 +255,10 @@
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
                             <div class="flex justify-between items-center mb-2">
                                 <div class="font-bold text-lg text-gray-800">{{ plan.year_month|format_year_month }}</div>
-                                <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">編集</a>
+                                <div class="flex gap-2">
+                                    <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">編集</a>
+                                    <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-sm">
                                 <div>
@@ -317,6 +325,47 @@
             details.classList.add('hidden');
             icon.classList.remove('rotate-180');
         }
+    }
+
+    // 削除機能
+    function deletePlan(planId) {
+        if (confirm('この給与データを削除してもよろしいですか？')) {
+            fetch(`/plans/${planId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.showToast('給与データを削除しました', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    window.showToast('削除に失敗しました', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.showToast('削除に失敗しました', 'error');
+            });
+        }
+    }
+
+    // CSRFトークンを取得
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 
     document.addEventListener('DOMContentLoaded', function() {

@@ -336,14 +336,13 @@ class MonthlyPlanForm(forms.ModelForm):
         selected_year = None
         selected_month = None
         
-        # 既存のインスタンスがある場合、年と月を設定
+        # 既存のインスタンスがある場合、年と月のフィールドを削除（編集時は表示しない）
         if self.instance and self.instance.pk and self.instance.year_month:
-            try:
-                selected_year, selected_month = self.instance.year_month.split('-')
-                self.fields['year'].initial = selected_year
-                self.fields['month'].initial = selected_month
-            except ValueError:
-                pass
+            # 編集時は年月フィールドを表示しない
+            if 'year' in self.fields:
+                del self.fields['year']
+            if 'month' in self.fields:
+                del self.fields['month']
         
         # POSTデータから年月を取得（新規作成時）
         if not selected_year and args and len(args) > 0:
@@ -351,11 +350,11 @@ class MonthlyPlanForm(forms.ModelForm):
             selected_year = post_data.get('year')
             selected_month = post_data.get('month')
         
-        # デフォルト値（現在の年月）
-        if not selected_year:
+        # デフォルト値（現在の年月）- 新規作成時のみ
+        if 'year' in self.fields and not selected_year:
             selected_year = str(current_year)
             self.fields['year'].initial = selected_year
-        if not selected_month:
+        if 'month' in self.fields and not selected_month:
             selected_month = f"{datetime.now().month:02d}"
             self.fields['month'].initial = selected_month
         
@@ -576,8 +575,14 @@ class CreditEstimateForm(forms.ModelForm):
         if year and month:
             cleaned_data['year_month'] = f"{year}-{month}"
 
-        # ボーナス払いの場合、購入日が有効な期間かチェック
+        # 分割払いとボーナス払いが同時に選択されていないかチェック
+        is_split_payment = cleaned_data.get('is_split_payment')
         is_bonus_payment = cleaned_data.get('is_bonus_payment')
+
+        if is_split_payment and is_bonus_payment:
+            raise forms.ValidationError('分割払いとボーナス払いは同時に選択できません。')
+
+        # ボーナス払いの場合、購入日が有効な期間かチェック
         due_date = cleaned_data.get('due_date')
         purchase_date = cleaned_data.get('purchase_date')
 
@@ -1010,14 +1015,13 @@ class PastMonthlyPlanForm(forms.ModelForm):
         ]
         self.fields['month'].choices = month_choices
 
-        # 既存のインスタンスがある場合、年と月を設定
+        # 既存のインスタンスがある場合、年と月のフィールドを削除（編集時は表示しない）
         if self.instance and self.instance.pk and self.instance.year_month:
-            try:
-                selected_year, selected_month = self.instance.year_month.split('-')
-                self.fields['year'].initial = selected_year
-                self.fields['month'].initial = selected_month
-            except ValueError:
-                pass
+            # 編集時は年月フィールドを表示しない
+            if 'year' in self.fields:
+                del self.fields['year']
+            if 'month' in self.fields:
+                del self.fields['month']
 
         # POSTデータから年月を取得（新規作成時）
         selected_year = None
@@ -1027,11 +1031,11 @@ class PastMonthlyPlanForm(forms.ModelForm):
             selected_year = post_data.get('year')
             selected_month = post_data.get('month')
 
-        # デフォルト値（現在の年月）
-        if not selected_year:
+        # デフォルト値（現在の年月）- 新規作成時のみ
+        if 'year' in self.fields and not selected_year:
             selected_year = str(current_year)
             self.fields['year'].initial = selected_year
-        if not selected_month:
+        if 'month' in self.fields and not selected_month:
             selected_month = f"{datetime.now().month:02d}"
             self.fields['month'].initial = selected_month
 
@@ -1135,14 +1139,13 @@ class PastSalaryForm(forms.ModelForm):
         ]
         self.fields['month'].choices = month_choices
 
-        # 既存のインスタンスがある場合、年と月を設定
+        # 既存のインスタンスがある場合、年と月のフィールドを削除（編集時は表示しない）
         if self.instance and self.instance.pk and self.instance.year_month:
-            try:
-                selected_year, selected_month = self.instance.year_month.split('-')
-                self.fields['year'].initial = selected_year
-                self.fields['month'].initial = selected_month
-            except ValueError:
-                pass
+            # 編集時は年月フィールドを表示しない
+            if 'year' in self.fields:
+                del self.fields['year']
+            if 'month' in self.fields:
+                del self.fields['month']
 
         # POSTデータから年月を取得（新規作成時）
         selected_year = None
@@ -1152,13 +1155,14 @@ class PastSalaryForm(forms.ModelForm):
             selected_year = post_data.get('year')
             selected_month = post_data.get('month')
 
-        # デフォルト値（先月）
+        # デフォルト値（先月）- 新規作成時のみ
         if not selected_year or not selected_month:
-            last_month = datetime.now() - timedelta(days=30)
-            selected_year = str(last_month.year)
-            selected_month = f"{last_month.month:02d}"
-            self.fields['year'].initial = selected_year
-            self.fields['month'].initial = selected_month
+            if 'year' in self.fields and 'month' in self.fields:
+                last_month = datetime.now() - timedelta(days=30)
+                selected_year = str(last_month.year)
+                selected_month = f"{last_month.month:02d}"
+                self.fields['year'].initial = selected_year
+                self.fields['month'].initial = selected_month
 
         # すべての数値入力フィールドに共通のクラスを適用
         for field_name in self.fields:
@@ -1188,10 +1192,12 @@ class PastSalaryForm(forms.ModelForm):
                 raise forms.ValidationError('年と月を選択してください。')
 
         # 過去の月のみ許可（現在の月以降はエラー）
-        current_year_month = datetime.now().strftime('%Y-%m')
-        selected_year_month = cleaned_data.get('year_month')
-        if selected_year_month and selected_year_month >= current_year_month:
-            raise forms.ValidationError('過去の月のみ選択できます。今月以降の計画は月次計画作成から登録してください。')
+        # ただし、既存レコードの編集時はこのチェックをスキップ
+        if not self.instance.pk:
+            current_year_month = datetime.now().strftime('%Y-%m')
+            selected_year_month = cleaned_data.get('year_month')
+            if selected_year_month and selected_year_month >= current_year_month:
+                raise forms.ValidationError('過去の月のみ選択できます。今月以降の計画は月次計画作成から登録してください。')
 
         # 数値フィールドの空白を0に変換（データベースのNOT NULL制約対策）
         numeric_fields = [

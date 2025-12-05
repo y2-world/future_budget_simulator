@@ -638,15 +638,39 @@ def plan_edit(request, pk):
         # デバッグ: POSTデータを確認
         logger.info(f"POST data: bonus_gross_salary={request.POST.get('bonus_gross_salary')}, bonus_deductions={request.POST.get('bonus_deductions')}")
 
+        # POSTデータに含まれるフィールドで給与のみの編集かを判定
+        # 給与関連フィールドのみの場合はPastSalaryFormを使用
+        salary_only_fields = {
+            'csrfmiddlewaretoken', 'year', 'month', 'year_month',
+            'salary', 'bonus', 'gross_salary', 'deductions', 'transportation',
+            'bonus_gross_salary', 'bonus_deductions'
+        }
+        post_keys = set(request.POST.keys())
+        is_salary_only = post_keys.issubset(salary_only_fields)
+
+        # リファラーをチェック（補助的な判定）
+        referer = request.META.get('HTTP_REFERER', '')
+        is_from_salary_list = 'salaries' in referer
+        logger.info(f"POST keys: {post_keys}")
+        logger.info(f"is_salary_only: {is_salary_only}, Referer: {referer}")
+
         # AJAX編集の場合は常にMonthlyPlanFormを使用（画面内編集）
+        # 給与一覧からの編集の場合はPastSalaryFormを使用
         # 通常のフォーム送信（過去月）の場合はPastMonthlyPlanFormを使用
         if is_ajax:
             form = MonthlyPlanForm(request.POST, instance=plan)
+            logger.info("Using MonthlyPlanForm (AJAX)")
+        elif is_salary_only:
+            from .forms import PastSalaryForm
+            form = PastSalaryForm(request.POST, instance=plan)
+            logger.info("Using PastSalaryForm (salary only)")
         elif is_past_month:
             from .forms import PastMonthlyPlanForm
             form = PastMonthlyPlanForm(request.POST, instance=plan)
+            logger.info("Using PastMonthlyPlanForm (past month)")
         else:
             form = MonthlyPlanForm(request.POST, instance=plan)
+            logger.info("Using MonthlyPlanForm (default)")
         if form.is_valid():
             plan = form.save()
             logger.info(f"Saved: bonus_gross_salary={plan.bonus_gross_salary}, bonus_deductions={plan.bonus_deductions}")
@@ -681,6 +705,8 @@ def plan_edit(request, pk):
             referer = request.META.get('HTTP_REFERER', '')
             if 'past-transactions' in referer:
                 return redirect('budget_app:past_transactions')
+            elif 'salaries' in referer:
+                return redirect('budget_app:salary_list')
             elif is_past_month:
                 return redirect('budget_app:salary_list')
             return redirect('budget_app:plan_list')
@@ -695,8 +721,16 @@ def plan_edit(request, pk):
 
     if request.method == 'GET':
         # GETリクエストの場合のみ新しいフォームを作成
+        # リファラーをチェックして給与一覧からのアクセスかを判定
+        referer = request.META.get('HTTP_REFERER', '')
+        is_from_salary_list = 'salaries' in referer
+
+        # 給与一覧からの編集の場合はPastSalaryFormを使用
         # 過去月の場合はPastMonthlyPlanFormを使用
-        if is_past_month:
+        if is_from_salary_list:
+            from .forms import PastSalaryForm
+            form = PastSalaryForm(instance=plan)
+        elif is_past_month:
             from .forms import PastMonthlyPlanForm
             form = PastMonthlyPlanForm(instance=plan)
         else:
@@ -1511,6 +1545,21 @@ def credit_estimate_edit(request, pk):
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
     if request.method == 'POST':
+        # 分割払いの場合、カード種別の変更をチェック
+        if estimate.split_payment_group and estimate.split_payment_part is not None:
+            new_card_type = request.POST.get('card_type')
+            if new_card_type and new_card_type != estimate.card_type:
+                if is_ajax:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': '分割払いのため、カード種別は変更できません。'
+                    }, status=400)
+                messages.error(request, '分割払いのため、カード種別は変更できません。')
+                referer = request.META.get('HTTP_REFERER', '')
+                if 'past-transactions' in referer:
+                    return redirect('budget_app:past_transactions')
+                return redirect('budget_app:credit_estimates')
+
         form = CreditEstimateForm(request.POST, instance=estimate)
         if form.is_valid():
             # フォームのsave()メソッドで分割払いとボーナス払いの処理を含めて保存
@@ -1692,8 +1741,9 @@ def salary_list(request):
     from django.db.models import Q
 
     # 給与明細データまたはボーナス明細データがある月次計画を取得（新しい順）
+    # 0の値も含めて表示（明示的に0を入力した場合も表示するため）
     plans_with_salary = MonthlyPlan.objects.filter(
-        Q(gross_salary__gt=0) | Q(bonus_gross_salary__gt=0)
+        Q(gross_salary__isnull=False) | Q(bonus_gross_salary__isnull=False)
     ).order_by('-year_month')
 
     # 全ての年を取得
