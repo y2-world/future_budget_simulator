@@ -667,58 +667,26 @@ class CreditEstimateForm(forms.ModelForm):
             # ボーナス払いの場合、これを購入日(purchase_date)として扱い、
             # 実際の支払日(due_date)を計算する必要がある
 
-            # 既存エントリーの場合は、元々の値をチェック
-            was_bonus_payment = False
-            original_due_date = None
-            original_purchase_date = None
-            if instance.pk:
-                try:
-                    original = CreditEstimate.objects.get(pk=instance.pk)
-                    was_bonus_payment = original.is_bonus_payment
-                    original_due_date = original.due_date
-                    original_purchase_date = original.purchase_date
-                except CreditEstimate.DoesNotExist:
-                    pass
-
             # UIから受け取ったdue_dateを利用日(purchase_date)として扱う
             # ボーナス払いの場合、フォームのdue_dateフィールドは実際には購入日（利用日）
             if instance.due_date:
                 instance.purchase_date = instance.due_date
 
-            # 再計算条件：
-            # 1. 新規作成、または
-            # 2. 通常払い→ボーナス払いへの変更、または
-            # 3. ボーナス払いでpurchase_dateが変更された場合
-            should_recalculate = (
-                not instance.pk or  # 新規作成
-                not was_bonus_payment or  # 通常払い→ボーナス払い
-                (was_bonus_payment and original_purchase_date != instance.purchase_date)  # purchase_date変更
-            )
-
-            # デバッグログ
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"ボーナス払い編集 - pk: {instance.pk}, was_bonus: {was_bonus_payment}")
-            logger.info(f"original_purchase_date: {original_purchase_date}, new_purchase_date: {instance.purchase_date}")
-            logger.info(f"original_due_date: {original_due_date}, new_due_date: {instance.due_date}")
-            logger.info(f"should_recalculate: {should_recalculate}")
-
-            if should_recalculate:
-                # purchase_dateからyear_month（利用月）とdue_date（支払日）を設定
-                if instance.purchase_date:
-                    # year_monthは利用月（購入月）
-                    instance.year_month = instance.purchase_date.strftime('%Y-%m')
-                    # 実際の支払日(due_date)を計算
-                    calculated_due_date = get_bonus_due_date_from_purchase(instance.purchase_date)
-                    if calculated_due_date:
-                        instance.due_date = calculated_due_date
-                        # ボーナス払いのbilling_monthは支払月（due_dateの月）
-                        instance.billing_month = calculated_due_date.strftime('%Y-%m')
-                else:
-                    # purchase_dateがない場合は、year_monthから計算
-                    instance.year_month = get_next_bonus_month(instance.year_month)
-                    # billing_monthもyear_monthと同じにする
-                    instance.billing_month = instance.year_month
+            # purchase_dateからyear_month（利用月）とdue_date（支払日）を設定
+            if instance.purchase_date:
+                # year_monthは利用月（購入月）
+                instance.year_month = instance.purchase_date.strftime('%Y-%m')
+                # 実際の支払日(due_date)を計算
+                calculated_due_date = get_bonus_due_date_from_purchase(instance.purchase_date)
+                if calculated_due_date:
+                    instance.due_date = calculated_due_date
+                    # ボーナス払いのbilling_monthは支払月（due_dateの月）
+                    instance.billing_month = calculated_due_date.strftime('%Y-%m')
+            else:
+                # purchase_dateがない場合は、year_monthから計算
+                instance.year_month = get_next_bonus_month(instance.year_month)
+                # billing_monthもyear_monthと同じにする
+                instance.billing_month = instance.year_month
         else:
             # ボーナス払いから通常払いに変更された場合
             if instance.pk:

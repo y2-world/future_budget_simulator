@@ -1,3 +1,4 @@
+import sys
 from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -1995,6 +1996,7 @@ def past_transactions_list(request):
     for est in all_estimates:
         # ボーナス払いの場合は支払日で判定
         if est.is_bonus_payment and est.due_date:
+            print(f"[DEBUG] ボーナス払い: {est.description}, due_date={est.due_date}, current_date={current_date}, past={est.due_date < current_date}", file=sys.stderr)
             if est.due_date < current_date:
                 past_credit_estimates.append(est)
         # 通常払いの場合はbilling_monthで判定（締め日が過ぎているもの）
