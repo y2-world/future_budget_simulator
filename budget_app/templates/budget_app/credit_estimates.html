@@ -425,12 +425,9 @@
 
         // 年月を分割して設定
         const [year, month] = yearMonth.split('-');
-        console.log('openEditModal - yearMonth:', yearMonth, 'year:', year, 'month:', month);
         document.getElementById('edit_year').value = year;
         document.getElementById('edit_month').value = month;
         document.getElementById('edit_year_month_hidden').value = yearMonth;
-        window.currentEditMonth = parseInt(month); // 編集中の月を保存
-        console.log('openEditModal - currentEditMonth set to:', window.currentEditMonth);
 
         // カード種別を設定（ラジオボタン形式）
         const cardTypeHidden = document.getElementById('edit_card_type_hidden');
@@ -682,10 +679,6 @@
 
         function toggleCreatePaymentOptions() {
             const isViewCard = createCardTypeSelect.value === 'view';
-            // 選択された月を取得
-            const selectedMonth = createMonthSelect ? parseInt(createMonthSelect.value) : 0;
-            // ボーナス払いを非表示にする月（11月、7月）
-            const isBonusPaymentHiddenMonth = selectedMonth === 11 || selectedMonth === 7;
 
             // 分割払いはVIEWカードの場合のみ表示
             if (createSplitWrapper) {
@@ -695,10 +688,10 @@
                 }
             }
 
-            // ボーナス払いはVIEWカードかつ11月・7月以外の場合のみ表示
+            // ボーナス払いはVIEWカードの場合のみ表示
             if (createBonusWrapper) {
-                createBonusWrapper.style.display = (isViewCard && !isBonusPaymentHiddenMonth) ? 'flex' : 'none';
-                if ((!isViewCard || isBonusPaymentHiddenMonth) && createBonusCheckbox) {
+                createBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
+                if (!isViewCard && createBonusCheckbox) {
                     createBonusCheckbox.checked = false;
                 }
             }
@@ -709,10 +702,6 @@
                 toggleCreatePaymentOptions();
             });
             toggleCreatePaymentOptions(); // 初期状態を設定
-        }
-
-        if (createMonthSelect) {
-            createMonthSelect.addEventListener('change', toggleCreatePaymentOptions);
         }
 
         // 分割・ボーナス払いの排他制御
@@ -734,16 +723,11 @@
         const editSplitWrapper = document.getElementById('edit_split_payment_wrapper');
         const editBonusCheckbox = document.getElementById('edit_is_bonus_payment');
         const editSplitCheckbox = document.getElementById('edit_is_split_payment');
-        window.currentEditMonth = 0; // 編集中の月を保持（グローバルスコープ）
 
         window.toggleEditPaymentOptions = function() {
             // 編集モーダルで選択されているカード種別を取得（ラジオボタン）
             const selectedRadio = document.querySelector('#editModal .card-type-radio:checked');
             const isViewCard = selectedRadio && selectedRadio.value === 'view';
-
-            // ボーナス払いを非表示にする月（11月、7月）
-            const isBonusPaymentHiddenMonth = window.currentEditMonth === 11 || window.currentEditMonth === 7;
-            console.log('toggleEditPaymentOptions - currentEditMonth:', window.currentEditMonth, 'isBonusPaymentHiddenMonth:', isBonusPaymentHiddenMonth, 'isViewCard:', isViewCard);
 
             // 分割払いはVIEWカードの場合のみ表示
             if (editSplitWrapper) {
@@ -753,10 +737,10 @@
                 }
             }
 
-            // ボーナス払いはVIEWカードかつ11月・7月以外の場合のみ表示
+            // ボーナス払いはVIEWカードの場合のみ表示
             if (editBonusWrapper) {
-                editBonusWrapper.style.display = (isViewCard && !isBonusPaymentHiddenMonth) ? 'flex' : 'none';
-                if ((!isViewCard || isBonusPaymentHiddenMonth) && editBonusCheckbox) {
+                editBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
+                if (!isViewCard && editBonusCheckbox) {
                     editBonusCheckbox.checked = false;
                 }
             }
