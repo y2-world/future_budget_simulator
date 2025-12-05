@@ -411,8 +411,12 @@ def plan_create(request):
         else:
             if is_ajax:
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+            # 非AJAXの場合、エラーメッセージを追加してフォームを再表示
+            # formは既にエラー情報を持っているのでそのまま使う
+            # （下のrenderで使用される）
 
-    else:
+    elif request.method == 'GET':
+        # GETリクエストの場合のみ新しいフォームを作成
         # URLパラメータで過去月モードかどうかを判定
         is_past_mode = request.GET.get('past_mode') == 'true'
 
@@ -686,9 +690,11 @@ def plan_edit(request, pk):
             logger.error(f"POST data: {request.POST}")
             if is_ajax:
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
-            messages.error(request, '更新に失敗しました。入力内容を確認してください。')
+            # 非AJAXの場合、エラーのあるformをそのまま使って再表示
+            # （下のrenderで使用される）
 
-    else:
+    elif request.method == 'GET':
+        # GETリクエストの場合のみ新しいフォームを作成
         # 過去月の場合はPastMonthlyPlanFormを使用
         if is_past_month:
             from .forms import PastMonthlyPlanForm
@@ -1578,7 +1584,7 @@ def credit_estimate_delete(request, pk):
                 # リファラーをチェックして適切なページにリダイレクト
                 referer = request.META.get('HTTP_REFERER', '')
                 if 'past-transactions' in referer:
-                    return redirect('budget_app:past_transactions_list')
+                    return redirect('budget_app:past_transactions')
                 return redirect('budget_app:credit_estimates')
 
         except Exception as e:
@@ -1588,7 +1594,7 @@ def credit_estimate_delete(request, pk):
                 messages.error(request, f'削除中にエラーが発生しました: {str(e)}')
                 referer = request.META.get('HTTP_REFERER', '')
                 if 'past-transactions' in referer:
-                    return redirect('budget_app:past_transactions_list')
+                    return redirect('budget_app:past_transactions')
                 return redirect('budget_app:credit_estimates')
 
     # POST以外のリクエストはリダイレクト

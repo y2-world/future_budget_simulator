@@ -2,6 +2,17 @@
 {% load humanize budget_filters %}
 
 {% block content %}
+<!-- トースト通知 -->
+<div id="toast" class="fixed top-4 right-4 z-50 hidden">
+    <div class="bg-white border-l-4 rounded-lg shadow-lg p-4 max-w-md">
+        <div class="flex items-center">
+            <div id="toast-icon" class="flex-shrink-0 mr-3"></div>
+            <div id="toast-message" class="text-sm font-medium"></div>
+        </div>
+    </div>
+</div>
+
+
 <!-- ヒーローセクション -->
 <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl p-8 md:p-12 mb-8 text-white">
     <h2 class="text-3xl md:text-4xl font-bold mb-4">ようこそ 👋</h2>
@@ -104,4 +115,42 @@
     </div>
 </div>
 {% endif %}
+
+{% block extra_js %}
+<script>
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const icon = document.getElementById('toast-icon');
+    const messageEl = document.getElementById('toast-message');
+    const toastContainer = toast.querySelector('div');
+
+    // アイコンとスタイルを設定
+    if (type === 'success') {
+        icon.innerHTML = '<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+        toastContainer.className = 'bg-white border-l-4 border-green-500 rounded-lg shadow-lg p-4 max-w-md';
+    } else if (type === 'error') {
+        icon.innerHTML = '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+        toastContainer.className = 'bg-white border-l-4 border-red-500 rounded-lg shadow-lg p-4 max-w-md';
+    } else {
+        icon.innerHTML = '<svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+        toastContainer.className = 'bg-white border-l-4 border-blue-500 rounded-lg shadow-lg p-4 max-w-md';
+    }
+
+    messageEl.textContent = message;
+    toast.classList.remove('hidden');
+
+    // 3秒後に非表示
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3000);
+}
+
+// Djangoのmessagesフレームワークからのメッセージをトーストで表示
+document.addEventListener('DOMContentLoaded', function() {
+    {% for message in messages %}
+        showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+    {% endfor %}
+});
+</script>
+{% endblock %}
 {% endblock %}
