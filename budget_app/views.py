@@ -1311,6 +1311,10 @@ def credit_estimate_list(request):
         # ボーナス払いは支払日（due_date）で判定、通常払いは月で判定
         has_bonus_section = any(card_data.get('is_bonus_section', False) for card_data in cards.values())
 
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"月 {ym} の判定 - has_bonus_section: {has_bonus_section}, cards: {list(cards.keys())}")
+
         if has_bonus_section:
             # ボーナス払いの場合、最初のエントリーのdue_dateを取得
             first_entry = None
