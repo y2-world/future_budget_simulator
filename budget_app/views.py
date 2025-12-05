@@ -866,6 +866,29 @@ def credit_estimate_list(request):
             from datetime import date
             import calendar
 
+            # 分割払いの2回目の場合は、2回目の引き落とし月から逆算した締め日でチェック
+            if est.is_split_payment and est.split_payment_part == 2:
+                # billing_monthが設定されている場合はそれを使用
+                if est.billing_month:
+                    billing_year, billing_month = map(int, est.billing_month.split('-'))
+                    # 引き落とし月から利用月を逆算
+                    if est.card_type in ['view', 'vermillion']:
+                        # 翌々月払いなので、引き落とし月の2ヶ月前が利用月
+                        usage_month = billing_month - 2
+                        usage_year = billing_year
+                        if usage_month < 1:
+                            usage_month += 12
+                            usage_year -= 1
+                    else:
+                        # 翌月払いなので、引き落とし月の1ヶ月前が利用月
+                        usage_month = billing_month - 1
+                        usage_year = billing_year
+                        if usage_month < 1:
+                            usage_month += 12
+                            usage_year -= 1
+                    year = usage_year
+                    month = usage_month
+
             if est.card_type in ['view', 'vermillion']:
                 # VIEW/VERMILLIONカードは5日締め（翌月5日）
                 closing_month = month + 1
@@ -974,6 +997,28 @@ def credit_estimate_list(request):
         year, month = map(int, year_month.split('-'))
         is_odd_month = (month % 2 == 1)
 
+        # 定期項目も締め日チェックを行う（通常払いと同じロジック）
+        # VIEW/VERMILLIONカードの締め日（翌月5日）をチェック
+        from datetime import date
+        import calendar
+
+        # VIEW/VERMILLIONカード用の締め日
+        view_closing_month = month + 1
+        view_closing_year = year
+        if view_closing_month > 12:
+            view_closing_month = 1
+            view_closing_year += 1
+        view_closing_date = date(view_closing_year, view_closing_month, 5)
+
+        # その他のカード用の締め日（月末）
+        last_day = calendar.monthrange(year, month)[1]
+        other_closing_date = date(year, month, last_day)
+
+        # VIEW/VERMILLIONの締め日が過ぎているかチェック
+        view_closed = today.date() > view_closing_date
+        # その他のカードの締め日が過ぎているかチェック
+        other_closed = today.date() > other_closing_date
+
         # 定期デフォルトを該当カードのエントリーとして追加
         for default in credit_defaults:
             # 奇数月のみ適用フラグが立っている場合、偶数月はスキップ
@@ -1003,6 +1048,20 @@ def credit_estimate_list(request):
 
             # 実際に使用するカード種別を決定（上書きがあればそれを使用）
             actual_card_type = override_data.get('card_type') if override_data and override_data.get('card_type') else default.card_type
+
+            # 分割払いかどうかを確認
+            is_split = override_data.get('is_split_payment', False) if override_data else False
+
+            # 締め日チェック（分割払いでない場合のみ）
+            # 分割払いの場合は、1回目の締め日が過ぎても2回目を表示する必要があるため、ここではスキップしない
+            if not is_split:
+                # カード種別に応じて締め日が過ぎているかチェック
+                if actual_card_type in ['view', 'vermillion']:
+                    if view_closed:
+                        continue  # 締め日が過ぎているのでスキップ
+                else:
+                    if other_closed:
+                        continue  # 締め日が過ぎているのでスキップ
 
             # 引き落とし月を計算（利用月year_monthから）
             from datetime import datetime

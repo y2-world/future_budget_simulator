@@ -481,8 +481,8 @@ class CreditEstimateForm(forms.ModelForm):
         fields = ['year_month', 'card_type', 'description', 'amount', 'due_date', 'purchase_date', 'is_split_payment', 'is_bonus_payment']
         widgets = {
             'year_month': forms.HiddenInput(),
-            'card_type': forms.Select(attrs={
-                'class': 'w-full p-2 border rounded',
+            'card_type': forms.RadioSelect(attrs={
+                'class': 'card-type-radio',
             }),
             'description': forms.TextInput(attrs={
                 'class': 'w-full p-2 border rounded',
