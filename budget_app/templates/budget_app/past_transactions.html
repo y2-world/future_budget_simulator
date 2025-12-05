@@ -902,7 +902,7 @@ editForm.addEventListener('submit', function(e) {
 });
 
 // 月次計画フォームの送信処理（AJAX）
-document.querySelectorAll('form[action*="plan_edit"]').forEach(form => {
+document.querySelectorAll('form[action*="/plans/"][action*="/edit/"]').forEach(form => {
     form.addEventListener('submit', function(e) {
         e.preventDefault(); // デフォルトのフォーム送信を防ぐ
 
@@ -921,7 +921,7 @@ document.querySelectorAll('form[action*="plan_edit"]').forEach(form => {
             if (data.status === 'success') {
                 showToast(data.message);
                 // 編集フォームを閉じる
-                const planId = this.action.match(/\/plan\/(\d+)\/edit\//)[1];
+                const planId = this.action.match(/\/plans\/(\d+)\/edit\//)[1];
                 const editFormId = document.getElementById(`edit-form-${planId}`);
                 const mobileEditFormId = document.getElementById(`mobile-edit-form-${planId}`);
                 if (editFormId) editFormId.classList.add('hidden');
