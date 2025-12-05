@@ -1052,17 +1052,6 @@ def credit_estimate_list(request):
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
 
-            # 締め日チェック（分割払いでない場合のみ）
-            # 分割払いの場合は、1回目の締め日が過ぎても2回目を表示する必要があるため、ここではスキップしない
-            if not is_split:
-                # カード種別に応じて締め日が過ぎているかチェック
-                if actual_card_type in ['view', 'vermillion']:
-                    if view_closed:
-                        continue  # 締め日が過ぎているのでスキップ
-                else:
-                    if other_closed:
-                        continue  # 締め日が過ぎているのでスキップ
-
             # 引き落とし月を計算（利用月year_monthから）
             from datetime import datetime
             usage_date = datetime.strptime(year_month, '%Y-%m')
@@ -1147,47 +1136,99 @@ def credit_estimate_list(request):
             if is_split:
                 total_amount = override_data.get('amount') if override_data else default.amount
 
+                # 1回目の締め日チェック
+                # 1回目の利用月year_monthの締め日が過ぎていなければ表示
+                first_payment_closed = False
+                if actual_card_type in ['view', 'vermillion']:
+                    first_payment_closed = view_closed
+                else:
+                    first_payment_closed = other_closed
+
                 # 1回目（利用月のbilling_monthに表示）
-                default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month)
-                if default_entry_1.amount > 0:
-                    card_group['entries'].append(default_entry_1)
-                    card_group['total'] += default_entry_1.amount
+                if not first_payment_closed:
+                    default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month)
+                    if default_entry_1.amount > 0:
+                        card_group['entries'].append(default_entry_1)
+                        card_group['total'] += default_entry_1.amount
 
                 # 2回目の引き落とし月を計算（1回目のbilling_month + 1ヶ月）
                 billing_date = datetime.strptime(billing_month, '%Y-%m')
                 next_billing_date = (billing_date.replace(day=1) + timedelta(days=32)).replace(day=1)
                 next_billing_month = next_billing_date.strftime('%Y-%m')
 
-                # 2回目の引き落とし月のカードグループを取得または作成
-                next_month_group = summary.setdefault(next_billing_month, OrderedDict())
+                # 2回目の締め日チェック
+                # 2回目の引き落とし月から逆算した利用月の締め日をチェック
+                next_billing_year, next_billing_month_num = map(int, next_billing_month.split('-'))
 
-                # 2回目のラベル作成
-                if due_day:
-                    next_b_year, next_b_month = map(int, next_billing_month.split('-'))
-                    next_label = f"{card_labels.get(actual_card_type, actual_card_type)} ({next_b_month}/{due_day}支払)"
+                # 引き落とし月から利用月を逆算
+                if actual_card_type in ['view', 'vermillion']:
+                    # 翌々月払いなので、引き落とし月の2ヶ月前が利用月
+                    second_usage_month = next_billing_month_num - 2
+                    second_usage_year = next_billing_year
+                    if second_usage_month < 1:
+                        second_usage_month += 12
+                        second_usage_year -= 1
                 else:
-                    next_label = card_labels.get(actual_card_type, actual_card_type)
+                    # 翌月払いなので、引き落とし月の1ヶ月前が利用月
+                    second_usage_month = next_billing_month_num - 1
+                    second_usage_year = next_billing_year
+                    if second_usage_month < 1:
+                        second_usage_month += 12
+                        second_usage_year -= 1
 
-                next_card_group = next_month_group.setdefault(actual_card_type, {
-                    'label': next_label,
-                    'total': 0,
-                    'entries': [],
-                    'year_month': next_billing_month,
-                    'is_bonus_section': False,
-                })
+                # 2回目の利用月の締め日を計算
+                if actual_card_type in ['view', 'vermillion']:
+                    second_closing_month = second_usage_month + 1
+                    second_closing_year = second_usage_year
+                    if second_closing_month > 12:
+                        second_closing_month = 1
+                        second_closing_year += 1
+                    second_closing_date = date(second_closing_year, second_closing_month, 5)
+                else:
+                    second_last_day = calendar.monthrange(second_usage_year, second_usage_month)[1]
+                    second_closing_date = date(second_usage_year, second_usage_month, second_last_day)
 
-                # 2回目のエントリ（利用月は1回目と同じyear_month）
-                default_entry_2 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month)
-                if default_entry_2.amount > 0:
-                    next_card_group['entries'].append(default_entry_2)
-                    next_card_group['total'] += default_entry_2.amount
+                # 2回目の締め日が過ぎていなければ表示
+                if today.date() <= second_closing_date:
+                    # 2回目の引き落とし月のカードグループを取得または作成
+                    next_month_group = summary.setdefault(next_billing_month, OrderedDict())
+
+                    # 2回目のラベル作成
+                    if due_day:
+                        next_b_year, next_b_month = map(int, next_billing_month.split('-'))
+                        next_label = f"{card_labels.get(actual_card_type, actual_card_type)} ({next_b_month}/{due_day}支払)"
+                    else:
+                        next_label = card_labels.get(actual_card_type, actual_card_type)
+
+                    next_card_group = next_month_group.setdefault(actual_card_type, {
+                        'label': next_label,
+                        'total': 0,
+                        'entries': [],
+                        'year_month': next_billing_month,
+                        'is_bonus_section': False,
+                    })
+
+                    # 2回目のエントリ（利用月は1回目と同じyear_month）
+                    default_entry_2 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month)
+                    if default_entry_2.amount > 0:
+                        next_card_group['entries'].append(default_entry_2)
+                        next_card_group['total'] += default_entry_2.amount
             else:
                 # 通常の1回払い
-                default_entry = DefaultEntry(default, year_month, override_data, actual_card_type)
-                # 金額が0の場合は追加しない（削除された定期項目）
-                if default_entry.amount > 0:
-                    card_group['entries'].append(default_entry)
-                    card_group['total'] += default_entry.amount
+                # 締め日チェック
+                payment_closed = False
+                if actual_card_type in ['view', 'vermillion']:
+                    payment_closed = view_closed
+                else:
+                    payment_closed = other_closed
+
+                # 締め日が過ぎていなければ表示
+                if not payment_closed:
+                    default_entry = DefaultEntry(default, year_month, override_data, actual_card_type)
+                    # 金額が0の場合は追加しない（削除された定期項目）
+                    if default_entry.amount > 0:
+                        card_group['entries'].append(default_entry)
+                        card_group['total'] += default_entry.amount
 
     # 各カードのエントリーを支払日順にソート（定期デフォルトは最後）
     for year_month, month_group in summary.items():
