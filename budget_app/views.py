@@ -1307,6 +1307,36 @@ def credit_estimate_list(request):
         # ymが '2024-08_bonus' のような形式の場合、年月部分を取得
         ym_date_part = ym.split('_')[0]
 
+        # ボーナス払いセクションかどうかを判定
+        # ボーナス払いは支払日（due_date）で判定、通常払いは月で判定
+        has_bonus_section = any(card_data.get('is_bonus_section', False) for card_data in cards.values())
+
+        if has_bonus_section:
+            # ボーナス払いの場合、最初のエントリーのdue_dateを取得
+            first_entry = None
+            for card_data in cards.values():
+                if card_data.get('entries'):
+                    first_entry = card_data['entries'][0]
+                    break
+
+            # due_dateで現在/未来/過去を判定
+            if first_entry and hasattr(first_entry, 'due_date') and first_entry.due_date:
+                if first_entry.due_date.strftime('%Y-%m') == current_month_str:
+                    current_month_summary[ym] = cards
+                elif first_entry.due_date >= today.date():
+                    future_summary[ym] = cards
+                else:
+                    past_summary[ym] = cards
+            else:
+                # due_dateがない場合は月で判定（フォールバック）
+                if ym_date_part == current_month_str:
+                    current_month_summary[ym] = cards
+                elif ym_date_part > current_month_str:
+                    future_summary[ym] = cards
+                else:
+                    past_summary[ym] = cards
+            continue
+
         # VIEWカードとVERMILLIONカード(同じ締め日)の特別処理
         if current_day <= 5 and ym_date_part == view_display_month:
             # 5日までは、先月のVIEW/VERMILLIONカードを当月として扱う
