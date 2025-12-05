@@ -571,15 +571,29 @@ class CreditEstimateForm(forms.ModelForm):
 
         # 引き落とし月を計算
         def calculate_billing_month(usage_month, card_type, split_part=None):
-            """利用月から引き落とし月を計算"""
+            """利用月から引き落とし月を計算
+
+            カードごとの締め日・支払日:
+            - VIEWカード: 月末締め、翌々月4日払い (2ヶ月後)
+            - VERMILLION: 月末締め、翌々月4日払い (2ヶ月後)
+            - 楽天カード: 月末締め、翌月27日払い (1ヶ月後)
+            - PayPayカード: 月末締め、翌月27日払い (1ヶ月後)
+            - Amazonカード: 月末締め、翌月26日払い (1ヶ月後)
+            - Olive: 月末締め、翌月26日払い (1ヶ月後)
+            """
             usage_date = datetime.strptime(usage_month, '%Y-%m')
 
-            # 基本: 翌々月（2ヶ月後）
-            months_offset = 2
+            # カードごとの基本引き落とし期間
+            if card_type in ['view', 'vermillion']:
+                # 翌々月払い
+                months_offset = 2
+            else:
+                # 翌月払い（楽天、PayPay、Amazon、Olive）
+                months_offset = 1
 
             # 分割2回目の場合はさらに+1ヶ月
             if split_part == 2:
-                months_offset = 3
+                months_offset += 1
 
             # 月を加算
             new_month = usage_date.month + months_offset

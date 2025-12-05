@@ -849,20 +849,22 @@ def credit_estimate_list(request):
             if today.date() >= est.due_date:
                 continue
 
-        # ボーナス払いは支払月でグルーピング、通常払いは利用月でグルーピング
+        # ボーナス払いは支払月でグルーピング、通常払いは引き落とし月でグルーピング
         if est.is_bonus_payment and est.due_date:
             display_month = est.due_date.strftime('%Y-%m')
         else:
-            display_month = est.year_month
+            # billing_monthがある場合はそれを使用、なければyear_monthを使用（下位互換性）
+            display_month = est.billing_month if est.billing_month else est.year_month
 
         month_group = summary.setdefault(display_month, OrderedDict())
 
         if est.is_bonus_payment:
             card_key = f'{est.card_type}_bonus'
-            card_label = get_card_label_with_due_day(est.card_type, is_bonus=True, year_month=est.year_month)
+            card_label = get_card_label_with_due_day(est.card_type, is_bonus=True, year_month=display_month)
         else:
             card_key = est.card_type
-            card_label = get_card_label_with_due_day(est.card_type, is_bonus=False, year_month=est.year_month)
+            # 通常払いの場合、引き落とし月（display_month）を渡してis_bonus=Trueで月を再計算しないようにする
+            card_label = get_card_label_with_due_day(est.card_type, is_bonus=True, year_month=display_month)
 
         card_group = month_group.setdefault(card_key, { # card_keyが 'view_bonus' のようになる
             'label': card_label, # 'VIEWカード' または 'VIEWカード（ボーナス払い）'
@@ -878,8 +880,6 @@ def credit_estimate_list(request):
 
     # 各年月の各カードに定期デフォルトを追加
     for year_month in all_months:
-        month_group = summary.setdefault(year_month, OrderedDict())
-
         # 年月から月を取得（奇数月判定用）
         year, month = map(int, year_month.split('-'))
         is_odd_month = (month % 2 == 1)
@@ -914,13 +914,30 @@ def credit_estimate_list(request):
             # 実際に使用するカード種別を決定（上書きがあればそれを使用）
             actual_card_type = override_data.get('card_type') if override_data and override_data.get('card_type') else default.card_type
 
+            # 引き落とし月を計算（利用月year_monthから）
+            from datetime import datetime
+            usage_date = datetime.strptime(year_month, '%Y-%m')
+            if actual_card_type in ['view', 'vermillion']:
+                billing_offset = 2  # 翌々月
+            else:
+                billing_offset = 1  # 翌月
+            billing_month_num = usage_date.month + billing_offset
+            billing_year = usage_date.year
+            while billing_month_num > 12:
+                billing_month_num -= 12
+                billing_year += 1
+            billing_month = f"{billing_year}-{billing_month_num:02d}"
+
+            # 引き落とし月でグループ化
+            month_group = summary.setdefault(billing_month, OrderedDict())
+
             # 該当カードのグループを取得または作成（実際のカード種別を使用）
             card_group = month_group.setdefault(actual_card_type, {
-                'label': get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=year_month),
+                'label': get_card_label_with_due_day(actual_card_type, is_bonus=True, year_month=billing_month),
                 'total': 0,
                 'entries': [],
-                # 反映機能で year_month が参照されるため追加
-                'year_month': year_month,
+                # 反映機能で billing_month が参照される
+                'year_month': billing_month,
                 'is_bonus_section': False,
             })
 
@@ -969,28 +986,29 @@ def credit_estimate_list(request):
             if is_split:
                 total_amount = override_data.get('amount') if override_data else default.amount
 
-                # 1回目（当月）
+                # 1回目（利用月のbilling_monthに表示）
                 default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month)
                 if default_entry_1.amount > 0:
                     card_group['entries'].append(default_entry_1)
                     card_group['total'] += default_entry_1.amount
 
-                # 2回目（次月）
-                current_date = datetime.strptime(year_month, '%Y-%m')
-                next_month_date = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
-                next_month_str = next_month_date.strftime('%Y-%m')
+                # 2回目の引き落とし月を計算（1回目のbilling_month + 1ヶ月）
+                billing_date = datetime.strptime(billing_month, '%Y-%m')
+                next_billing_date = (billing_date.replace(day=1) + timedelta(days=32)).replace(day=1)
+                next_billing_month = next_billing_date.strftime('%Y-%m')
 
-                # 次月のカードグループを取得または作成
-                next_month_group = summary.setdefault(next_month_str, OrderedDict())
+                # 2回目の引き落とし月のカードグループを取得または作成
+                next_month_group = summary.setdefault(next_billing_month, OrderedDict())
                 next_card_group = next_month_group.setdefault(actual_card_type, {
-                    'label': get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=next_month_str),
+                    'label': get_card_label_with_due_day(actual_card_type, is_bonus=True, year_month=next_billing_month),
                     'total': 0,
                     'entries': [],
-                    'year_month': next_month_str,
+                    'year_month': next_billing_month,
                     'is_bonus_section': False,
                 })
 
-                default_entry_2 = DefaultEntry(default, next_month_str, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month)
+                # 2回目のエントリ（利用月は1回目と同じyear_month）
+                default_entry_2 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month)
                 if default_entry_2.amount > 0:
                     next_card_group['entries'].append(default_entry_2)
                     next_card_group['total'] += default_entry_2.amount
@@ -1207,39 +1225,9 @@ def credit_estimate_list(request):
                 card_label = card_data['label']
 
                 # 反映先の年月を計算
-                current_date = datetime.strptime(year_month, '%Y-%m')
-
-                # ボーナス払いの場合は請求月と同じ月に反映
-                if is_bonus:
-                    target_year_month = year_month
-                else:
-                    # 通常払いの場合、カード種別に応じて支払い月を計算
-                    use_year, use_month = map(int, current_date.strftime('%Y-%m').split('-'))
-
-                    if actual_card_type in ['view', 'vermillion']:
-                        # 翌々月払い
-                        payment_month = use_month + 2
-                        payment_year = use_year
-                        if payment_month > 12:
-                            payment_month -= 12
-                            payment_year += 1
-                        target_year_month = f"{payment_year}-{payment_month:02d}"
-                    elif actual_card_type in ['rakuten', 'paypay', 'amazon', 'olive']:
-                        # 翌月払い
-                        payment_month = use_month + 1
-                        payment_year = use_year
-                        if payment_month > 12:
-                            payment_month -= 12
-                            payment_year += 1
-                        target_year_month = f"{payment_year}-{payment_month:02d}"
-                    else:
-                        # その他のカードは翌月払い
-                        payment_month = use_month + 1
-                        payment_year = use_year
-                        if payment_month > 12:
-                            payment_month -= 12
-                            payment_year += 1
-                        target_year_month = f"{payment_year}-{payment_month:02d}"
+                # year_monthパラメータは、通常払いの場合は既に引き落とし月(billing_month)、
+                # ボーナス払いの場合は支払月なので、そのまま使用
+                target_year_month = year_month
 
                 # 月次計画を取得または作成
                 plan, _ = MonthlyPlan.objects.get_or_create(
