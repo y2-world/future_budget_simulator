@@ -741,6 +741,15 @@
             const month = formData.get('month');
             formData.append('year_month', `${year}-${month}`);
 
+            // ボーナス払いの場合、due_date（利用日）をpurchase_date（購入日）としても送信
+            const isBonusPayment = formData.get('is_bonus_payment');
+            if (isBonusPayment) {
+                const dueDate = formData.get('due_date');
+                if (dueDate) {
+                    formData.append('purchase_date', dueDate);
+                }
+            }
+
             await window.sendAjaxRequest(editForm.action, formData, {
                 closeModal: closeEditModal
             });
