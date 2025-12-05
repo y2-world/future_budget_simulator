@@ -4,6 +4,16 @@
 {% block title %}過去の明細{% endblock %}
 
 {% block content %}
+<!-- トースト通知 -->
+<div id="toast" class="fixed top-4 right-4 z-50 hidden">
+    <div class="bg-white border-l-4 rounded-lg shadow-lg p-4 max-w-md">
+        <div class="flex items-center">
+            <div id="toast-icon" class="flex-shrink-0 mr-3"></div>
+            <div id="toast-message" class="text-sm font-medium"></div>
+        </div>
+    </div>
+</div>
+
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-800 mb-2">過去の明細</h1>
@@ -821,9 +831,38 @@ document.querySelectorAll('#editModal .card-type-label').forEach(label => {
     });
 });
 
-// 編集フォームの送信処理
+// トースト通知を表示
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const icon = document.getElementById('toast-icon');
+    const messageEl = document.getElementById('toast-message');
+    const toastContainer = toast.querySelector('div');
+
+    // アイコンとスタイルを設定
+    if (type === 'success') {
+        icon.innerHTML = '<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+        toastContainer.className = 'bg-white border-l-4 border-green-500 rounded-lg shadow-lg p-4 max-w-md';
+        messageEl.className = 'text-sm font-medium text-gray-800';
+    } else if (type === 'error') {
+        icon.innerHTML = '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+        toastContainer.className = 'bg-white border-l-4 border-red-500 rounded-lg shadow-lg p-4 max-w-md';
+        messageEl.className = 'text-sm font-medium text-gray-800';
+    }
+
+    messageEl.textContent = message;
+    toast.classList.remove('hidden');
+
+    // 3秒後に非表示
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3000);
+}
+
+// 編集フォームの送信処理（AJAX）
 const editForm = document.getElementById('editForm');
 editForm.addEventListener('submit', function(e) {
+    e.preventDefault(); // デフォルトのフォーム送信を防ぐ
+
     const formData = new FormData(editForm);
 
     // ボーナス払いの場合、due_date（利用日）をpurchase_date（購入日）としても送信
@@ -831,14 +870,75 @@ editForm.addEventListener('submit', function(e) {
     if (isBonusPayment) {
         const dueDate = formData.get('due_date');
         if (dueDate) {
-            // purchase_dateフィールドを追加
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'purchase_date';
-            hiddenInput.value = dueDate;
-            editForm.appendChild(hiddenInput);
+            formData.append('purchase_date', dueDate);
         }
     }
+
+    // AJAXで送信
+    fetch(editForm.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast(data.message);
+            closeEditModal();
+            // ページをリロード
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else {
+            showToast('更新に失敗しました。入力内容を確認してください。', 'error');
+        }
+    })
+    .catch(error => {
+        showToast('エラーが発生しました。', 'error');
+        console.error('Error:', error);
+    });
+});
+
+// 月次計画フォームの送信処理（AJAX）
+document.querySelectorAll('form[action*="plan_edit"]').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // デフォルトのフォーム送信を防ぐ
+
+        const formData = new FormData(this);
+
+        // AJAXで送信
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(data.message);
+                // 編集フォームを閉じる
+                const planId = this.action.match(/\/plan\/(\d+)\/edit\//)[1];
+                const editFormId = document.getElementById(`edit-form-${planId}`);
+                const mobileEditFormId = document.getElementById(`mobile-edit-form-${planId}`);
+                if (editFormId) editFormId.classList.add('hidden');
+                if (mobileEditFormId) mobileEditFormId.classList.add('hidden');
+                // ページをリロード
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                showToast('更新に失敗しました。入力内容を確認してください。', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('エラーが発生しました。', 'error');
+            console.error('Error:', error);
+        });
+    });
 });
 </script>
 {% endblock %}
