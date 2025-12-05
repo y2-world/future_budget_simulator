@@ -852,7 +852,13 @@ def credit_estimate_list(request):
 
         if est.is_bonus_payment:
             card_key = f'{est.card_type}_bonus'
-            card_label = card_labels.get(est.card_type, est.card_type) + '（ボーナス払い）'
+            # ボーナス払いの場合もカード名 + 支払日を表示
+            due_day = card_due_days.get(est.card_type, '')
+            if due_day and display_month:
+                billing_year, billing_month = map(int, display_month.split('-'))
+                card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)（ボーナス払い）"
+            else:
+                card_label = card_labels.get(est.card_type, est.card_type) + '（ボーナス払い）'
         else:
             card_key = est.card_type
             # 通常払いの場合、カード名 + 支払日を表示
