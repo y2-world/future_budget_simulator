@@ -850,31 +850,23 @@ def credit_estimate_list(request):
 
         month_group = summary.setdefault(display_month, OrderedDict())
 
-        if est.is_bonus_payment:
-            card_key = f'{est.card_type}_bonus'
-            # ボーナス払いの場合もカード名 + 支払日を表示
-            due_day = card_due_days.get(est.card_type, '')
-            if due_day and display_month:
-                billing_year, billing_month = map(int, display_month.split('-'))
-                card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)（ボーナス払い）"
-            else:
-                card_label = card_labels.get(est.card_type, est.card_type) + '（ボーナス払い）'
-        else:
-            card_key = est.card_type
-            # 通常払いの場合、カード名 + 支払日を表示
-            due_day = card_due_days.get(est.card_type, '')
-            if due_day and display_month:
-                billing_year, billing_month = map(int, display_month.split('-'))
-                card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)"
-            else:
-                card_label = card_labels.get(est.card_type, est.card_type)
+        # ボーナス払いも通常払いも同じカードキーを使用（ソートのため）
+        card_key = est.card_type
 
-        card_group = month_group.setdefault(card_key, { # card_keyが 'view_bonus' のようになる
-            'label': card_label, # 'VIEWカード' または 'VIEWカード（ボーナス払い）'
+        # カード名 + 支払日を表示
+        due_day = card_due_days.get(est.card_type, '')
+        if due_day and display_month:
+            billing_year, billing_month = map(int, display_month.split('-'))
+            card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)"
+        else:
+            card_label = card_labels.get(est.card_type, est.card_type)
+
+        card_group = month_group.setdefault(card_key, {
+            'label': card_label,
             'total': 0,
             'entries': [],
             'year_month': display_month,  # 表示月（ボーナス払いは支払月、通常払いは利用月）
-            'is_bonus_section': est.is_bonus_payment,  # ボーナス払いセクションかどうか
+            'is_bonus_section': False,  # ボーナス払いと通常払いを混在させる
         })
         card_group['total'] += est.amount
         # 通常のCreditEstimateオブジェクトにis_defaultフラグを追加
@@ -1088,11 +1080,6 @@ def credit_estimate_list(request):
 
     # カードタイプの表示順序をモデルの定義から動的に生成
     card_order = {card_type: i for i, (card_type, _) in enumerate(CreditEstimate.CARD_TYPES)}
-    
-    # ボーナス払いの順序も追加
-    bonus_offset = len(card_order)
-    for i, (card_type, _) in enumerate(CreditEstimate.CARD_TYPES):
-        card_order[f'{card_type}_bonus'] = i + bonus_offset
 
     # 各月のカードをカードタイプ順にソート
     for year_month, month_group in summary.items():
@@ -1101,28 +1088,6 @@ def credit_estimate_list(request):
             key=lambda item: card_order.get(item[0], 99)  # カードタイプ順でソート
         ))
         summary[year_month] = sorted_cards
-
-    # ボーナス払いの項目しかない場合、定期項目のみの通常払いセクションを非表示
-    for year_month, month_group in list(summary.items()):
-        cards_to_remove = []
-        for card_key, card_data in list(month_group.items()):
-            # 通常払いセクション（_bonusで終わらない）の場合
-            if not card_key.endswith('_bonus'):
-                # 対応するボーナス払いセクションが存在するか確認
-                bonus_key = f'{card_key}_bonus'
-                if bonus_key in month_group and month_group[bonus_key]['entries']:
-                    # 通常払いセクションの全てのエントリが定期項目かチェック
-                    all_default = all(
-                        hasattr(entry, 'is_default') and entry.is_default
-                        for entry in card_data['entries']
-                    )
-                    # 全てが定期項目で、ボーナス払いが存在する場合は通常払いセクションを削除
-                    if all_default and card_data['entries']:
-                        cards_to_remove.append(card_key)
-
-        # 該当するカードを削除
-        for card_key in cards_to_remove:
-            del month_group[card_key]
 
     # summaryを現在、未来、過去に分割
     today = datetime.now()
