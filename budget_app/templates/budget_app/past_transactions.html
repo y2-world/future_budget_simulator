@@ -705,11 +705,11 @@
 
             <!-- チェックボックス -->
             <div class="grid grid-cols-2 gap-2">
-                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="edit_split_payment_wrapper">
                     <input type="checkbox" name="is_split_payment" id="edit_is_split_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                     <span class="ml-2 text-sm font-medium text-gray-700">分割2回払い</span>
                 </label>
-                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="edit_bonus_payment_wrapper">
                     <input type="checkbox" name="is_bonus_payment" id="edit_is_bonus_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                     <span class="ml-2 text-sm font-medium text-gray-700">ボーナス払い</span>
                 </label>
@@ -812,6 +812,9 @@ function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, pu
     document.getElementById('edit_is_split_payment').checked = isSplitPayment;
     document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
 
+    // カード種別に応じて分割払い・ボーナス払いの表示を更新
+    togglePaymentOptions();
+
     modal.classList.remove('hidden');
 }
 
@@ -830,6 +833,34 @@ function toggleEdit(id) {
     const element = document.getElementById(id);
     if (element) {
         element.classList.toggle('hidden');
+    }
+}
+
+// 分割払い・ボーナス払いの表示制御
+function togglePaymentOptions() {
+    const editSplitWrapper = document.getElementById('edit_split_payment_wrapper');
+    const editBonusWrapper = document.getElementById('edit_bonus_payment_wrapper');
+    const editSplitCheckbox = document.getElementById('edit_is_split_payment');
+    const editBonusCheckbox = document.getElementById('edit_is_bonus_payment');
+
+    // 選択されているカード種別を取得
+    const selectedRadio = document.querySelector('#editModal .card-type-radio:checked');
+    const isViewCard = selectedRadio && selectedRadio.value === 'view';
+
+    // 分割払いはVIEWカードの場合のみ表示
+    if (editSplitWrapper) {
+        editSplitWrapper.style.display = isViewCard ? 'flex' : 'none';
+        if (!isViewCard && editSplitCheckbox) {
+            editSplitCheckbox.checked = false;
+        }
+    }
+
+    // ボーナス払いはVIEWカードの場合のみ表示
+    if (editBonusWrapper) {
+        editBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
+        if (!isViewCard && editBonusCheckbox) {
+            editBonusCheckbox.checked = false;
+        }
     }
 }
 
@@ -862,6 +893,9 @@ document.querySelectorAll('#editModal .card-type-label').forEach(label => {
         indicator.classList.add('border-blue-600');
         indicator.classList.remove('border-gray-400');
         dot.classList.remove('hidden');
+
+        // カード種別変更時に分割払い・ボーナス払いの表示を更新
+        togglePaymentOptions();
     });
 });
 
