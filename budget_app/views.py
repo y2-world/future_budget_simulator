@@ -811,18 +811,7 @@ def credit_estimate_list(request):
     # 設定からVIEWカードのデフォルト値を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
 
-    # 全ての引き落とし月を取得（billing_monthベース）
-    # 定期デフォルトを表示する月を決定するため
-    all_months = set()
-
-    # 現在表示されている見積もりから引き落とし月を収集
     today = datetime.now()
-    current_date_str = today.strftime('%Y-%m')
-
-    # 当月と翌月、翌々月を利用月として追加（定期デフォルト用）
-    for i in range(3):
-        month_date = (today.replace(day=1) + timedelta(days=32 * i)).replace(day=1)
-        all_months.add(month_date.strftime('%Y-%m'))
 
     for est in estimates:
         # 通常払いの場合、締め日が過ぎたら非表示
@@ -866,8 +855,13 @@ def credit_estimate_list(request):
             card_label = card_labels.get(est.card_type, est.card_type) + '（ボーナス払い）'
         else:
             card_key = est.card_type
-            # 通常払いの場合、カード名のみ表示（引き落とし月は見出しに表示されるため）
-            card_label = card_labels.get(est.card_type, est.card_type)
+            # 通常払いの場合、カード名 + 支払日を表示
+            due_day = card_due_days.get(est.card_type, '')
+            if due_day and display_month:
+                billing_year, billing_month = map(int, display_month.split('-'))
+                card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)"
+            else:
+                card_label = card_labels.get(est.card_type, est.card_type)
 
         card_group = month_group.setdefault(card_key, { # card_keyが 'view_bonus' のようになる
             'label': card_label, # 'VIEWカード' または 'VIEWカード（ボーナス払い）'
@@ -881,8 +875,18 @@ def credit_estimate_list(request):
         est.is_default = False
         card_group['entries'].append(est)
 
+    # 既存の引き落とし月を収集（定期デフォルトはこれらの月にのみ追加）
+    existing_billing_months = set(summary.keys())
+
+    # 定期デフォルトを追加する利用月を決定
+    # 当月から3ヶ月分の利用月を候補とする
+    candidate_usage_months = []
+    for i in range(6):  # 少し多めに候補を用意
+        month_date = (today.replace(day=1) + timedelta(days=32 * i)).replace(day=1)
+        candidate_usage_months.append(month_date.strftime('%Y-%m'))
+
     # 各年月の各カードに定期デフォルトを追加
-    for year_month in all_months:
+    for year_month in candidate_usage_months:
         # 年月から月を取得（奇数月判定用）
         year, month = map(int, year_month.split('-'))
         is_odd_month = (month % 2 == 1)
@@ -931,12 +935,24 @@ def credit_estimate_list(request):
                 billing_year += 1
             billing_month = f"{billing_year}-{billing_month_num:02d}"
 
+            # この引き落とし月に既存の見積もりがない場合はスキップ
+            if billing_month not in existing_billing_months:
+                continue
+
             # 引き落とし月でグループ化
             month_group = summary.setdefault(billing_month, OrderedDict())
 
             # 該当カードのグループを取得または作成（実際のカード種別を使用）
+            # カード名 + 支払日のラベル作成
+            due_day = card_due_days.get(actual_card_type, '')
+            if due_day:
+                b_year, b_month = map(int, billing_month.split('-'))
+                default_label = f"{card_labels.get(actual_card_type, actual_card_type)} ({b_month}/{due_day}支払)"
+            else:
+                default_label = card_labels.get(actual_card_type, actual_card_type)
+
             card_group = month_group.setdefault(actual_card_type, {
-                'label': card_labels.get(actual_card_type, actual_card_type),
+                'label': default_label,
                 'total': 0,
                 'entries': [],
                 # 反映機能で billing_month が参照される
@@ -1002,8 +1018,16 @@ def credit_estimate_list(request):
 
                 # 2回目の引き落とし月のカードグループを取得または作成
                 next_month_group = summary.setdefault(next_billing_month, OrderedDict())
+
+                # 2回目のラベル作成
+                if due_day:
+                    next_b_year, next_b_month = map(int, next_billing_month.split('-'))
+                    next_label = f"{card_labels.get(actual_card_type, actual_card_type)} ({next_b_month}/{due_day}支払)"
+                else:
+                    next_label = card_labels.get(actual_card_type, actual_card_type)
+
                 next_card_group = next_month_group.setdefault(actual_card_type, {
-                    'label': card_labels.get(actual_card_type, actual_card_type),
+                    'label': next_label,
                     'total': 0,
                     'entries': [],
                     'year_month': next_billing_month,
