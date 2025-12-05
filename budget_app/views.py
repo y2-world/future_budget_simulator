@@ -1321,12 +1321,20 @@ def credit_estimate_list(request):
 
             # due_dateで現在/未来/過去を判定
             if first_entry and hasattr(first_entry, 'due_date') and first_entry.due_date:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"ボーナス払い分類 - ym: {ym}, due_date: {first_entry.due_date}, today: {today.date()}")
+                logger.info(f"due_date type: {type(first_entry.due_date)}, comparison: {first_entry.due_date >= today.date()}")
+
                 if first_entry.due_date.strftime('%Y-%m') == current_month_str:
                     current_month_summary[ym] = cards
+                    logger.info(f"→ 今月の見積もりに分類")
                 elif first_entry.due_date >= today.date():
                     future_summary[ym] = cards
+                    logger.info(f"→ 今後の見積もりに分類")
                 else:
                     past_summary[ym] = cards
+                    logger.info(f"→ 過去の明細に分類")
             else:
                 # due_dateがない場合は月で判定（フォールバック）
                 if ym_date_part == current_month_str:
