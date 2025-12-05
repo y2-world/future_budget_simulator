@@ -685,7 +685,15 @@
         }
 
         if (createCardTypeSelect) {
-            createCardTypeSelect.addEventListener('change', toggleCreateBonusPayment);
+            createCardTypeSelect.addEventListener('change', function() {
+                toggleCreateBonusPayment();
+                // VIEWカード以外を選択した場合、分割払いとボーナス払いのチェックを外す
+                if (createCardTypeSelect.value !== 'view') {
+                    if (createSplitCheckbox) createSplitCheckbox.checked = false;
+                    if (createBonusCheckbox) createBonusCheckbox.checked = false;
+                    handleCreatePaymentType();
+                }
+            });
             toggleCreateBonusPayment(); // 初期状態を設定
         }
 
@@ -729,6 +737,8 @@
                 }
                 handleCreatePaymentType();
             });
+            // 初期状態を設定
+            handleCreatePaymentType();
         }
 
         // ボーナス払いチェックボックスの表示制御（編集モーダル）
@@ -747,7 +757,15 @@
         }
 
         if (editCardTypeSelect) {
-            editCardTypeSelect.addEventListener('change', toggleEditBonusPayment);
+            editCardTypeSelect.addEventListener('change', function() {
+                toggleEditBonusPayment();
+                // VIEWカード以外を選択した場合、分割払いとボーナス払いのチェックを外す
+                if (editCardTypeSelect.value !== 'view') {
+                    if (editSplitCheckbox) editSplitCheckbox.checked = false;
+                    if (editBonusCheckbox) editBonusCheckbox.checked = false;
+                    handleEditPaymentType();
+                }
+            });
         }
 
         // 分割2回払いとボーナス払いの排他制御（編集モーダル）
@@ -786,6 +804,8 @@
                 }
                 handleEditPaymentType();
             });
+            // 初期状態を設定
+            handleEditPaymentType();
         }
 
         // 編集ボタンのイベントリスナーを修正
