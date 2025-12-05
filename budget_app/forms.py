@@ -561,6 +561,36 @@ class CreditEstimateForm(forms.ModelForm):
         if year and month:
             cleaned_data['year_month'] = f"{year}-{month}"
 
+        # ボーナス払いの場合、購入日が有効な期間かチェック
+        is_bonus_payment = cleaned_data.get('is_bonus_payment')
+        due_date = cleaned_data.get('due_date')
+        purchase_date = cleaned_data.get('purchase_date')
+
+        if is_bonus_payment:
+            # purchase_dateが設定されている場合はそれを使用、なければdue_dateを使用
+            check_date = purchase_date if purchase_date else due_date
+
+            if check_date:
+                # 対象外期間をチェック
+                month = check_date.month
+                day = check_date.day
+
+                invalid_period = False
+                if month == 6 and day >= 6:
+                    invalid_period = True
+                elif month == 7 and day <= 5:
+                    invalid_period = True
+                elif month == 11 and day >= 6:
+                    invalid_period = True
+                elif month == 12 and day <= 5:
+                    invalid_period = True
+
+                if invalid_period:
+                    raise forms.ValidationError(
+                        'ボーナス払いの対象外期間です。\n'
+                        '対象期間: 12/6〜6/5 (8/4支払) または 6/6〜11/5 (1/4支払)'
+                    )
+
         return cleaned_data
 
     def save(self, commit=True):
