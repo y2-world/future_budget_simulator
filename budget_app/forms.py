@@ -1063,6 +1063,19 @@ class PastMonthlyPlanForm(forms.ModelForm):
             else:
                 raise forms.ValidationError('年と月を選択してください。')
 
+        # 数値フィールドの空白を0に変換（データベースのNOT NULL制約対策）
+        numeric_fields = [
+            'salary', 'bonus', 'gross_salary', 'deductions', 'transportation',
+            'bonus_gross_salary', 'bonus_deductions', 'food', 'rent', 'lake',
+            'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
+            'vermillion_card', 'amazon_card', 'olive_card', 'loan_borrowing', 'other'
+        ]
+        for field_name in numeric_fields:
+            if field_name in self.fields and field_name in cleaned_data:
+                value = cleaned_data[field_name]
+                if value is None or value == '':
+                    cleaned_data[field_name] = 0
+
         return cleaned_data
 
 
@@ -1179,5 +1192,16 @@ class PastSalaryForm(forms.ModelForm):
         selected_year_month = cleaned_data.get('year_month')
         if selected_year_month and selected_year_month >= current_year_month:
             raise forms.ValidationError('過去の月のみ選択できます。今月以降の計画は月次計画作成から登録してください。')
+
+        # 数値フィールドの空白を0に変換（データベースのNOT NULL制約対策）
+        numeric_fields = [
+            'salary', 'bonus', 'gross_salary', 'deductions', 'transportation',
+            'bonus_gross_salary', 'bonus_deductions'
+        ]
+        for field_name in numeric_fields:
+            if field_name in self.fields and field_name in cleaned_data:
+                value = cleaned_data[field_name]
+                if value is None or value == '':
+                    cleaned_data[field_name] = 0
 
         return cleaned_data
