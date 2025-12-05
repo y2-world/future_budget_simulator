@@ -634,8 +634,11 @@ def plan_edit(request, pk):
         # デバッグ: POSTデータを確認
         logger.info(f"POST data: bonus_gross_salary={request.POST.get('bonus_gross_salary')}, bonus_deductions={request.POST.get('bonus_deductions')}")
 
-        # 過去月の場合はPastMonthlyPlanFormを使用
-        if is_past_month:
+        # AJAX編集の場合は常にMonthlyPlanFormを使用（画面内編集）
+        # 通常のフォーム送信（過去月）の場合はPastMonthlyPlanFormを使用
+        if is_ajax:
+            form = MonthlyPlanForm(request.POST, instance=plan)
+        elif is_past_month:
             from .forms import PastMonthlyPlanForm
             form = PastMonthlyPlanForm(request.POST, instance=plan)
         else:
