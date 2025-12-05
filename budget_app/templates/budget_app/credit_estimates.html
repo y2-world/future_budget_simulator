@@ -393,7 +393,7 @@
 
 <script>
     // モーダル制御関数
-    function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, isSplitPayment, isBonusPayment) {
+    function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment) {
         const modal = document.getElementById('editModal');
         const form = document.getElementById('editForm');
 
@@ -431,7 +431,14 @@
         // 各フィールドを設定
         document.getElementById('edit_description').value = description;
         document.getElementById('edit_amount').value = amount;
-        document.getElementById('edit_due_date').value = dueDate;
+
+        // ボーナス払いの場合は購入日（利用日）を表示、それ以外は支払日を表示
+        if (isBonusPayment && purchaseDate) {
+            document.getElementById('edit_due_date').value = purchaseDate;
+        } else {
+            document.getElementById('edit_due_date').value = dueDate;
+        }
+
         document.getElementById('edit_is_split_payment').checked = isSplitPayment;
         document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
 
@@ -700,11 +707,12 @@
                 const description = this.dataset.description;
                 const amount = this.dataset.amount;
                 const dueDate = this.dataset.dueDate;
+                const purchaseDate = this.dataset.purchaseDate;
                 const isSplit = this.dataset.split === 'true';
                 const isBonus = this.dataset.bonus === 'true';
 
                 console.log('取得したcardType:', cardType);
-                openEditModal(pk, yearMonth, cardType, description, amount, dueDate, isSplit, isBonus);
+                openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplit, isBonus);
             });
         });
         

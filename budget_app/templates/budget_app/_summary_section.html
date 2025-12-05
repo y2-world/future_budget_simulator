@@ -104,7 +104,7 @@
                                 </td>
                                 <td class="px-3 py-2 text-center">
                                     {% if not item.is_default %}
-                                        <button type="button" data-pk="{{ item.pk }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.amount }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" class="edit-btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1">編集</button>
+                                        <button type="button" data-pk="{{ item.pk }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.amount }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-purchase-date="{{ item.purchase_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" class="edit-btn bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1">編集</button>
                                         <form method="post" action="{% url 'budget_app:credit_estimate_delete' item.pk %}" class="inline" data-recurring="{{ item.is_recurring|yesno:'true,false' }}">
                                             {% csrf_token %}
                                             <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs">削除</button>
@@ -191,7 +191,7 @@
 
                             <div class="flex gap-2 mt-3">
                                 {% if not item.is_default %}
-                                    <button type="button" data-pk="{{ item.pk }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.amount }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" class="edit-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2 rounded-md hover:bg-blue-600 font-medium">
+                                    <button type="button" data-pk="{{ item.pk }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.amount }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-purchase-date="{{ item.purchase_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" class="edit-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2 rounded-md hover:bg-blue-600 font-medium">
                                         編集
                                     </button>
                                     <form method="post" action="{% url 'budget_app:credit_estimate_delete' item.pk %}" class="flex-1" data-recurring="{{ item.is_recurring|yesno:'true,false' }}">
