@@ -1081,6 +1081,7 @@ def credit_estimate_list(request):
             card_data['entries'].sort(key=lambda x: (
                 x.is_default if hasattr(x, 'is_default') else False,  # 定期デフォルトを最後に
                 x.due_date if x.due_date else datetime.max.date(),  # due_dateがNoneの場合は最後に
+                x.is_bonus_payment if hasattr(x, 'is_bonus_payment') else False,  # 同じ日付なら通常払いを先に
                 # 定期デフォルト項目の場合はdefault_idでソート、通常項目はpkでソート
                 x.default_id if (hasattr(x, 'is_default') and x.is_default and hasattr(x, 'default_id')) else (x.pk if hasattr(x, 'pk') and x.pk else float('inf'))
             ))
@@ -2004,12 +2005,13 @@ def past_transactions_list(request):
                 # 各カードの明細を引落日順にソート（年月日全体で）
                 def get_sort_key(est):
                     due = est['estimate'].due_date
+                    is_bonus = est['estimate'].is_bonus_payment
                     if due is None:
                         # due_dateがない場合は最後に表示
-                        return (dt_date.max, est['estimate'].id)
+                        return (dt_date.max, False, est['estimate'].id)
                     else:
-                        # due_date全体（年月日）でソート
-                        return (due, est['estimate'].id)
+                        # due_date、is_bonus_payment（通常払いを先に）、idの順でソート
+                        return (due, is_bonus, est['estimate'].id)
 
                 card_data['estimates'] = sorted(card_data['estimates'], key=get_sort_key)
                 cards_list.append(card_data)
