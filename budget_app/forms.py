@@ -443,6 +443,21 @@ class MonthlyPlanForm(forms.ModelForm):
             if selected_year_month and selected_year_month < current_year_month:
                 raise forms.ValidationError('今月以降の月次計画のみ作成できます。過去の給与情報は「過去の給与新規作成」から登録してください。')
 
+        # 数値フィールドの空白を0に変換（データベースのNOT NULL制約対策）
+        # フォームに存在するフィールドのみ処理
+        numeric_fields = [
+            'salary', 'bonus', 'gross_salary', 'deductions', 'transportation',
+            'bonus_gross_salary', 'bonus_deductions', 'food', 'rent', 'lake',
+            'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
+            'vermillion_card', 'amazon_card', 'olive_card', 'loan_borrowing', 'other'
+        ]
+        for field_name in numeric_fields:
+            # フォームに存在し、かつ空の場合のみ0に変換
+            if field_name in self.fields and field_name in cleaned_data:
+                value = cleaned_data[field_name]
+                if value is None or value == '':
+                    cleaned_data[field_name] = 0
+
         return cleaned_data
 
 
