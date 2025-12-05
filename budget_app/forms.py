@@ -578,9 +578,14 @@ class CreditEstimateForm(forms.ModelForm):
         # 分割払いとボーナス払いが同時に選択されていないかチェック
         is_split_payment = cleaned_data.get('is_split_payment')
         is_bonus_payment = cleaned_data.get('is_bonus_payment')
+        card_type = cleaned_data.get('card_type')
 
         if is_split_payment and is_bonus_payment:
             raise forms.ValidationError('分割払いとボーナス払いは同時に選択できません。')
+
+        # 分割払いまたはボーナス払いの場合、VIEWカードのみ使用可能
+        if (is_split_payment or is_bonus_payment) and card_type != 'view':
+            raise forms.ValidationError('分割払いとボーナス払いはVIEWカードでのみ利用できます。')
 
         # ボーナス払いの場合、購入日が有効な期間かチェック
         due_date = cleaned_data.get('due_date')
@@ -606,7 +611,12 @@ class CreditEstimateForm(forms.ModelForm):
                     invalid_period = True
 
                 if invalid_period:
-                    self.add_error('due_date', 'ボーナス払いの対象外期間です。対象期間: 12/6〜6/5 (8/4支払) または 6/6〜11/5 (1/4支払)')
+                    # purchase_dateがある場合はそちらにエラーを表示
+                    error_field = 'purchase_date' if purchase_date else 'due_date'
+                    self.add_error(error_field, 'ボーナス払いの対象外期間です。対象期間: 12/6〜6/5 (8/4支払) または 6/6〜11/5 (1/4支払)')
+            else:
+                # ボーナス払いなのに日付が設定されていない場合
+                self.add_error('purchase_date', 'ボーナス払いの場合は購入日を入力してください。')
 
         return cleaned_data
 

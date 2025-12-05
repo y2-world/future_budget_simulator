@@ -488,6 +488,11 @@
             editBonusWrapper.style.display = cardType === 'view' ? 'flex' : 'none';
         }
 
+        // 分割・ボーナス払いの場合、カード種別を制御
+        if (typeof window.handleEditPaymentType === 'function') {
+            window.handleEditPaymentType();
+        }
+
         // 最後にモーダルを表示
         modal.classList.remove('hidden');
     }
@@ -690,16 +695,39 @@
 
         // 分割2回払いとボーナス払いの排他制御（新規追加フォーム）
         const createSplitCheckbox = document.getElementById('id_is_split_payment');
+
+        // 分割・ボーナス払い選択時にVIEWカードを強制し、他のカードを無効化
+        function handleCreatePaymentType() {
+            const isSplitOrBonus = (createSplitCheckbox && createSplitCheckbox.checked) ||
+                                  (createBonusCheckbox && createBonusCheckbox.checked);
+
+            if (isSplitOrBonus && createCardTypeSelect) {
+                // VIEWカードを選択
+                createCardTypeSelect.value = 'view';
+                // 他のカード選択肢を無効化
+                Array.from(createCardTypeSelect.options).forEach(option => {
+                    option.disabled = option.value !== 'view';
+                });
+            } else if (createCardTypeSelect) {
+                // 分割・ボーナス払いでない場合は全て有効化
+                Array.from(createCardTypeSelect.options).forEach(option => {
+                    option.disabled = false;
+                });
+            }
+        }
+
         if (createSplitCheckbox && createBonusCheckbox) {
             createSplitCheckbox.addEventListener('change', function() {
                 if (this.checked && createBonusCheckbox.checked) {
                     createBonusCheckbox.checked = false;
                 }
+                handleCreatePaymentType();
             });
             createBonusCheckbox.addEventListener('change', function() {
                 if (this.checked && createSplitCheckbox.checked) {
                     createSplitCheckbox.checked = false;
                 }
+                handleCreatePaymentType();
             });
         }
 
@@ -724,16 +752,39 @@
 
         // 分割2回払いとボーナス払いの排他制御（編集モーダル）
         const editSplitCheckbox = document.getElementById('edit_is_split_payment');
+
+        // 分割・ボーナス払い選択時にVIEWカードを強制し、他のカードを無効化（編集モーダル）
+        window.handleEditPaymentType = function() {
+            const isSplitOrBonus = (editSplitCheckbox && editSplitCheckbox.checked) ||
+                                  (editBonusCheckbox && editBonusCheckbox.checked);
+
+            if (isSplitOrBonus && editCardTypeSelect) {
+                // VIEWカードを選択
+                editCardTypeSelect.value = 'view';
+                // 他のカード選択肢を無効化
+                Array.from(editCardTypeSelect.options).forEach(option => {
+                    option.disabled = option.value !== 'view';
+                });
+            } else if (editCardTypeSelect) {
+                // 分割・ボーナス払いでない場合は全て有効化
+                Array.from(editCardTypeSelect.options).forEach(option => {
+                    option.disabled = false;
+                });
+            }
+        }
+
         if (editSplitCheckbox && editBonusCheckbox) {
             editSplitCheckbox.addEventListener('change', function() {
                 if (this.checked && editBonusCheckbox.checked) {
                     editBonusCheckbox.checked = false;
                 }
+                handleEditPaymentType();
             });
             editBonusCheckbox.addEventListener('change', function() {
                 if (this.checked && editSplitCheckbox.checked) {
                     editSplitCheckbox.checked = false;
                 }
+                handleEditPaymentType();
             });
         }
 

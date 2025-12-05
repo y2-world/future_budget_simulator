@@ -1623,8 +1623,17 @@ def credit_estimate_delete(request, pk):
             # 通常項目の削除の場合
             else:
                 estimate = get_object_or_404(CreditEstimate, pk=pk)
-                estimate.delete()
-                message = 'クレカ見積りを削除しました。'
+
+                # 分割払いの場合、ペアも一緒に削除
+                if estimate.is_split_payment and estimate.split_payment_group:
+                    # 同じグループIDを持つ他のレコードも削除
+                    CreditEstimate.objects.filter(
+                        split_payment_group=estimate.split_payment_group
+                    ).delete()
+                    message = '分割払いのクレカ見積り（両方）を削除しました。'
+                else:
+                    estimate.delete()
+                    message = 'クレカ見積りを削除しました。'
 
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': message})
