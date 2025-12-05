@@ -926,12 +926,14 @@ class PastMonthlyPlanForm(forms.ModelForm):
 
     year = forms.ChoiceField(
         label='年',
+        required=False,
         widget=forms.Select(attrs={
             'class': 'w-full p-2 border rounded'
         })
     )
     month = forms.ChoiceField(
         label='月',
+        required=False,
         widget=forms.Select(attrs={
             'class': 'w-full p-2 border rounded'
         })
