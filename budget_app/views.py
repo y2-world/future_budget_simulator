@@ -670,8 +670,11 @@ def plan_edit(request, pk):
             if is_ajax:
                 return JsonResponse({'status': 'success', 'message': f'{display_month} の計画を更新しました。'})
             messages.success(request, f'{display_month} の計画を更新しました。')
-            # 過去月の場合は給与一覧にリダイレクト
-            if is_past_month:
+            # リファラーをチェックして適切なページにリダイレクト
+            referer = request.META.get('HTTP_REFERER', '')
+            if 'past-transactions' in referer:
+                return redirect('budget_app:past_transactions')
+            elif is_past_month:
                 return redirect('budget_app:salary_list')
             return redirect('budget_app:plan_list')
         else:
@@ -1510,7 +1513,7 @@ def credit_estimate_edit(request, pk):
             # リファラーをチェックして適切なページにリダイレクト
             referer = request.META.get('HTTP_REFERER', '')
             if 'past-transactions' in referer:
-                return redirect('budget_app:past_transactions_list')
+                return redirect('budget_app:past_transactions')
             return redirect('budget_app:credit_estimates')
         else:
             if is_ajax:
@@ -1519,13 +1522,13 @@ def credit_estimate_edit(request, pk):
             # リファラーをチェックして適切なページにリダイレクト
             referer = request.META.get('HTTP_REFERER', '')
             if 'past-transactions' in referer:
-                return redirect('budget_app:past_transactions_list')
+                return redirect('budget_app:past_transactions')
             return redirect('budget_app:credit_estimates')
 
     # GETリクエストやAjaxでないPOSTの場合は、ここでは何も返さず、リダイレクトさせる
     referer = request.META.get('HTTP_REFERER', '')
     if 'past-transactions' in referer:
-        return redirect('budget_app:past_transactions_list')
+        return redirect('budget_app:past_transactions')
     return redirect('budget_app:credit_estimates')
 
 

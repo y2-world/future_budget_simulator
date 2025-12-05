@@ -235,7 +235,7 @@
                                                                         <div class="flex justify-between items-center">
                                                                             <div class="flex items-center gap-2">
                                                                                 <span class="text-gray-500">
-                                                                                    {% if est.estimate.due_date %}{{ est.estimate.due_date|date:"Y/m/j" }}{% else %}{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% endif %}
+                                                                                    {% if est.estimate.due_date %}{{ est.estimate.due_date|date:"Y/n/j" }}{% else %}{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% endif %}
                                                                                 </span>
                                                                                 <span class="font-medium text-gray-700">{{ est.memo|default:"（明細名なし）" }}</span>
                                                                                 {% if est.estimate.is_split_payment %}
@@ -245,9 +245,6 @@
                                                                                     {% elif est.estimate.split_payment_part == 2 %}
                                                                                         <span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">2回目</span>
                                                                                     {% endif %}
-                                                                                {% endif %}
-                                                                                {% if est.estimate.is_bonus_payment %}
-                                                                                    <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">ボーナス</span>
                                                                                 {% endif %}
                                                                             </div>
                                                                             <div class="flex items-center gap-2">
@@ -494,7 +491,7 @@
                                                                 <div class="flex justify-between items-start mb-1">
                                                                     <div class="flex items-center gap-1 flex-wrap">
                                                                         <span class="text-gray-500">
-                                                                            {% if est.estimate.due_date %}{{ est.estimate.due_date|date:"Y/m/j" }}{% else %}{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% endif %}
+                                                                            {% if est.estimate.due_date %}{{ est.estimate.due_date|date:"Y/n/j" }}{% else %}{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}{% endif %}
                                                                         </span>
                                                                         <span class="font-medium text-gray-700">{{ est.memo|default:"（明細名なし）" }}</span>
                                                                         {% if est.estimate.is_split_payment %}
@@ -504,9 +501,6 @@
                                                                             {% elif est.estimate.split_payment_part == 2 %}
                                                                                 <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">2回目</span>
                                                                             {% endif %}
-                                                                        {% endif %}
-                                                                        {% if est.estimate.is_bonus_payment %}
-                                                                            <span class="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">ボーナス</span>
                                                                         {% endif %}
                                                                     </div>
                                                                     <span class="text-red-600 font-medium whitespace-nowrap">{{ est.amount|yen }}</span>
