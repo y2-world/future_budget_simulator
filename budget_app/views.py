@@ -411,11 +411,11 @@ def plan_create(request):
         else:
             if is_ajax:
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
-            # 非AJAXの場合、エラーメッセージを追加してフォームを再表示
-            # formは既にエラー情報を持っているのでそのまま使う
-            # （下のrenderで使用される）
+            # 非AJAXの場合、エラーのあるformをそのまま使ってレンダリング
+            # is_past_mode を設定してからrenderへ
+            is_past_mode = is_past_month
 
-    elif request.method == 'GET':
+    if request.method == 'GET':
         # GETリクエストの場合のみ新しいフォームを作成
         # URLパラメータで過去月モードかどうかを判定
         is_past_mode = request.GET.get('past_mode') == 'true'
@@ -690,10 +690,10 @@ def plan_edit(request, pk):
             logger.error(f"POST data: {request.POST}")
             if is_ajax:
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
-            # 非AJAXの場合、エラーのあるformをそのまま使って再表示
-            # （下のrenderで使用される）
+            # 非AJAXの場合、エラーのあるformをそのまま使ってレンダリング
+            # （formは既にエラー情報を持っている）
 
-    elif request.method == 'GET':
+    if request.method == 'GET':
         # GETリクエストの場合のみ新しいフォームを作成
         # 過去月の場合はPastMonthlyPlanFormを使用
         if is_past_month:
