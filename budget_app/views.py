@@ -1757,9 +1757,14 @@ def past_transactions_list(request):
     ).order_by('-year_month')
 
     # 過去のクレカ見積りを取得（当月は含まない）
+    # billing_month（引き落とし月）ベースで取得
+    # billing_monthがない古いデータにも対応するため、year_monthもチェック
+    from django.db.models import Q
     past_credit_estimates = CreditEstimate.objects.filter(
-        year_month__lt=current_year_month
-    ).order_by('-year_month')
+        Q(billing_month__lt=current_year_month) |
+        Q(billing_month__isnull=True, year_month__lt=current_year_month) |
+        Q(billing_month='', year_month__lt=current_year_month)
+    ).order_by('-billing_month', '-year_month')
 
     # 年ごとにグループ化して、月ごとの収入・支出を集計
     yearly_data = {}
@@ -1875,12 +1880,15 @@ def past_transactions_list(request):
             yearly_data[year]['total_net_income'] += net_income
 
     # クレカ見積りデータを月別→カード別にグループ化
+    # billing_month（引き落とし月）でグループ化
     for estimate in past_credit_estimates:
         # 期限が過ぎた見積りのみをフィルタリング（due_dateがNoneの場合は表示する）
         if estimate.due_date and estimate.due_date > current_date:
             continue
 
-        year = estimate.year_month[:4]
+        # billing_monthベースで年を取得
+        billing_month = estimate.billing_month or estimate.year_month
+        year = billing_month[:4]
 
         if year not in yearly_data:
             yearly_data[year] = {
@@ -1892,36 +1900,37 @@ def past_transactions_list(request):
                 'total_credit': 0
             }
 
-        # 月ごとにグループ化
-        if estimate.year_month not in yearly_data[year]['credit_months']:
-            yearly_data[year]['credit_months'][estimate.year_month] = {
-                'year_month': estimate.year_month,
+        # 引き落とし月ごとにグループ化
+        if billing_month not in yearly_data[year]['credit_months']:
+            yearly_data[year]['credit_months'][billing_month] = {
+                'year_month': billing_month,  # テンプレート互換性のため
                 'cards': {},
                 'total_amount': 0
             }
 
         # その月の中でカード別にグループ化
         card_name = estimate.get_card_type_display()
-        if card_name not in yearly_data[year]['credit_months'][estimate.year_month]['cards']:
-            yearly_data[year]['credit_months'][estimate.year_month]['cards'][card_name] = {
+        if card_name not in yearly_data[year]['credit_months'][billing_month]['cards']:
+            yearly_data[year]['credit_months'][billing_month]['cards'][card_name] = {
                 'card_name': card_name,
                 'estimates': []
             }
 
-        yearly_data[year]['credit_months'][estimate.year_month]['cards'][card_name]['estimates'].append({
+        yearly_data[year]['credit_months'][billing_month]['cards'][card_name]['estimates'].append({
             'card_type': estimate.card_type,
             'amount': estimate.amount,
             'memo': estimate.description,
             'estimate': estimate
         })
-        yearly_data[year]['credit_months'][estimate.year_month]['total_amount'] += estimate.amount
+        yearly_data[year]['credit_months'][billing_month]['total_amount'] += estimate.amount
         yearly_data[year]['total_credit'] += estimate.amount
 
     # クレカ見積りの月別データをリストに変換してソート
+    # billing_month（引き落とし月）でソート
     for year in yearly_data:
         credit_months_list = sorted(
             yearly_data[year]['credit_months'].values(),
-            key=lambda x: x['year_month'],
+            key=lambda x: x['year_month'],  # year_monthはbilling_monthが入っている
             reverse=True
         )
         # 各月のカード別データをリストに変換
