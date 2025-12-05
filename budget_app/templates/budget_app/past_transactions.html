@@ -88,6 +88,8 @@
                                         <td colspan="4" class="px-4 py-4">
                                             <form method="post" action="{% url 'budget_app:plan_edit' item.plan.pk %}">
                                                 {% csrf_token %}
+                                                <input type="hidden" name="year" value="{{ item.year_month|slice:':4' }}">
+                                                <input type="hidden" name="month" value="{{ item.year_month|slice:'5:7' }}">
                                                 <div class="text-sm font-semibold text-gray-700 mb-3">{{ item.year_month|format_year_month }} の情報を編集</div>
 
                                                 <!-- 収入セクション -->
@@ -959,6 +961,13 @@ document.querySelectorAll('form[action*="/plans/"][action*="/edit/"]').forEach(f
             showToast('エラーが発生しました。コンソールを確認してください。', 'error');
         });
     });
+});
+
+// Djangoのmessagesフレームワークからのメッセージをトーストで表示
+document.addEventListener('DOMContentLoaded', function() {
+    {% for message in messages %}
+        showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+    {% endfor %}
 });
 </script>
 {% endblock %}
