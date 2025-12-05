@@ -1943,7 +1943,37 @@ def past_transactions_list(request):
             }
 
         # その月の中でカード別にグループ化
-        card_name = estimate.get_card_type_display()
+        # カード名に支払日を追加
+        card_type_display = estimate.get_card_type_display()
+
+        # カードタイプと支払日のマッピング
+        card_due_days = {
+            'view': 4,
+            'rakuten': 27,
+            'paypay': 27,
+            'vermillion': 4,
+            'amazon': 26,
+            'olive': 26,
+        }
+
+        # 支払日を追加したカード名を生成
+        due_day = card_due_days.get(estimate.card_type, '')
+        if due_day and billing_month:
+            billing_year, billing_month_num = map(int, billing_month.split('-'))
+            import calendar
+            # 支払月の最終日を取得
+            last_day = calendar.monthrange(billing_year, billing_month_num)[1]
+            # 支払日が月の日数を超える場合は最終日に調整
+            actual_due_day = min(due_day, last_day)
+            # 営業日に調整（土日祝なら翌営業日）
+            payment_date = adjust_to_next_business_day(dt_date(billing_year, billing_month_num, actual_due_day))
+            card_name = f'{card_type_display} ({payment_date.month}/{payment_date.day}支払)'
+        else:
+            card_name = card_type_display
+
+        if estimate.is_bonus_payment:
+            card_name = f'{card_name}（ボーナス払い）'
+
         if card_name not in yearly_data[year]['credit_months'][billing_month]['cards']:
             yearly_data[year]['credit_months'][billing_month]['cards'][card_name] = {
                 'card_name': card_name,
