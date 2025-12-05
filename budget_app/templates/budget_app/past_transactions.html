@@ -203,7 +203,7 @@
 
                     <!-- クレカ見積り -->
                     <div class="flex-1 bg-white rounded-lg shadow overflow-hidden self-start">
-                        <h3 class="bg-purple-100 px-4 py-2 font-semibold text-purple-800">クレカ見積り</h3>
+                        <h3 class="bg-purple-100 px-4 py-2 font-semibold text-purple-800">クレカ請求</h3>
                         {% if yearly_data|get_item:year|get_item:'credit_months' %}
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
@@ -471,7 +471,7 @@
 
                     <!-- クレカ見積り -->
                     <div class="space-y-4">
-                        <h3 class="font-semibold text-purple-800 bg-purple-100 px-3 py-2 rounded">クレカ見積り</h3>
+                        <h3 class="font-semibold text-purple-800 bg-purple-100 px-3 py-2 rounded">クレカ請求</h3>
                         {% if yearly_data|get_item:year|get_item:'credit_months' %}
                             {% for month_data in yearly_data|get_item:year|get_item:'credit_months' %}
                                 <div class="bg-white rounded-lg shadow p-4">
