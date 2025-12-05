@@ -681,6 +681,19 @@ class CreditEstimateForm(forms.ModelForm):
                     instance.year_month = get_next_bonus_month(instance.year_month)
                     # billing_monthもyear_monthと同じにする
                     instance.billing_month = instance.year_month
+        else:
+            # ボーナス払いから通常払いに変更された場合
+            if instance.pk:
+                try:
+                    original = CreditEstimate.objects.get(pk=instance.pk)
+                    if original.is_bonus_payment:
+                        # purchase_dateをdue_dateにコピー（利用日として扱う）
+                        if original.purchase_date:
+                            instance.due_date = original.purchase_date
+                        # purchase_dateをクリア
+                        instance.purchase_date = None
+                except CreditEstimate.DoesNotExist:
+                    pass
 
         # 既に分割済みのエントリーかチェック（split_payment_partが設定されているか）
         is_already_split = instance.split_payment_part is not None
@@ -806,6 +819,9 @@ class CreditEstimateForm(forms.ModelForm):
                             first_payment.split_payment_part = None
                             first_payment.split_payment_group = None
                             first_payment.is_split_payment = False
+                            # billing_monthを再計算（分割なしの場合）
+                            if not first_payment.is_bonus_payment:
+                                first_payment.billing_month = calculate_billing_month(first_payment.year_month, first_payment.card_type, split_part=None)
                             first_payment.save()
                             # 現在のエントリー（2回目）を削除するため、commitをFalseに
                             if commit:
