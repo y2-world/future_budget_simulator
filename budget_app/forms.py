@@ -731,18 +731,12 @@ class CreditEstimateForm(forms.ModelForm):
                     instance.save()
 
                 # 2回目のエントリー用のdue_dateとbilling_monthを計算
-                if instance.is_bonus_payment and instance.due_date:
-                    # ボーナス払いの2回目は支払日を+1ヶ月
-                    from dateutil.relativedelta import relativedelta
-                    second_due_date = instance.due_date + relativedelta(months=1)
-                    second_billing_month = second_due_date.strftime('%Y-%m')
-                else:
-                    # 通常払いの2回目は利用月から計算
-                    second_due_date = instance.due_date
-                    second_billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=2)
+                # 通常払いの2回目は利用月から計算
+                second_due_date = instance.due_date
+                second_billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=2)
 
                 # 2回目のエントリー（2回目）を作成（利用月は同じ）
-                second_entry = CreditEstimate.objects.create(
+                CreditEstimate.objects.create(
                     year_month=instance.year_month,  # 利用月は1回目と同じ
                     billing_month=second_billing_month,
                     card_type=instance.card_type,
@@ -750,18 +744,19 @@ class CreditEstimateForm(forms.ModelForm):
                     amount=second_payment,
                     due_date=second_due_date,
                     is_split_payment=True,
-                    is_bonus_payment=instance.is_bonus_payment,
                     split_payment_part=2,
                     split_payment_group=group_id,
                 )
-                # ボーナス払いの場合、purchase_dateもコピー
-                if instance.is_bonus_payment and instance.purchase_date:
-                    second_entry.purchase_date = instance.purchase_date
-                    second_entry.save()
             else:
                 # 既に分割済みのエントリーを編集する場合、2回目のエントリーも更新
                 if instance.split_payment_part == 1 and instance.split_payment_group:
-                    # 1回目のbilling_monthを設定（ボーナス払いの場合は既に設定済み）
+                    # 金額を再計算
+                    total_amount = instance.amount
+                    second_payment_amount = (total_amount // 2) // 100 * 100
+                    first_payment_amount = total_amount - second_payment_amount
+                    instance.amount = first_payment_amount
+
+                    # 1回目のbilling_monthを設定
                     if not instance.is_bonus_payment:
                         instance.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=1)
 
@@ -775,27 +770,30 @@ class CreditEstimateForm(forms.ModelForm):
                         second_payment.year_month = instance.year_month  # 利用月は1回目と同じ
                         second_payment.card_type = instance.card_type
                         second_payment.description = instance.description
-                        second_payment.is_bonus_payment = instance.is_bonus_payment
-
-                        # ボーナス払いと通常払いで処理を分岐
-                        if instance.is_bonus_payment and instance.due_date:
-                            # ボーナス払いの2回目は支払日を+1ヶ月
-                            from dateutil.relativedelta import relativedelta
-                            second_payment.due_date = instance.due_date + relativedelta(months=1)
-                            second_payment.billing_month = second_payment.due_date.strftime('%Y-%m')
-                            # purchase_dateもコピー
-                            if instance.purchase_date:
-                                second_payment.purchase_date = instance.purchase_date
-                        else:
-                            # 通常払いの2回目
-                            second_payment.due_date = instance.due_date
-                            second_payment.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=2)
-
+                        second_payment.amount = second_payment_amount  # 金額を更新
+                        second_payment.due_date = instance.due_date
+                        second_payment.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=2)
                         second_payment.save()
                 elif instance.split_payment_part == 2 and instance.split_payment_group:
                     # 2回目のみ編集する場合
+                    # 金額を再計算
+                    total_amount = instance.amount
+                    second_payment_amount = (total_amount // 2) // 100 * 100
+                    first_payment_amount = total_amount - second_payment_amount
+                    instance.amount = second_payment_amount
+
                     if not instance.is_bonus_payment:
                         instance.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=2)
+
+                    # 1回目のエントリーを取得して更新
+                    first_payment = CreditEstimate.objects.filter(
+                        split_payment_group=instance.split_payment_group,
+                        split_payment_part=1
+                    ).first()
+
+                    if first_payment:
+                        first_payment.amount = first_payment_amount
+                        first_payment.save()
         else:
             # 分割払いチェックボックスがオフの場合
             if is_already_split:

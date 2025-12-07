@@ -1,4 +1,3 @@
-import sys
 from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -1321,14 +1320,17 @@ def credit_estimate_list(request):
                     first_entry = card_data['entries'][0]
                     break
 
-            # due_dateで現在/未来/過去を判定
+            # due_dateで過去/未来を判定
             if first_entry and hasattr(first_entry, 'due_date') and first_entry.due_date:
-                if first_entry.due_date.strftime('%Y-%m') == current_month_str:
-                    current_month_summary[ym] = cards
-                elif first_entry.due_date >= today.date():
-                    future_summary[ym] = cards
-                else:
+                if first_entry.due_date < today.date():
+                    # 支払日が過去
                     past_summary[ym] = cards
+                elif first_entry.due_date.strftime('%Y-%m') == current_month_str:
+                    # 支払日が今月
+                    current_month_summary[ym] = cards
+                else:
+                    # 支払日が未来
+                    future_summary[ym] = cards
             else:
                 # due_dateがない場合は月で判定（フォールバック）
                 if ym_date_part == current_month_str:
@@ -1996,7 +1998,6 @@ def past_transactions_list(request):
     for est in all_estimates:
         # ボーナス払いの場合は支払日で判定
         if est.is_bonus_payment and est.due_date:
-            print(f"[DEBUG] ボーナス払い: {est.description}, due_date={est.due_date}, current_date={current_date}, past={est.due_date < current_date}", file=sys.stderr)
             if est.due_date < current_date:
                 past_credit_estimates.append(est)
         # 通常払いの場合はbilling_monthで判定（締め日が過ぎているもの）
