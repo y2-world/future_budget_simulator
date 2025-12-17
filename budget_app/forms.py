@@ -307,7 +307,7 @@ class MonthlyPlanForm(forms.ModelForm):
             'vermillion_card': 'VERMILLION CARD（4日）',
             'amazon_card': 'Amazonカード（26日）',
             'loan_borrowing': 'マネーアシスト借入',
-            'other': 'その他',
+            'other': 'ジム',
         }
 
     def __init__(self, *args, **kwargs):
@@ -364,7 +364,7 @@ class MonthlyPlanForm(forms.ModelForm):
                 year_int = int(selected_year)
                 month_int = int(selected_month)
                 month_name = f"{month_int}月"
-                
+
                 # 前月を計算（クレカ引落用）
                 if month_int == 1:
                     prev_year = year_int - 1
@@ -373,7 +373,19 @@ class MonthlyPlanForm(forms.ModelForm):
                     prev_year = year_int
                     prev_month = month_int - 1
                 prev_month_name = f"{prev_month}月"
-                
+
+                # 28日の土日を考慮した実際の引き落とし日を計算
+                from datetime import date
+                from calendar import monthrange
+                gym_date = date(year_int, month_int, 28)
+                # 土曜日(5)なら月曜日、日曜日(6)なら月曜日に後ろ倒し
+                if gym_date.weekday() == 5:  # 土曜日
+                    gym_day = 30 if monthrange(year_int, month_int)[1] >= 30 else 29
+                elif gym_date.weekday() == 6:  # 日曜日
+                    gym_day = 29
+                else:
+                    gym_day = 28
+
                 # 各フィールドのラベルを動的に設定
                 self.fields['salary'].label = f'給与（{year_int}年{month_name}25日）'
                 self.fields['food'].label = f'食費（{year_int}年{month_name}1日）'
@@ -385,6 +397,7 @@ class MonthlyPlanForm(forms.ModelForm):
                 self.fields['vermillion_card'].label = f'VERMILLION CARD（{year_int}年{month_name}4日）'
                 self.fields['amazon_card'].label = f'Amazonカード（{year_int}年{month_name}26日）'
                 self.fields['loan_borrowing'].label = f'マネーアシスト借入（{year_int}年{month_name}1日）'
+                self.fields['other'].label = f'ジム（{year_int}年{month_name}{gym_day}日）'
 
                 # レイク返済は2026年6月以降は表示しない
                 if year_int > 2026 or (year_int == 2026 and month_int > 5):
@@ -980,7 +993,7 @@ class PastMonthlyPlanForm(forms.ModelForm):
             'amazon_card': 'Amazonカード',
             'olive_card': 'Olive',
             'loan_borrowing': 'マネーアシスト（借入）',
-            'other': 'その他',
+            'other': 'ジム',
         }
 
     def __init__(self, *args, **kwargs):
