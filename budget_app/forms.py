@@ -434,6 +434,10 @@ class MonthlyPlanForm(forms.ModelForm):
                 if field_name in ['bonus', 'view_card_bonus', 'lake', 'bonus_gross_salary', 'bonus_deductions']:
                     self.fields[field_name].required = False
 
+        # 新規作成時のみotherフィールドのデフォルト値を7700に設定
+        if not self.instance.pk and 'other' in self.fields:
+            self.fields['other'].initial = 7700
+
     def clean(self):
         cleaned_data = super().clean()
         year = cleaned_data.get('year')
