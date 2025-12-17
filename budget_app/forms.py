@@ -436,7 +436,7 @@ class MonthlyPlanForm(forms.ModelForm):
 
         # 新規作成時のみotherフィールドのデフォルト値を7700に設定
         if not self.instance.pk and 'other' in self.fields:
-            self.fields['other'].widget.attrs['value'] = 7700
+            self.fields['other'].initial = 7700
 
     def clean(self):
         cleaned_data = super().clean()
