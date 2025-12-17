@@ -313,7 +313,12 @@
                     fields.forEach(field => {
                         const input = document.querySelector(`input[name="${field}"]`);
                         if (input && data.hasOwnProperty(field)) {
-                            input.value = data[field] || 0;
+                            // 新規作成時（exists === false）でotherフィールドの場合は7700をデフォルト値とする
+                            if (field === 'other' && !data.exists && (data[field] === 0 || data[field] === null)) {
+                                input.value = 7700;
+                            } else {
+                                input.value = data[field] || 0;
+                            }
                         }
                     });
                 } catch (error) {
