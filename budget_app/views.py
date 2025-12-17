@@ -238,11 +238,11 @@ def plan_list(request):
             {'date': loan_borrowing_date, 'name': 'マネーアシスト借入', 'amount': plan.loan_borrowing, 'is_view_card': False},
         ]
 
-        # 「その他」は金額が0でない場合のみ追加（日付なし）
+        # 「ジム」は金額が0でない場合のみ追加（日付なし）
         if plan.other != 0:
             transactions.append({
                 'date': None,
-                'name': 'その他',
+                'name': 'ジム',
                 'amount': -plan.other,
                 'is_view_card': False,
             })
@@ -2080,7 +2080,7 @@ def past_transactions_list(request):
         amazon_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(AMAZON_CARD_DUE_DAY)))
         olive_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(OLIVE_CARD_DUE_DAY)))
         loan_borrowing_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(LOAN_BORROWING_DAY)))
-        # 「その他」は日付がないためNone
+        # 「ジム」は日付がないためNone
 
         # 収入・支出の明細を作成
         transactions = []
@@ -2111,7 +2111,7 @@ def past_transactions_list(request):
         if plan.loan_borrowing > 0:
             transactions.append({'date': loan_borrowing_date, 'name': '借入', 'amount': plan.loan_borrowing, 'type': 'expense', 'priority': 0})
         if plan.other > 0:
-            transactions.append({'date': None, 'name': 'その他', 'amount': plan.other, 'type': 'expense', 'priority': 0})
+            transactions.append({'date': None, 'name': 'ジム', 'amount': plan.other, 'type': 'expense', 'priority': 0})
 
         # 日付順にソート（日付がないものは最後、同日は収入が先、同タイプはpriorityで並べる）
         def sort_key(x):

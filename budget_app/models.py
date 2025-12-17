@@ -55,7 +55,7 @@ class MonthlyPlan(models.Model):
     loan = models.IntegerField(default=0, verbose_name="マネーアシスト返済")
     loan_borrowing = models.IntegerField(default=0, verbose_name="マネーアシスト借入")
 
-    other = models.IntegerField(default=0, verbose_name="その他")
+    other = models.IntegerField(default=0, verbose_name="ジム")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新日時")
@@ -171,7 +171,7 @@ class TransactionEvent(models.Model):
         ('amazon_card', 'Amazonカード'),
         ('savings', '定期預金'),
         ('loan', 'マネーアシスト返済'),
-        ('other', 'その他'),
+        ('other', 'ジム'),
     ]
 
     date = models.DateField(verbose_name="日付")

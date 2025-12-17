@@ -122,7 +122,7 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
                         'amazon_card': 'Amazonカード',
                         'loan': 'マネーアシスト返済',
                         'loan_borrowing': 'マネーアシスト借入',
-                        'other': 'その他',
+                        'other': 'ジム',
                         'initial_balance': '初期残高',
                         'default_salary': 'デフォルト給与',
                         'default_food': 'デフォルト食費',
