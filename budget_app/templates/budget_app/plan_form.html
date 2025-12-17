@@ -132,6 +132,16 @@
                 // 給料日の決定: 2025年5月以前は15日、それ以降は25日
                 const salaryDay = (year < 2025 || (year === 2025 && month <= 5)) ? 15 : 25;
 
+                // 28日の土日を考慮した実際の引き落とし日を計算
+                const gymDate = new Date(year, month - 1, 28);
+                let gymDay = 28;
+                // 土曜日(6)なら月曜日、日曜日(0)なら月曜日に後ろ倒し
+                if (gymDate.getDay() === 6) {  // 土曜日
+                    gymDay = lastDay >= 30 ? 30 : 29;
+                } else if (gymDate.getDay() === 0) {  // 日曜日
+                    gymDay = 29;
+                }
+
                 // ラベルを更新
                 const labels = {
                     'bonus': `ボーナス（${year}年${monthName}）`,
@@ -145,7 +155,8 @@
                     'vermillion_card': `VERMILLION CARD（${year}年${monthName}4日）`,
                     'amazon_card': `Amazonカード（${year}年${monthName}26日）`,
                     'olive_card': `Olive（${year}年${monthName}26日）`,
-                    'loan': `マネーアシスト返済（${year}年${monthName}${lastDay}日）`
+                    'loan': `マネーアシスト返済（${year}年${monthName}${lastDay}日）`,
+                    'other': `ジム（${year}年${monthName}${gymDay}日）`
                 };
 
                 // 1月と8月の場合、ボーナス払いフィールドのラベルも更新
