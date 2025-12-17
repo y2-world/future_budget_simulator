@@ -583,6 +583,7 @@ def get_plan_by_month(request):
                 default_salary = config.default_salary if config else 271919
                 default_food = config.default_food if config else 50000
                 default_view_card = config.default_view_card if config else 0
+                default_other = 7700  # ジムのデフォルト値
 
                 data = {
                     'exists': False,
@@ -605,7 +606,7 @@ def get_plan_by_month(request):
                     'olive_card': 0,
                     'loan': 0,
                     'loan_borrowing': 0,
-                    'other': 0,
+                    'other': default_other,
                 }
             return JsonResponse(data)
     except Exception as e:
