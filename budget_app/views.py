@@ -34,6 +34,7 @@ AMAZON_CARD_DUE_DAY = 26  # Amazonカード引き落とし日
 OLIVE_CARD_DUE_DAY = 26  # Olive引き落とし日
 LOAN_DUE_DAY_OF_MONTH = 'last'  # マネーアシスト返済日（月末）
 LOAN_BORROWING_DAY = 1  # マネーアシスト借入日（月初）
+GYM_DUE_DAY = 28  # ジム引き落とし日（土日の場合は翌営業日）
 
 
 def format_year_month_display(year_month: str) -> str:
@@ -220,6 +221,7 @@ def plan_list(request):
         olive_card_date = adjust_to_next_business_day(date(year, month, clamp_day(OLIVE_CARD_DUE_DAY)))
         loan_date = adjust_to_next_business_day(date(year, month, clamp_day(last_day)))  # 月末
         loan_borrowing_date = adjust_to_next_business_day(date(year, month, clamp_day(LOAN_BORROWING_DAY)))
+        gym_date = adjust_to_next_business_day(date(year, month, clamp_day(GYM_DUE_DAY)))
 
         transactions = [
             {'date': salary_date, 'name': '給与', 'amount': plan.salary, 'is_view_card': False},
@@ -236,16 +238,8 @@ def plan_list(request):
             {'date': olive_card_date, 'name': 'Olive', 'amount': -plan.olive_card, 'is_view_card': False},
             {'date': loan_date, 'name': 'マネーアシスト返済', 'amount': -plan.loan, 'is_view_card': False},
             {'date': loan_borrowing_date, 'name': 'マネーアシスト借入', 'amount': plan.loan_borrowing, 'is_view_card': False},
+            {'date': gym_date, 'name': 'ジム', 'amount': -plan.other, 'is_view_card': False},
         ]
-
-        # 「ジム」は金額が0でない場合のみ追加（日付なし）
-        if plan.other != 0:
-            transactions.append({
-                'date': None,
-                'name': 'ジム',
-                'amount': -plan.other,
-                'is_view_card': False,
-            })
 
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, -x['amount']))
@@ -2080,7 +2074,7 @@ def past_transactions_list(request):
         amazon_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(AMAZON_CARD_DUE_DAY)))
         olive_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(OLIVE_CARD_DUE_DAY)))
         loan_borrowing_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(LOAN_BORROWING_DAY)))
-        # 「ジム」は日付がないためNone
+        gym_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(GYM_DUE_DAY)))
 
         # 収入・支出の明細を作成
         transactions = []
@@ -2111,7 +2105,7 @@ def past_transactions_list(request):
         if plan.loan_borrowing > 0:
             transactions.append({'date': loan_borrowing_date, 'name': '借入', 'amount': plan.loan_borrowing, 'type': 'expense', 'priority': 0})
         if plan.other > 0:
-            transactions.append({'date': None, 'name': 'ジム', 'amount': plan.other, 'type': 'expense', 'priority': 0})
+            transactions.append({'date': gym_date, 'name': 'ジム', 'amount': plan.other, 'type': 'expense', 'priority': 0})
 
         # 日付順にソート（日付がないものは最後、同日は収入が先、同タイプはpriorityで並べる）
         def sort_key(x):
