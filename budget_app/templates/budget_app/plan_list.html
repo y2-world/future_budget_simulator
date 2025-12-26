@@ -360,6 +360,33 @@
                 await window.sendAjaxRequest(editForm.action, new FormData(editForm));
             });
         });
+
+        // --- 繰上げ返済チェックボックスの処理 ---
+        document.querySelectorAll('input[type="checkbox"][name^="exclude_"]').forEach(checkbox => {
+            // 初期状態の適用
+            toggleStrikethrough(checkbox);
+
+            // チェックボックス変更時の処理
+            checkbox.addEventListener('change', function() {
+                toggleStrikethrough(this);
+            });
+        });
+
+        function toggleStrikethrough(checkbox) {
+            // チェックボックスの親要素から金額入力フィールドを探す
+            const container = checkbox.closest('div');
+            const amountInput = container.querySelector('input[type="number"]');
+
+            if (amountInput) {
+                if (checkbox.checked) {
+                    amountInput.style.textDecoration = 'line-through';
+                    amountInput.style.color = '#9ca3af'; // グレー色
+                } else {
+                    amountInput.style.textDecoration = 'none';
+                    amountInput.style.color = ''; // デフォルト色に戻す
+                }
+            }
+        }
     });
 </script>
 

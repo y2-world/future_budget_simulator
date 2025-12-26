@@ -647,6 +647,9 @@ def plan_edit(request, pk):
                 if post_data[field] == 'false':
                     post_data.pop(field)
 
+        # デバッグ: チェックボックスの値を確認
+        logger.info(f"Checkbox values after processing: {[(f, post_data.get(f)) for f in checkbox_fields if f in post_data]}")
+
         # POSTデータに含まれるフィールドで給与のみの編集かを判定
         # 給与関連フィールドのみの場合はPastSalaryFormを使用
         salary_only_fields = {
@@ -683,6 +686,7 @@ def plan_edit(request, pk):
         if form.is_valid():
             plan = form.save()
             logger.info(f"Saved: bonus_gross_salary={plan.bonus_gross_salary}, bonus_deductions={plan.bonus_deductions}")
+            logger.info(f"Saved exclude flags: view_card={plan.exclude_view_card}, rakuten={plan.exclude_rakuten_card}")
 
             # マネーアシスト借入額が変更された場合、翌月の返済額を更新
             if plan.loan_borrowing != old_loan_borrowing:
