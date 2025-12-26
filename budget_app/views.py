@@ -224,21 +224,21 @@ def plan_list(request):
         gym_date = adjust_to_next_business_day(date(year, month, clamp_day(GYM_DUE_DAY)))
 
         transactions = [
-            {'date': salary_date, 'name': '給与', 'amount': plan.salary, 'is_view_card': False},
-            {'date': bonus_date, 'name': 'ボーナス', 'amount': plan.bonus, 'is_view_card': False},
-            {'date': food_date, 'name': '食費', 'amount': -plan.food, 'is_view_card': False},
-            {'date': rent_date, 'name': '家賃', 'amount': -plan.rent, 'is_view_card': False},
-            {'date': lake_date, 'name': 'レイク返済', 'amount': -plan.lake, 'is_view_card': False},
-            {'date': view_card_date, 'name': 'VIEWカード', 'amount': -plan.view_card, 'is_view_card': True},
-            {'date': view_card_date, 'name': 'ボーナス払い', 'amount': -plan.view_card_bonus, 'is_view_card': True},
-            {'date': rakuten_card_date, 'name': '楽天カード', 'amount': -plan.rakuten_card, 'is_view_card': False},
-            {'date': paypay_card_date, 'name': 'PayPayカード', 'amount': -plan.paypay_card, 'is_view_card': False},
-            {'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': -plan.vermillion_card, 'is_view_card': False},
-            {'date': amazon_card_date, 'name': 'Amazonカード', 'amount': -plan.amazon_card, 'is_view_card': False},
-            {'date': olive_card_date, 'name': 'Olive', 'amount': -plan.olive_card, 'is_view_card': False},
-            {'date': loan_date, 'name': 'マネーアシスト返済', 'amount': -plan.loan, 'is_view_card': False},
-            {'date': loan_borrowing_date, 'name': 'マネーアシスト借入', 'amount': plan.loan_borrowing, 'is_view_card': False},
-            {'date': gym_date, 'name': 'ジム', 'amount': -plan.other, 'is_view_card': False},
+            {'date': salary_date, 'name': '給与', 'amount': plan.salary, 'is_view_card': False, 'is_excluded': False},
+            {'date': bonus_date, 'name': 'ボーナス', 'amount': plan.bonus, 'is_view_card': False, 'is_excluded': False},
+            {'date': food_date, 'name': '食費', 'amount': -plan.food, 'is_view_card': False, 'is_excluded': False},
+            {'date': rent_date, 'name': '家賃', 'amount': -plan.rent, 'is_view_card': False, 'is_excluded': False},
+            {'date': lake_date, 'name': 'レイク返済', 'amount': -plan.lake, 'is_view_card': False, 'is_excluded': False},
+            {'date': view_card_date, 'name': 'VIEWカード', 'amount': -plan.view_card, 'is_view_card': True, 'is_excluded': plan.exclude_view_card},
+            {'date': view_card_date, 'name': 'ボーナス払い', 'amount': -plan.view_card_bonus, 'is_view_card': True, 'is_excluded': plan.exclude_view_card_bonus},
+            {'date': rakuten_card_date, 'name': '楽天カード', 'amount': -plan.rakuten_card, 'is_view_card': False, 'is_excluded': plan.exclude_rakuten_card},
+            {'date': paypay_card_date, 'name': 'PayPayカード', 'amount': -plan.paypay_card, 'is_view_card': False, 'is_excluded': plan.exclude_paypay_card},
+            {'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': -plan.vermillion_card, 'is_view_card': False, 'is_excluded': plan.exclude_vermillion_card},
+            {'date': amazon_card_date, 'name': 'Amazonカード', 'amount': -plan.amazon_card, 'is_view_card': False, 'is_excluded': plan.exclude_amazon_card},
+            {'date': olive_card_date, 'name': 'Olive', 'amount': -plan.olive_card, 'is_view_card': False, 'is_excluded': plan.exclude_olive_card},
+            {'date': loan_date, 'name': 'マネーアシスト返済', 'amount': -plan.loan, 'is_view_card': False, 'is_excluded': False},
+            {'date': loan_borrowing_date, 'name': 'マネーアシスト借入', 'amount': plan.loan_borrowing, 'is_view_card': False, 'is_excluded': False},
+            {'date': gym_date, 'name': 'ジム', 'amount': -plan.other, 'is_view_card': False, 'is_excluded': False},
         ]
 
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
@@ -261,7 +261,8 @@ def plan_list(request):
                         'name': transaction['name'],
                         'amount': transaction['amount'],
                         'balance': 0,  # テンプレートで表示しないのでダミー
-                        'is_income': transaction['amount'] > 0
+                        'is_income': transaction['amount'] > 0,
+                        'is_excluded': transaction.get('is_excluded', False)
                     })
 
         # タイムライン作成（未来の取引のみ、または過去月の全取引）
@@ -273,13 +274,17 @@ def plan_list(request):
                 if transaction['date'] and transaction['date'] <= today:
                     continue
 
-            current_balance += transaction['amount']
+            # 繰上げ返済でチェックされている場合は残高計算から除外
+            if not transaction.get('is_excluded', False):
+                current_balance += transaction['amount']
+
             timeline.append({
                 'date': transaction['date'],
                 'name': transaction['name'],
                 'amount': transaction['amount'],
                 'balance': current_balance,
-                'is_income': transaction['amount'] > 0
+                'is_income': transaction['amount'] > 0,
+                'is_excluded': transaction.get('is_excluded', False)
             })
             # VIEWカード（通常払いまたはボーナス払い）の引き落とし後の残高を記録
             if transaction.get('is_view_card', False):

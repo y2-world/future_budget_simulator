@@ -295,7 +295,7 @@
                             <span class="text-sm text-gray-600 w-20"></span>
                             {% endif %}
                             <span class="font-medium w-40">{{ item.name }}</span>
-                            <span class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold w-32 text-right">
+                            <span class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold w-32 text-right" {% if item.is_excluded %}style="text-decoration: line-through; color: #9ca3af;"{% endif %}>
                                 {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
                             </span>
                         </div>
@@ -317,7 +317,7 @@
                                 <div class="font-medium text-sm">{{ item.name }}</div>
                             </div>
                             <div class="text-right ml-2">
-                                <div class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold text-sm">
+                                <div class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold text-sm" {% if item.is_excluded %}style="text-decoration: line-through; color: #9ca3af;"{% endif %}>
                                     {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
                                 </div>
                             </div>
