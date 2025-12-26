@@ -6,7 +6,8 @@
       "Bash(python3 manage.py:*)",
       "Bash(/usr/local/bin/python3:*)",
       "Bash(pip3 list:*)",
-      "Bash(venv/bin/python manage.py:*)"
+      "Bash(venv/bin/python manage.py:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

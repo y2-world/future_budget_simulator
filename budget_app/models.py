@@ -57,6 +57,15 @@ class MonthlyPlan(models.Model):
 
     other = models.IntegerField(default=7700, verbose_name="ジム")
 
+    # クレカ項目の繰上げ返済フラグ（チェックすると請求金額を引かない）
+    exclude_view_card = models.BooleanField(default=False, verbose_name="VIEWカード繰上げ返済")
+    exclude_view_card_bonus = models.BooleanField(default=False, verbose_name="VIEWボーナス払い繰上げ返済")
+    exclude_rakuten_card = models.BooleanField(default=False, verbose_name="楽天カード繰上げ返済")
+    exclude_paypay_card = models.BooleanField(default=False, verbose_name="PayPayカード繰上げ返済")
+    exclude_vermillion_card = models.BooleanField(default=False, verbose_name="VERMILLION繰上げ返済")
+    exclude_amazon_card = models.BooleanField(default=False, verbose_name="Amazonカード繰上げ返済")
+    exclude_olive_card = models.BooleanField(default=False, verbose_name="Olive繰上げ返済")
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新日時")
 
@@ -73,15 +82,16 @@ class MonthlyPlan(models.Model):
         return self.salary + self.bonus
 
     def get_total_expenses(self):
-        """月次総支出を計算"""
+        """月次総支出を計算（除外フラグがチェックされたクレカ項目は含まない）"""
         return (
             self.food + self.rent + self.lake +
-            self.view_card + self.view_card_bonus +
-            self.rakuten_card +
-            self.paypay_card +
-            self.vermillion_card +
-            self.amazon_card +
-            self.olive_card +
+            (0 if self.exclude_view_card else self.view_card) +
+            (0 if self.exclude_view_card_bonus else self.view_card_bonus) +
+            (0 if self.exclude_rakuten_card else self.rakuten_card) +
+            (0 if self.exclude_paypay_card else self.paypay_card) +
+            (0 if self.exclude_vermillion_card else self.vermillion_card) +
+            (0 if self.exclude_amazon_card else self.amazon_card) +
+            (0 if self.exclude_olive_card else self.olive_card) +
             self.savings + self.loan + self.other
         )
     

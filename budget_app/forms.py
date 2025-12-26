@@ -281,7 +281,10 @@ class MonthlyPlanForm(forms.ModelForm):
             'lake',
             'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
             'vermillion_card', 'amazon_card', 'olive_card',
-            'loan_borrowing', 'other'
+            'loan_borrowing', 'other',
+            'exclude_view_card', 'exclude_view_card_bonus', 'exclude_rakuten_card',
+            'exclude_paypay_card', 'exclude_vermillion_card', 'exclude_amazon_card',
+            'exclude_olive_card'
         ]
 
         widgets = {
@@ -308,6 +311,13 @@ class MonthlyPlanForm(forms.ModelForm):
             'amazon_card': 'Amazonカード（26日）',
             'loan_borrowing': 'マネーアシスト借入',
             'other': 'ジム',
+            'exclude_view_card': '繰上げ返済',
+            'exclude_view_card_bonus': '繰上げ返済',
+            'exclude_rakuten_card': '繰上げ返済',
+            'exclude_paypay_card': '繰上げ返済',
+            'exclude_vermillion_card': '繰上げ返済',
+            'exclude_amazon_card': '繰上げ返済',
+            'exclude_olive_card': '繰上げ返済',
         }
 
     def __init__(self, *args, **kwargs):

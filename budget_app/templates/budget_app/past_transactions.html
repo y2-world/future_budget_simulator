@@ -960,7 +960,18 @@ editForm.addEventListener('submit', function(e) {
                 window.location.reload();
             }, 500);
         } else {
-            showToast('更新に失敗しました。入力内容を確認してください。', 'error');
+            // バリデーションエラーを表示
+            if (data.errors) {
+                let errorMessages = [];
+                for (let field in data.errors) {
+                    if (data.errors[field]) {
+                        errorMessages.push(data.errors[field].join(' '));
+                    }
+                }
+                showToast(errorMessages.join('\n') || '更新に失敗しました。', 'error');
+            } else {
+                showToast('更新に失敗しました。入力内容を確認してください。', 'error');
+            }
         }
     })
     .catch(error => {
