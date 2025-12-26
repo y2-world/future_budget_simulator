@@ -633,6 +633,20 @@ def plan_edit(request, pk):
         # デバッグ: POSTデータを確認
         logger.info(f"POST data: bonus_gross_salary={request.POST.get('bonus_gross_salary')}, bonus_deductions={request.POST.get('bonus_deductions')}")
 
+        # チェックボックスの文字列値をbooleanに変換
+        post_data = request.POST.copy()
+        checkbox_fields = [
+            'exclude_view_card', 'exclude_view_card_bonus', 'exclude_rakuten_card',
+            'exclude_paypay_card', 'exclude_vermillion_card', 'exclude_amazon_card',
+            'exclude_olive_card'
+        ]
+        for field in checkbox_fields:
+            if field in post_data:
+                # "true"の場合はチェックボックスとしてそのまま（Trueになる）
+                # "false"の場合は削除（Falseになる）
+                if post_data[field] == 'false':
+                    post_data.pop(field)
+
         # POSTデータに含まれるフィールドで給与のみの編集かを判定
         # 給与関連フィールドのみの場合はPastSalaryFormを使用
         salary_only_fields = {
@@ -653,18 +667,18 @@ def plan_edit(request, pk):
         # 給与一覧からの編集の場合はPastSalaryFormを使用
         # 通常のフォーム送信（過去月）の場合はPastMonthlyPlanFormを使用
         if is_ajax:
-            form = MonthlyPlanForm(request.POST, instance=plan)
+            form = MonthlyPlanForm(post_data, instance=plan)
             logger.info("Using MonthlyPlanForm (AJAX)")
         elif is_salary_only:
             from .forms import PastSalaryForm
-            form = PastSalaryForm(request.POST, instance=plan)
+            form = PastSalaryForm(post_data, instance=plan)
             logger.info("Using PastSalaryForm (salary only)")
         elif is_past_month:
             from .forms import PastMonthlyPlanForm
-            form = PastMonthlyPlanForm(request.POST, instance=plan)
+            form = PastMonthlyPlanForm(post_data, instance=plan)
             logger.info("Using PastMonthlyPlanForm (past month)")
         else:
-            form = MonthlyPlanForm(request.POST, instance=plan)
+            form = MonthlyPlanForm(post_data, instance=plan)
             logger.info("Using MonthlyPlanForm (default)")
         if form.is_valid():
             plan = form.save()
