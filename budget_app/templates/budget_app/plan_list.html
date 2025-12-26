@@ -181,6 +181,7 @@
                             <label class="block text-sm font-medium mb-1">VIEWカード</label>
                             <input type="number" name="view_card" value="{{ plan.view_card }}" class="w-full p-2 border rounded">
                             <label class="flex items-center mt-1 text-xs text-gray-600">
+                                <input type="hidden" name="exclude_view_card" value="false">
                                 <input type="checkbox" name="exclude_view_card" value="true" {% if plan.exclude_view_card %}checked{% endif %} class="mr-1">
                                 繰上げ返済
                             </label>
@@ -190,6 +191,7 @@
                             <label class="block text-sm font-medium mb-1">VIEWボーナス払い</label>
                             <input type="number" name="view_card_bonus" value="{{ plan.view_card_bonus }}" class="w-full p-2 border rounded">
                             <label class="flex items-center mt-1 text-xs text-gray-600">
+                                <input type="hidden" name="exclude_view_card_bonus" value="false">
                                 <input type="checkbox" name="exclude_view_card_bonus" value="true" {% if plan.exclude_view_card_bonus %}checked{% endif %} class="mr-1">
                                 繰上げ返済
                             </label>
@@ -202,6 +204,7 @@
                             <label class="block text-sm font-medium mb-1">楽天カード</label>
                             <input type="number" name="rakuten_card" value="{{ plan.rakuten_card }}" class="w-full p-2 border rounded">
                             <label class="flex items-center mt-1 text-xs text-gray-600">
+                                <input type="hidden" name="exclude_rakuten_card" value="false">
                                 <input type="checkbox" name="exclude_rakuten_card" value="true" {% if plan.exclude_rakuten_card %}checked{% endif %} class="mr-1">
                                 繰上げ返済
                             </label>
@@ -210,6 +213,7 @@
                             <label class="block text-sm font-medium mb-1">PayPayカード</label>
                             <input type="number" name="paypay_card" value="{{ plan.paypay_card }}" class="w-full p-2 border rounded">
                             <label class="flex items-center mt-1 text-xs text-gray-600">
+                                <input type="hidden" name="exclude_paypay_card" value="false">
                                 <input type="checkbox" name="exclude_paypay_card" value="true" {% if plan.exclude_paypay_card %}checked{% endif %} class="mr-1">
                                 繰上げ返済
                             </label>
@@ -218,6 +222,7 @@
                             <label class="block text-sm font-medium mb-1">VERMILLION CARD</label>
                             <input type="number" name="vermillion_card" value="{{ plan.vermillion_card }}" class="w-full p-2 border rounded">
                             <label class="flex items-center mt-1 text-xs text-gray-600">
+                                <input type="hidden" name="exclude_vermillion_card" value="false">
                                 <input type="checkbox" name="exclude_vermillion_card" value="true" {% if plan.exclude_vermillion_card %}checked{% endif %} class="mr-1">
                                 繰上げ返済
                             </label>
@@ -226,6 +231,7 @@
                             <label class="block text-sm font-medium mb-1">Amazonカード</label>
                             <input type="number" name="amazon_card" value="{{ plan.amazon_card }}" class="w-full p-2 border rounded">
                             <label class="flex items-center mt-1 text-xs text-gray-600">
+                                <input type="hidden" name="exclude_amazon_card" value="false">
                                 <input type="checkbox" name="exclude_amazon_card" value="true" {% if plan.exclude_amazon_card %}checked{% endif %} class="mr-1">
                                 繰上げ返済
                             </label>
@@ -234,6 +240,7 @@
                             <label class="block text-sm font-medium mb-1">Olive</label>
                             <input type="number" name="olive_card" value="{{ plan.olive_card }}" class="w-full p-2 border rounded">
                             <label class="flex items-center mt-1 text-xs text-gray-600">
+                                <input type="hidden" name="exclude_olive_card" value="false">
                                 <input type="checkbox" name="exclude_olive_card" value="true" {% if plan.exclude_olive_card %}checked{% endif %} class="mr-1">
                                 繰上げ返済
                             </label>
