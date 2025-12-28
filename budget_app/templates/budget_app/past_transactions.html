@@ -143,42 +143,60 @@
                                                             <label class="block text-gray-600 mb-1 text-xs">家賃（円）</label>
                                                             <input type="number" name="rent" value="{{ item.plan.rent }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% if item.plan.lake %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">レイク（円）</label>
                                                             <input type="number" name="lake" value="{{ item.plan.lake }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
+                                                        {% if item.plan.view_card %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">VIEWカード（円）</label>
                                                             <input type="number" name="view_card" value="{{ item.plan.view_card }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
+                                                        {% if item.plan.view_card_bonus %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">VIEWカード(ボーナス)（円）</label>
                                                             <input type="number" name="view_card_bonus" value="{{ item.plan.view_card_bonus }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
+                                                        {% if item.plan.rakuten_card %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">楽天カード（円）</label>
                                                             <input type="number" name="rakuten_card" value="{{ item.plan.rakuten_card }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
+                                                        {% if item.plan.paypay_card %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">PayPayカード（円）</label>
                                                             <input type="number" name="paypay_card" value="{{ item.plan.paypay_card }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
+                                                        {% if item.plan.vermillion_card %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">VERMILLION CARD（円）</label>
                                                             <input type="number" name="vermillion_card" value="{{ item.plan.vermillion_card }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
+                                                        {% if item.plan.amazon_card %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">Amazonカード（円）</label>
                                                             <input type="number" name="amazon_card" value="{{ item.plan.amazon_card }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
+                                                        {% if item.plan.olive_card %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">Olive（円）</label>
                                                             <input type="number" name="olive_card" value="{{ item.plan.olive_card }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
+                                                        {% if item.plan.loan_borrowing %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">マネーアシスト（借入）（円）</label>
                                                             <input type="number" name="loan_borrowing" value="{{ item.plan.loan_borrowing }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
+                                                        {% endif %}
                                                     </div>
 
                                                     <!-- 動的に追加された項目（ハードコードされていない項目のみ表示） -->
@@ -419,42 +437,60 @@
                                                     <label class="block text-gray-600 mb-1 text-xs">家賃（円）</label>
                                                     <input type="number" name="rent" value="{{ item.plan.rent }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% if item.plan.lake %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">レイク（円）</label>
                                                     <input type="number" name="lake" value="{{ item.plan.lake }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
+                                                {% if item.plan.view_card %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">VIEWカード（円）</label>
                                                     <input type="number" name="view_card" value="{{ item.plan.view_card }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
+                                                {% if item.plan.view_card_bonus %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">VIEWカード(ボーナス)（円）</label>
                                                     <input type="number" name="view_card_bonus" value="{{ item.plan.view_card_bonus }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
+                                                {% if item.plan.rakuten_card %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">楽天カード（円）</label>
                                                     <input type="number" name="rakuten_card" value="{{ item.plan.rakuten_card }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
+                                                {% if item.plan.paypay_card %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">PayPayカード（円）</label>
                                                     <input type="number" name="paypay_card" value="{{ item.plan.paypay_card }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
+                                                {% if item.plan.vermillion_card %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">VERMILLION CARD（円）</label>
                                                     <input type="number" name="vermillion_card" value="{{ item.plan.vermillion_card }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
+                                                {% if item.plan.amazon_card %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">Amazonカード（円）</label>
                                                     <input type="number" name="amazon_card" value="{{ item.plan.amazon_card }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
+                                                {% if item.plan.olive_card %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">Olive（円）</label>
                                                     <input type="number" name="olive_card" value="{{ item.plan.olive_card }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
+                                                {% if item.plan.loan_borrowing %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">マネーアシスト（借入）（円）</label>
                                                     <input type="number" name="loan_borrowing" value="{{ item.plan.loan_borrowing }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
+                                                {% endif %}
 
                                                 <!-- 動的に追加された項目（ハードコードされていない項目のみ表示） -->
                                                 {% if default_items %}
