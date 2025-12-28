@@ -104,6 +104,7 @@
             <thead>
                 <tr class="bg-gray-100 text-gray-600 uppercase text-xs leading-normal">
                     <th class="px-3 py-2 text-left whitespace-nowrap">項目名</th>
+                    <th class="px-3 py-2 text-right whitespace-nowrap">デフォルト金額</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">種別</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">引き落とし日/振込日</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">休日考慮</th>
@@ -116,6 +117,7 @@
                 {% if d.amount %}
                 <tr class="border-b" data-id="{{ d.id }}">
                     <td class="px-3 py-2 align-middle">{{ d.title }}</td>
+                    <td class="px-3 py-2 align-middle text-right font-semibold">¥{{ d.amount|floatformat:0|intcomma }}</td>
                     <td class="px-3 py-2 align-middle text-center">
                         {% if d.payment_type == 'deposit' %}
                             <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded whitespace-nowrap">振込</span>
@@ -229,6 +231,7 @@
         <div class="border-l-4 border-blue-400 rounded-r-lg p-4 bg-white shadow-md hover:shadow-lg transition" data-id="{{ d.id }}">
             <div class="mb-3">
                 <h3 class="font-bold text-lg text-gray-800 mb-2">{{ d.title }}</h3>
+                <p class="text-xl font-bold text-blue-600 mb-2">¥{{ d.amount|floatformat:0|intcomma }}</p>
                 <div class="text-sm text-gray-600 space-y-1">
                     <p>
                         {% if d.payment_type == 'deposit' %}

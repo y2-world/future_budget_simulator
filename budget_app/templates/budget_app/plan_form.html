@@ -156,6 +156,7 @@
                     'amazon_card': `Amazonカード（${year}年${monthName}26日）`,
                     'olive_card': `Olive（${year}年${monthName}26日）`,
                     'loan': `マネーアシスト返済（${year}年${monthName}${lastDay}日）`,
+                    'loan_borrowing': `マネーアシスト借入（${year}年${monthName}1日）`,
                     'other': `ジム（${year}年${monthName}${gymDay}日）`
                 };
 
@@ -440,8 +441,36 @@
                 {% endif %}
             }
 
+            function toggleExcludeFields() {
+                // 繰上げ返済チェックボックスのフィールドを全て制御
+                const excludeFields = [
+                    'exclude_view_card',
+                    'exclude_view_card_bonus',
+                    'exclude_rakuten_card',
+                    'exclude_paypay_card',
+                    'exclude_vermillion_card',
+                    'exclude_amazon_card',
+                    'exclude_olive_card'
+                ];
+
+                excludeFields.forEach(fieldName => {
+                    const wrapper = document.getElementById(`${fieldName}-field-wrapper`);
+                    if (wrapper) {
+                        {% if is_past_mode %}
+                        // 過去給与モードでは表示
+                        wrapper.style.display = 'block';
+                        {% else %}
+                        // 月次計画モードでは非表示（繰上げ返済チェックボックス）
+                        wrapper.style.display = 'none';
+                        {% endif %}
+                    }
+                });
+            }
+
             // ページ読み込み時と年・月の選択変更時にラベルを更新
             document.addEventListener('DOMContentLoaded', function() {
+                toggleExcludeFields(); // 初回ロード時に繰上げ返済チェックボックスの表示を制御
+
                 restrictMonthChoices(); // 月の選択肢を制限
                 updateLabels();
                 updateYearMonth();

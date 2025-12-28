@@ -139,6 +139,7 @@ def index(request):
 def config_view(request):
     """設定"""
     from datetime import date
+    from .forms import MonthlyPlanDefaultForm
 
     config = SimulationConfig.objects.filter(is_active=True).first()
 
@@ -165,7 +166,21 @@ def config_view(request):
     else:
         form = SimulationConfigForm(instance=config)
 
-    return render(request, 'budget_app/config.html', {'form': form})
+    # 月次計画デフォルト項目のデータを取得
+    defaults = MonthlyPlanDefault.objects.all().order_by('title')
+    defaults_with_amount = [d for d in defaults if d.amount]
+    defaults_without_amount = [d for d in defaults if not d.amount]
+    default_form = MonthlyPlanDefaultForm()
+
+    context = {
+        'form': form,
+        'defaults': defaults,
+        'defaults_with_amount': defaults_with_amount,
+        'defaults_without_amount': defaults_without_amount,
+        'default_form': default_form,
+    }
+
+    return render(request, 'budget_app/config.html', context)
 
 
 def update_initial_balance(request):
