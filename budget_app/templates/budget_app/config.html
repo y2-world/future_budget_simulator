@@ -471,12 +471,52 @@
 </div>
 
 <script>
+// 新規作成フォームの締め日・引き落とし日のチェックボックス処理を初期化
+function initializeCreateFormCheckboxes() {
+    // 引き落とし日チェックボックス
+    const createIsWithdrawalEndOfMonthCheckbox = document.getElementById('id_is_withdrawal_end_of_month');
+    const createWithdrawalDayInput = document.getElementById('id_withdrawal_day');
+
+    if (createIsWithdrawalEndOfMonthCheckbox && createWithdrawalDayInput) {
+        // 現在の状態に応じて初期化
+        if (createIsWithdrawalEndOfMonthCheckbox.checked) {
+            createWithdrawalDayInput.disabled = true;
+            createWithdrawalDayInput.value = '';
+            createWithdrawalDayInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+        } else {
+            createWithdrawalDayInput.disabled = false;
+            createWithdrawalDayInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+        }
+    }
+
+    // 締め日チェックボックス
+    const createIsEndOfMonthCheckbox = document.getElementById('id_is_end_of_month');
+    const createClosingDayInput = document.getElementById('id_closing_day');
+
+    if (createIsEndOfMonthCheckbox && createClosingDayInput) {
+        // 現在の状態に応じて初期化
+        if (createIsEndOfMonthCheckbox.checked) {
+            createClosingDayInput.disabled = true;
+            createClosingDayInput.value = '';
+            createClosingDayInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+        } else {
+            createClosingDayInput.disabled = false;
+            createClosingDayInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+        }
+    }
+}
+
 function toggleDefaultCreateForm() {
     const formSection = document.getElementById('defaultCreateFormSection');
     const toggleIcon = document.getElementById('toggleDefaultIcon');
 
     formSection.classList.toggle('hidden');
     toggleIcon.classList.toggle('rotate-180');
+
+    // フォームを開いた時にチェックボックスの状態を初期化
+    if (!formSection.classList.contains('hidden')) {
+        initializeCreateFormCheckboxes();
+    }
 }
 
 function openDefaultEditModal(id, title, amount, paymentType, withdrawalDay, isWithdrawalEndOfMonth, considerHolidays, closingDay, isEndOfMonth) {

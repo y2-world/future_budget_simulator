@@ -23,74 +23,34 @@ from .forms import (
     get_next_bonus_month,
 )
 
-def get_field_mapping():
-    """項目名からフィールド名へのマッピングを返す"""
-    return {
-        '給与': 'salary',
-        'ボーナス': 'bonus',
-        '総支給額': 'gross_salary',
-        '控除額': 'deductions',
-        '交通費': 'transportation',
-        'ボーナス総支給額': 'bonus_gross_salary',
-        'ボーナス控除額': 'bonus_deductions',
-        '食費': 'food',
-        '家賃': 'rent',
-        'レイク': 'lake',
-        'レイク返済': 'lake',
-        'VIEWカード': 'view_card',
-        'ボーナス払い': 'view_card_bonus',
-        '楽天カード': 'rakuten_card',
-        'PayPayカード': 'paypay_card',
-        'VERMILLION CARD': 'vermillion_card',
-        'Amazonカード': 'amazon_card',
-        'Olive': 'olive_card',
-        '定期預金': 'savings',
-        'マネーアシスト返済': 'loan',
-        'マネーアシスト借入': 'loan_borrowing',
-        'ジム': 'other',
-        'その他': 'other',
-    }
-
-
 def get_monthly_plan_defaults():
     """
     月次計画のデフォルト値を取得する
     MonthlyPlanDefaultテーブルから有効なデフォルト項目を取得し、
-    項目名をキーとした辞書を返す
+    keyをキーとした辞書を返す
     """
     defaults = {}
     default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
-    field_mapping = get_field_mapping()
 
     for item in default_items:
-        field_name = field_mapping.get(item.title, None)
-        if field_name:
-            defaults[field_name] = item.amount
+        if item.key:
+            defaults[item.key] = item.amount
 
     return defaults
 
 
 def get_withdrawal_day(field_name):
     """
-    指定されたフィールド名の引落日をMonthlyPlanDefaultから取得
+    指定されたkeyの引落日をMonthlyPlanDefaultから取得
     返り値: (day: int|None, is_end_of_month: bool)
     """
-    field_mapping = get_field_mapping()
-    # フィールド名から項目名への候補を取得（複数の項目名が同じfieldにマッピングされる場合があるため）
-    possible_titles = [title for title, field in field_mapping.items() if field == field_name]
+    default_item = MonthlyPlanDefault.objects.filter(
+        key=field_name,
+        is_active=True
+    ).first()
 
-    if not possible_titles:
-        return (None, False)
-
-    # 有効な項目を検索（優先順位: ジム > その他）
-    for title in possible_titles:
-        default_item = MonthlyPlanDefault.objects.filter(
-            title=title,
-            is_active=True
-        ).first()
-
-        if default_item:
-            return (default_item.withdrawal_day, default_item.is_withdrawal_end_of_month)
+    if default_item:
+        return (default_item.withdrawal_day, default_item.is_withdrawal_end_of_month)
 
     return (None, False)
 
@@ -166,8 +126,8 @@ def config_view(request):
     else:
         form = SimulationConfigForm(instance=config)
 
-    # 月次計画デフォルト項目のデータを取得
-    defaults = MonthlyPlanDefault.objects.all().order_by('title')
+    # 月次計画デフォルト項目のデータを取得（論理削除されていないもののみ）
+    defaults = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
     defaults_with_amount = [d for d in defaults if d.amount]
     defaults_without_amount = [d for d in defaults if not d.amount]
     default_form = MonthlyPlanDefaultForm()
@@ -292,42 +252,50 @@ def plan_list(request):
         def clamp_day(day: int) -> int:
             return min(max(day, 1), last_day)
 
-        # 給与日（土日祝なら前の営業日）
-        salary_day = get_salary_day(year, month)
-        salary_date = adjust_to_previous_business_day(date(year, month, clamp_day(salary_day)))
-        bonus_date = adjust_to_previous_business_day(date(year, month, clamp_day(get_day_for_field('bonus', year, month))))
-        food_date = adjust_to_previous_business_day(date(year, month, clamp_day(get_day_for_field('food', year, month))))
+        # MonthlyPlanDefaultから動的にトランザクションを生成
+        default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+        transactions = []
 
-        # 支払日（土日祝なら次の営業日）
-        rent_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('rent', year, month))))
-        lake_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('lake', year, month))))
-        view_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('view_card', year, month))))
-        rakuten_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('rakuten_card', year, month))))
-        paypay_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('paypay_card', year, month))))
-        vermillion_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('vermillion_card', year, month))))
-        amazon_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('amazon_card', year, month))))
-        olive_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('olive_card', year, month))))
-        loan_date = adjust_to_next_business_day(date(year, month, clamp_day(last_day)))  # 月末
-        loan_borrowing_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('loan_borrowing', year, month))))
-        gym_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('other', year, month))))
+        for item in default_items:
+            key = item.key
+            if not key:
+                continue
 
-        transactions = [
-            {'date': salary_date, 'name': '給与', 'amount': plan.salary, 'is_view_card': False, 'is_excluded': False},
-            {'date': bonus_date, 'name': 'ボーナス', 'amount': plan.bonus, 'is_view_card': False, 'is_excluded': False},
-            {'date': food_date, 'name': '食費', 'amount': -plan.food, 'is_view_card': False, 'is_excluded': False},
-            {'date': rent_date, 'name': '家賃', 'amount': -plan.rent, 'is_view_card': False, 'is_excluded': False},
-            {'date': lake_date, 'name': 'レイク返済', 'amount': -plan.lake, 'is_view_card': False, 'is_excluded': False},
-            {'date': view_card_date, 'name': 'VIEWカード', 'amount': -plan.view_card, 'is_view_card': True, 'is_excluded': plan.exclude_view_card},
-            {'date': view_card_date, 'name': 'ボーナス払い', 'amount': -plan.view_card_bonus, 'is_view_card': True, 'is_excluded': plan.exclude_view_card_bonus},
-            {'date': rakuten_card_date, 'name': '楽天カード', 'amount': -plan.rakuten_card, 'is_view_card': False, 'is_excluded': plan.exclude_rakuten_card},
-            {'date': paypay_card_date, 'name': 'PayPayカード', 'amount': -plan.paypay_card, 'is_view_card': False, 'is_excluded': plan.exclude_paypay_card},
-            {'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': -plan.vermillion_card, 'is_view_card': False, 'is_excluded': plan.exclude_vermillion_card},
-            {'date': amazon_card_date, 'name': 'Amazonカード', 'amount': -plan.amazon_card, 'is_view_card': False, 'is_excluded': plan.exclude_amazon_card},
-            {'date': olive_card_date, 'name': 'Olive', 'amount': -plan.olive_card, 'is_view_card': False, 'is_excluded': plan.exclude_olive_card},
-            {'date': loan_date, 'name': 'マネーアシスト返済', 'amount': -plan.loan, 'is_view_card': False, 'is_excluded': False},
-            {'date': loan_borrowing_date, 'name': 'マネーアシスト借入', 'amount': plan.loan_borrowing, 'is_view_card': False, 'is_excluded': False},
-            {'date': gym_date, 'name': 'ジム', 'amount': -plan.other, 'is_view_card': False, 'is_excluded': False},
-        ]
+            # 金額を取得
+            amount = plan.get_item(key)
+            if amount == 0:
+                continue
+
+            # 引き落とし日/振込日を計算
+            day = get_day_for_field(key, year, month)
+            item_date = date(year, month, clamp_day(day))
+
+            # 休日を考慮して日付を調整
+            if item.consider_holidays:
+                if item.payment_type == 'deposit':
+                    # 振込（給与など）: 休日なら前営業日
+                    item_date = adjust_to_previous_business_day(item_date)
+                else:
+                    # 引き落とし: 休日なら翌営業日
+                    item_date = adjust_to_next_business_day(item_date)
+
+            # 収入か支出かを判定
+            is_income = item.payment_type == 'deposit'
+            transaction_amount = amount if is_income else -amount
+
+            # 繰上げ返済フラグを取得（クレカ項目のみ）
+            is_excluded = plan.get_exclusion(key) if item.is_credit_card() else False
+
+            # VIEWカードかどうかを判定（後方互換性のため）
+            is_view_card = 'view' in key.lower() and item.is_credit_card()
+
+            transactions.append({
+                'date': item_date,
+                'name': item.title,
+                'amount': transaction_amount,
+                'is_view_card': is_view_card,
+                'is_excluded': is_excluded
+            })
 
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, -x['amount']))
@@ -410,12 +378,16 @@ def plan_list(request):
 
     plans = filtered_plans
 
+    # MonthlyPlanDefaultのデータを取得
+    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+
     return render(request, 'budget_app/plan_list.html', {
         'plans': plans,
         'current_and_future_plans': current_and_future_plans,
         'past_plans': past_plans,
         'initial_balance': initial_balance,
         'today': today,
+        'default_items': default_items,
     })
 
 
@@ -536,27 +508,17 @@ def plan_create(request):
                 initial_data = {
                     'year': current_year,
                     'month': current_month,
-                    'salary': existing_plan.salary,
-                    'gross_salary': existing_plan.gross_salary,
-                    'transportation': existing_plan.transportation,
-                    'deductions': existing_plan.deductions,
-                    'bonus': existing_plan.bonus,
-                    'bonus_gross_salary': existing_plan.bonus_gross_salary,
-                    'bonus_deductions': existing_plan.bonus_deductions,
-                    'food': existing_plan.food,
-                    'rent': existing_plan.rent,
-                    'lake': existing_plan.lake,
-                    'view_card': existing_plan.view_card,
-                    'view_card_bonus': existing_plan.view_card_bonus,
-                    'rakuten_card': existing_plan.rakuten_card,
-                    'paypay_card': existing_plan.paypay_card,
-                    'vermillion_card': existing_plan.vermillion_card,
-                    'amazon_card': existing_plan.amazon_card,
-                    'olive_card': existing_plan.olive_card,
-                    'loan': existing_plan.loan,
-                    'loan_borrowing': existing_plan.loan_borrowing,
-                    'other': existing_plan.other,
                 }
+                # 給与明細フィールド
+                for field in ['gross_salary', 'deductions', 'transportation', 'bonus_gross_salary', 'bonus_deductions']:
+                    initial_data[field] = existing_plan.get_item(field)
+
+                # MonthlyPlanDefaultから動的フィールドを追加
+                from .models import MonthlyPlanDefault
+                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                for item in default_items:
+                    if item.key:
+                        initial_data[item.key] = existing_plan.get_item(item.key)
             else:
                 # 既存のプランがない場合
                 from datetime import date
@@ -582,10 +544,27 @@ def plan_create(request):
                     initial_data.update(plan_defaults)
             form = MonthlyPlanForm(initial=initial_data)
 
+    # デフォルト項目の情報をJavaScript用にJSON形式で渡す
+    from .models import MonthlyPlanDefault
+    import json
+
+    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items_data = [
+        {
+            'key': item.key,
+            'title': item.title,
+            'withdrawal_day': item.withdrawal_day,
+            'is_withdrawal_end_of_month': item.is_withdrawal_end_of_month,
+            'is_credit_card': item.is_credit_card()
+        }
+        for item in default_items
+    ]
+
     return render(request, 'budget_app/plan_form.html', {
         'form': form,
         'title': '月次計画の作成' if not is_past_mode else '過去の給与データ登録',
-        'is_past_mode': is_past_mode
+        'is_past_mode': is_past_mode,
+        'default_items_json': json.dumps(default_items_data)
     })
 
 
@@ -605,29 +584,18 @@ def get_plan_by_month(request):
 
         if plan:
             # 既存のプランがある場合、データを返す
+            # 固定フィールドと動的itemsフィールドを統合
             data = {
                 'exists': True,
-                'salary': plan.salary or 0,
                 'gross_salary': plan.gross_salary or 0,
                 'transportation': plan.transportation or 0,
                 'deductions': plan.deductions or 0,
-                'bonus': plan.bonus or 0,
                 'bonus_gross_salary': plan.bonus_gross_salary or 0,
                 'bonus_deductions': plan.bonus_deductions or 0,
-                'food': plan.food or 0,
-                'rent': plan.rent or 0,
-                'lake': plan.lake or 0,
-                'view_card': plan.view_card or 0,
-                'view_card_bonus': plan.view_card_bonus or 0,
-                'rakuten_card': plan.rakuten_card or 0,
-                'paypay_card': plan.paypay_card or 0,
-                'vermillion_card': plan.vermillion_card or 0,
-                'amazon_card': plan.amazon_card or 0,
-                'olive_card': plan.olive_card or 0,
-                'loan': plan.loan or 0,
-                'loan_borrowing': plan.loan_borrowing or 0,
-                'other': plan.other or 0,
             }
+            # itemsフィールドから全ての項目を追加
+            for key, value in plan.items.items():
+                data[key] = value or 0
             return JsonResponse(data)
         else:
             # 既存のプランがない場合
@@ -639,58 +607,27 @@ def get_plan_by_month(request):
             # 選択された年月が過去かどうか判定
             is_past_month = (selected_year < today.year) or (selected_year == today.year and selected_month < today.month)
 
-            if is_past_month:
-                # 過去の月の場合はすべて0を返す
-                data = {
-                    'exists': False,
-                    'salary': 0,
-                    'gross_salary': 0,
-                    'transportation': 0,
-                    'deductions': 0,
-                    'bonus': 0,
-                    'bonus_gross_salary': 0,
-                    'bonus_deductions': 0,
-                    'food': 0,
-                    'rent': 0,
-                    'lake': 0,
-                    'view_card': 0,
-                    'view_card_bonus': 0,
-                    'rakuten_card': 0,
-                    'paypay_card': 0,
-                    'vermillion_card': 0,
-                    'amazon_card': 0,
-                    'olive_card': 0,
-                    'loan': 0,
-                    'loan_borrowing': 0,
-                    'other': 0,
-                }
-            else:
-                # 未来の月の場合はデフォルト値を返す
-                plan_defaults = get_monthly_plan_defaults()
+            # 固定フィールド
+            data = {
+                'exists': False,
+                'gross_salary': 0,
+                'transportation': 0,
+                'deductions': 0,
+                'bonus_gross_salary': 0,
+                'bonus_deductions': 0,
+            }
 
-                data = {
-                    'exists': False,
-                    'salary': plan_defaults.get('salary', 0),
-                    'gross_salary': 0,
-                    'transportation': 0,
-                    'deductions': 0,
-                    'bonus': 0,
-                    'bonus_gross_salary': 0,
-                    'bonus_deductions': 0,
-                    'food': plan_defaults.get('food', 0),
-                    'rent': plan_defaults.get('rent', 0),
-                    'lake': plan_defaults.get('lake', 0),
-                    'view_card': plan_defaults.get('view_card', 0),
-                    'view_card_bonus': 0,
-                    'rakuten_card': 0,
-                    'paypay_card': 0,
-                    'vermillion_card': 0,
-                    'amazon_card': 0,
-                    'olive_card': 0,
-                    'loan': 0,
-                    'loan_borrowing': 0,
-                    'other': plan_defaults.get('other', 0),
-                }
+            if not is_past_month:
+                # 未来の月の場合はデフォルト値を返す
+                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                for item in default_items:
+                    data[item.key] = item.amount or 0
+            else:
+                # 過去の月の場合は全て0
+                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                for item in default_items:
+                    data[item.key] = 0
+
             return JsonResponse(data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -718,11 +655,12 @@ def plan_edit(request, pk):
 
         # チェックボックスの文字列値をbooleanに変換
         post_data = request.POST.copy()
-        checkbox_fields = [
-            'exclude_view_card', 'exclude_view_card_bonus', 'exclude_rakuten_card',
-            'exclude_paypay_card', 'exclude_vermillion_card', 'exclude_amazon_card',
-            'exclude_olive_card'
-        ]
+        # MonthlyPlanDefaultからクレカ項目の除外フラグを動的に生成
+        checkbox_fields = []
+        default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+        for item in default_items:
+            if item.key and item.is_credit_card():
+                checkbox_fields.append(f'exclude_{item.key}')
         for field in checkbox_fields:
             if field in post_data:
                 # "true"の場合はチェックボックスとしてそのまま（Trueになる）
@@ -768,8 +706,6 @@ def plan_edit(request, pk):
             logger.info("Using MonthlyPlanForm (default)")
         if form.is_valid():
             plan = form.save()
-            logger.info(f"Saved: bonus_gross_salary={plan.bonus_gross_salary}, bonus_deductions={plan.bonus_deductions}")
-            logger.info(f"Saved exclude flags: view_card={plan.exclude_view_card}, rakuten={plan.exclude_rakuten_card}")
 
             # マネーアシスト借入額が変更された場合、翌月の返済額を更新
             if plan.loan_borrowing != old_loan_borrowing:
@@ -832,10 +768,27 @@ def plan_edit(request, pk):
         else:
             form = MonthlyPlanForm(instance=plan)
 
+    # デフォルト項目の情報をJavaScript用にJSON形式で渡す
+    from .models import MonthlyPlanDefault
+    import json
+
+    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items_data = [
+        {
+            'key': item.key,
+            'title': item.title,
+            'withdrawal_day': item.withdrawal_day,
+            'is_withdrawal_end_of_month': item.is_withdrawal_end_of_month,
+            'is_credit_card': item.is_credit_card()
+        }
+        for item in default_items
+    ]
+
     return render(request, 'budget_app/plan_form.html', {
         'form': form,
         'title': f'{format_year_month_display(plan.year_month)} の編集',
-        'is_past_mode': is_past_month
+        'is_past_mode': is_past_month,
+        'default_items_json': json.dumps(default_items_data)
     })
 
 
@@ -2029,9 +1982,14 @@ def monthly_plan_default_list(request):
         elif action == 'update':
             target_id = request.POST.get('id')
             instance = get_object_or_404(MonthlyPlanDefault, pk=target_id)
+            # 現在のorderを保存
+            current_order = instance.order
             form = MonthlyPlanDefaultForm(request.POST, instance=instance)
             if form.is_valid():
-                instance = form.save()
+                instance = form.save(commit=False)
+                # orderを復元（フォームに含まれていないため）
+                instance.order = current_order
+                instance.save()
                 if is_ajax:
                     return JsonResponse({
                         'status': 'success',
@@ -2121,18 +2079,18 @@ def salary_list(request):
             continue
 
         # その年の集計（通常給与 + ボーナス）
-        total_gross = sum(p.gross_salary for p in year_plans)
-        total_bonus_gross = sum(p.bonus_gross_salary or 0 for p in year_plans)
-        total_transportation = sum(p.transportation for p in year_plans)
-        total_deductions = sum(p.deductions for p in year_plans)
-        total_bonus_deductions = sum(p.bonus_deductions or 0 for p in year_plans)
-        total_net = sum(p.salary for p in year_plans)
-        total_bonus_net = sum((p.bonus or 0) for p in year_plans)
+        total_gross = sum(p.get_item('gross_salary') for p in year_plans)
+        total_bonus_gross = sum(p.get_item('bonus_gross_salary') or 0 for p in year_plans)
+        total_transportation = sum(p.get_item('transportation') for p in year_plans)
+        total_deductions = sum(p.get_item('deductions') for p in year_plans)
+        total_bonus_deductions = sum(p.get_item('bonus_deductions') or 0 for p in year_plans)
+        total_net = sum(p.get_total_income() for p in year_plans)
+        total_bonus_net = 0  # ボーナスはget_total_income()に含まれる
 
         # 合計
         total_all_gross = total_gross + total_bonus_gross
         total_all_deductions = total_deductions + total_bonus_deductions
-        total_all_net = total_net + total_bonus_net
+        total_all_net = total_net
         gross_minus_transport = total_all_gross - total_transportation
 
         # 総支給額が0円の年もスキップ
@@ -2250,15 +2208,10 @@ def past_transactions_list(request):
         last_day = calendar.monthrange(plan_year, plan_month)[1]
 
         # 収入の合計（給与、ボーナス、その他収入）
-        income = plan.salary + plan.bonus
+        income = plan.get_total_income()
 
         # 支出の合計（全ての支出項目）
-        expenses = (
-            plan.food + plan.rent + plan.lake +
-            plan.view_card + plan.view_card_bonus + plan.rakuten_card +
-            plan.paypay_card + plan.vermillion_card + plan.amazon_card +
-            plan.olive_card + plan.loan_borrowing + plan.other
-        )
+        expenses = plan.get_total_expenses()
 
         # 支出が0円の月はスキップ
         if expenses == 0:
@@ -2267,52 +2220,43 @@ def past_transactions_list(request):
         def clamp_day(day: int) -> int:
             return min(max(day, 1), last_day)
 
-        # 支払日・給与日の日付オブジェクトを生成
-        salary_day = get_salary_day(plan_year, plan_month)
-        salary_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(salary_day)))
-        bonus_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('bonus', plan_year, plan_month))))
-        food_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('food', plan_year, plan_month))))
-        rent_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('rent', plan_year, plan_month))))
-        lake_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('lake', plan_year, plan_month))))
-        view_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('view_card', plan_year, plan_month))))
-        rakuten_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('rakuten_card', plan_year, plan_month))))
-        paypay_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('paypay_card', plan_year, plan_month))))
-        vermillion_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('vermillion_card', plan_year, plan_month))))
-        amazon_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('amazon_card', plan_year, plan_month))))
-        olive_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('olive_card', plan_year, plan_month))))
-        loan_borrowing_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('loan_borrowing', plan_year, plan_month))))
-        gym_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('other', plan_year, plan_month))))
-
-        # 収入・支出の明細を作成
+        # MonthlyPlanDefaultから動的にトランザクションを生成
+        default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
         transactions = []
-        if plan.salary > 0:
-            transactions.append({'date': salary_date, 'name': '給与', 'amount': plan.salary, 'type': 'income', 'priority': 0})
-        if plan.bonus > 0:
-            transactions.append({'date': bonus_date, 'name': 'ボーナス', 'amount': plan.bonus, 'type': 'income', 'priority': 1})
-        if plan.food > 0:
-            transactions.append({'date': food_date, 'name': '食費', 'amount': plan.food, 'type': 'expense', 'priority': 0})
-        if plan.rent > 0:
-            transactions.append({'date': rent_date, 'name': '家賃', 'amount': plan.rent, 'type': 'expense', 'priority': 0})
-        if plan.lake > 0:
-            transactions.append({'date': lake_date, 'name': 'レイク', 'amount': plan.lake, 'type': 'expense', 'priority': 0})
-        if plan.view_card > 0:
-            transactions.append({'date': view_card_date, 'name': 'ビューカード', 'amount': plan.view_card, 'type': 'expense', 'priority': 0})
-        if plan.view_card_bonus > 0:
-            transactions.append({'date': view_card_date, 'name': 'ビューカード(ボーナス)', 'amount': plan.view_card_bonus, 'type': 'expense', 'priority': 0})
-        if plan.rakuten_card > 0:
-            transactions.append({'date': rakuten_card_date, 'name': '楽天カード', 'amount': plan.rakuten_card, 'type': 'expense', 'priority': 0})
-        if plan.paypay_card > 0:
-            transactions.append({'date': paypay_card_date, 'name': 'PayPayカード', 'amount': plan.paypay_card, 'type': 'expense', 'priority': 0})
-        if plan.vermillion_card > 0:
-            transactions.append({'date': vermillion_card_date, 'name': 'VERMILLION CARD', 'amount': plan.vermillion_card, 'type': 'expense', 'priority': 0})
-        if plan.amazon_card > 0:
-            transactions.append({'date': amazon_card_date, 'name': 'Amazonカード', 'amount': plan.amazon_card, 'type': 'expense', 'priority': 0})
-        if plan.olive_card > 0:
-            transactions.append({'date': olive_card_date, 'name': 'Olive', 'amount': plan.olive_card, 'type': 'expense', 'priority': 0})
-        if plan.loan_borrowing > 0:
-            transactions.append({'date': loan_borrowing_date, 'name': '借入', 'amount': plan.loan_borrowing, 'type': 'expense', 'priority': 0})
-        if plan.other > 0:
-            transactions.append({'date': gym_date, 'name': 'ジム', 'amount': plan.other, 'type': 'expense', 'priority': 0})
+
+        for item in default_items:
+            key = item.key
+            if not key:
+                continue
+
+            # 金額を取得
+            amount = plan.get_item(key)
+            if amount == 0:
+                continue
+
+            # 引き落とし日/振込日を計算
+            day = get_day_for_field(key, plan_year, plan_month)
+            item_date = date(plan_year, plan_month, clamp_day(day))
+
+            # 休日を考慮して日付を調整
+            if item.consider_holidays:
+                if item.payment_type == 'deposit':
+                    # 振込（給与など）: 休日なら前営業日
+                    item_date = adjust_to_previous_business_day(item_date)
+                else:
+                    # 引き落とし: 休日なら翌営業日
+                    item_date = adjust_to_next_business_day(item_date)
+
+            # 収入か支出かを判定
+            transaction_type = 'income' if item.payment_type == 'deposit' else 'expense'
+
+            transactions.append({
+                'date': item_date,
+                'name': item.title,
+                'amount': amount,
+                'type': transaction_type,
+                'priority': item.order
+            })
 
         # 日付順にソート（日付がないものは最後、同日は収入が先、同タイプはpriorityで並べる）
         def sort_key(x):

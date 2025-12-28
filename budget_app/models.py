@@ -143,18 +143,17 @@ class MonthlyPlan(models.Model):
         default_items = MonthlyPlanDefault.objects.filter(is_active=True)
 
         for default_item in default_items:
-            # フィールド名を取得
-            from budget_app.views import get_field_mapping
-            field_mapping = get_field_mapping()
-            field_name = field_mapping.get(default_item.title)
+            # keyをフィールド名として使用
+            field_name = default_item.key
+            if not field_name:
+                continue
 
-            if field_name and default_item.payment_type == 'withdrawal':
+            if default_item.payment_type == 'withdrawal':
                 # 引落項目の場合
                 amount = self.get_item(field_name)
 
                 # クレカ項目の場合、繰上げ返済フラグをチェック
-                if field_name in ['view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
-                                  'vermillion_card', 'amazon_card', 'olive_card']:
+                if default_item.is_credit_card():
                     if not self.get_exclusion(field_name):
                         total += amount
                 else:
@@ -389,6 +388,14 @@ class MonthlyPlanDefault(models.Model):
     ]
 
     title = models.CharField(max_length=100, verbose_name="項目名")
+    key = models.CharField(
+        max_length=100,
+        unique=True,
+        default='',
+        blank=True,
+        verbose_name="フィールド名",
+        help_text="項目の一意識別子（自動生成）"
+    )
     amount = models.IntegerField(default=0, verbose_name="デフォルト金額（円）")
     payment_type = models.CharField(
         max_length=20,
@@ -434,3 +441,71 @@ class MonthlyPlanDefault(models.Model):
 
     def __str__(self):
         return f"{self.title}: ¥{self.amount:,}"
+
+    def is_credit_card(self):
+        """クレジットカード項目かどうかを判定（締め日が設定されている項目）"""
+        return self.closing_day is not None or self.is_end_of_month
+
+    def save(self, *args, **kwargs):
+        """保存時にkeyをIDベースで設定"""
+        # 新規作成の場合、まず保存してIDを取得
+        is_new = not self.pk
+        if is_new:
+            # keyを一時的に空にして保存（後でIDベースに更新）
+            self.key = f'temp_{id(self)}'  # 一時的なユニークキー
+            super().save(*args, **kwargs)
+            # IDが確定したので、IDベースのkeyに更新
+            self.key = f'item_{self.pk}'
+            # update()を使ってsave()の無限ループを回避
+            type(self).objects.filter(pk=self.pk).update(key=self.key)
+        else:
+            # 既存レコードの場合
+            if not self.key or not self.key.startswith('item_'):
+                # keyが空、または古い形式の場合、IDベースに更新
+                self.key = f'item_{self.pk}'
+            super().save(*args, **kwargs)
+
+    @staticmethod
+    def generate_key_from_title(title):
+        """タイトルからキーを生成（英数字とアンダースコアのみ）"""
+        import re
+        # 日本語→ローマ字変換マッピング（よく使う項目のみ）
+        mapping = {
+            '給与': 'salary',
+            'ボーナス': 'bonus',
+            '食費': 'food',
+            '家賃': 'rent',
+            'レイク': 'lake',
+            'レイク返済': 'lake',
+            'VIEWカード': 'view_card',
+            'ボーナス払い': 'view_card_bonus',
+            '楽天カード': 'rakuten_card',
+            'PayPayカード': 'paypay_card',
+            'VERMILLION CARD': 'vermillion_card',
+            'Amazonカード': 'amazon_card',
+            'Olive': 'olive_card',
+            'マネーアシスト返済': 'loan',
+            'マネーアシスト借入': 'loan_borrowing',
+            'ジム': 'other',
+            'その他': 'other',
+        }
+
+        # マッピングに存在する場合はそのまま使用
+        if title in mapping:
+            base_key = mapping[title]
+        else:
+            # 英数字とアンダースコア以外を削除し、小文字に変換
+            base_key = re.sub(r'[^\w\s-]', '', title)
+            base_key = re.sub(r'[\s-]+', '_', base_key.strip()).lower()
+            # 空の場合はデフォルト値
+            if not base_key:
+                base_key = 'custom_item'
+
+        # 一意性を確保（既存のkeyと重複しないようにする）
+        key = base_key
+        counter = 1
+        while MonthlyPlanDefault.objects.filter(key=key).exists():
+            key = f"{base_key}_{counter}"
+            counter += 1
+
+        return key

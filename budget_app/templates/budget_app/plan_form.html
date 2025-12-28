@@ -72,33 +72,6 @@
                 }
             }
 
-            function toggleLakeField() {
-                const yearSelect = document.querySelector('select[name="year"]');
-                const monthSelect = document.querySelector('select[name="month"]');
-                const lakeWrapper = document.getElementById('lake-field-wrapper');
-
-                if (!yearSelect || !monthSelect || !lakeWrapper) {
-                    return;
-                }
-
-                const selectedYear = parseInt(yearSelect.value);
-                const selectedMonth = parseInt(monthSelect.value);
-                const lakeInput = lakeWrapper.querySelector('input');
-
-                // 2026年6月以降は非表示
-                if (selectedYear > 2026 || (selectedYear === 2026 && selectedMonth > 5)) {
-                    lakeWrapper.style.display = 'none';
-                    // 非表示の場合は値を0にクリアし、requiredを削除
-                    if (lakeInput) {
-                        lakeInput.value = 0;
-                        lakeInput.removeAttribute('required');
-                    }
-                } else {
-                    lakeWrapper.style.display = 'block';
-                    if (lakeInput) lakeInput.removeAttribute('required');
-                }
-            }
-
             function getLastDay(year, month) {
                 return new Date(year, month, 0).getDate();
             }
@@ -117,53 +90,32 @@
                 const monthNames = ['', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
                 const monthName = monthNames[month];
 
-                // 前月を計算
-                let prevYear = year;
-                let prevMonth = month - 1;
-                if (prevMonth === 0) {
-                    prevMonth = 12;
-                    prevYear = year - 1;
-                }
-                const prevMonthName = monthNames[prevMonth];
-
                 // 末日を計算
                 const lastDay = getLastDay(year, month);
 
-                // 給料日の決定: 2025年5月以前は15日、それ以降は25日
-                const salaryDay = (year < 2025 || (year === 2025 && month <= 5)) ? 15 : 25;
+                // MonthlyPlanDefaultから動的にラベルを生成
+                const defaultItems = {{ default_items_json|safe }};
+                const labels = {};
 
-                // 28日の土日を考慮した実際の引き落とし日を計算
-                const gymDate = new Date(year, month - 1, 28);
-                let gymDay = 28;
-                // 土曜日(6)なら月曜日、日曜日(0)なら月曜日に後ろ倒し
-                if (gymDate.getDay() === 6) {  // 土曜日
-                    gymDay = lastDay >= 30 ? 30 : 29;
-                } else if (gymDate.getDay() === 0) {  // 日曜日
-                    gymDay = 29;
-                }
+                defaultItems.forEach(item => {
+                    const key = item.key;
+                    const title = item.title;
+                    let day = '';
 
-                // ラベルを更新
-                const labels = {
-                    'bonus': `ボーナス（${year}年${monthName}）`,
-                    'salary': `給与（${year}年${monthName}${salaryDay}日）`,
-                    'food': `食費（${year}年${monthName}1日）`,
-                    'rent': `家賃（${year}年${monthName}27日）`,
-                    'lake': `レイク返済（${year}年${monthName}27日）`,
-                    'view_card': `VIEWカード（${year}年${monthName}4日）`,
-                    'rakuten_card': `楽天カード（${year}年${monthName}27日）`,
-                    'paypay_card': `PayPayカード（${year}年${monthName}27日）`,
-                    'vermillion_card': `VERMILLION CARD（${year}年${monthName}4日）`,
-                    'amazon_card': `Amazonカード（${year}年${monthName}26日）`,
-                    'olive_card': `Olive（${year}年${monthName}26日）`,
-                    'loan': `マネーアシスト返済（${year}年${monthName}${lastDay}日）`,
-                    'loan_borrowing': `マネーアシスト借入（${year}年${monthName}1日）`,
-                    'other': `ジム（${year}年${monthName}${gymDay}日）`
-                };
+                    // 引き落とし日を計算
+                    if (item.is_withdrawal_end_of_month) {
+                        day = lastDay;
+                    } else if (item.withdrawal_day) {
+                        day = item.withdrawal_day;
+                    }
 
-                // 1月と8月の場合、ボーナス払いフィールドのラベルも更新
-                if (month === 1 || month === 8) {
-                    labels['view_card_bonus'] = `VIEWボーナス払い（${year}年${monthName}4日）`;
-                }
+                    // ラベルを生成
+                    if (day) {
+                        labels[key] = `${title}（${year}年${monthName}${day}日）`;
+                    } else {
+                        labels[key] = `${title}（${year}年${monthName}）`;
+                    }
+                });
 
                 // 各フィールドのラベルを更新
                 Object.keys(labels).forEach(fieldName => {
@@ -277,6 +229,7 @@
                 }
             }
 
+
             // 年月に基づいて既存データを取得してフォームに反映
             async function loadPlanData() {
                 const yearSelect = document.querySelector('select[name="year"]');
@@ -303,13 +256,17 @@
                     const data = await response.json();
 
                     // フォームの各フィールドに値を設定
+                    // default_items_jsonから動的にフィールド名を取得
+                    const defaultItems = {{ default_items_json|safe }};
                     const fields = [
-                        'salary', 'gross_salary', 'transportation', 'deductions',
-                        'bonus', 'bonus_gross_salary', 'bonus_deductions',
-                        'food', 'rent', 'lake', 'view_card', 'view_card_bonus',
-                        'rakuten_card', 'paypay_card', 'vermillion_card',
-                        'amazon_card', 'olive_card', 'loan', 'loan_borrowing', 'other'
+                        'gross_salary', 'transportation', 'deductions',
+                        'bonus_gross_salary', 'bonus_deductions'
                     ];
+
+                    // デフォルト項目のkeyを追加
+                    defaultItems.forEach(item => {
+                        fields.push(item.key);
+                    });
 
                     fields.forEach(field => {
                         const input = document.querySelector(`input[name="${field}"]`);
@@ -443,15 +400,15 @@
 
             function toggleExcludeFields() {
                 // 繰上げ返済チェックボックスのフィールドを全て制御
-                const excludeFields = [
-                    'exclude_view_card',
-                    'exclude_view_card_bonus',
-                    'exclude_rakuten_card',
-                    'exclude_paypay_card',
-                    'exclude_vermillion_card',
-                    'exclude_amazon_card',
-                    'exclude_olive_card'
-                ];
+                // default_items_jsonからクレジットカード項目を動的に取得
+                const defaultItems = {{ default_items_json|safe }};
+                const excludeFields = [];
+
+                defaultItems.forEach(item => {
+                    if (item.is_credit_card) {
+                        excludeFields.push(`exclude_${item.key}`);
+                    }
+                });
 
                 excludeFields.forEach(fieldName => {
                     const wrapper = document.getElementById(`${fieldName}-field-wrapper`);
@@ -475,7 +432,6 @@
                 updateLabels();
                 updateYearMonth();
                 toggleBonusField(); // ページ読み込み時にボーナス表示を更新
-                toggleLakeField(); // ページ読み込み時にレイク返済表示を更新
                 toggleExpenseSection(); // ページ読み込み時に支出セクション表示を更新
                 toggleBonusDetailFields(); // ページ読み込み時にボーナス明細フィールド表示を更新
                 loadPlanData(); // ページ読み込み時に既存データを読み込み・確認
@@ -489,7 +445,6 @@
                         updateLabels();
                         updateYearMonth();
                         toggleBonusField(); // 年変更時にもボーナス表示を更新
-                        toggleLakeField(); // 年変更時にレイク返済表示を更新
                         toggleExpenseSection(); // 年変更時に支出セクション表示を更新
                         toggleBonusDetailFields(); // 年変更時にボーナス明細フィールド表示を更新
                         loadPlanData(); // 年変更時に既存データを読み込み
@@ -501,7 +456,6 @@
                         updateLabels();
                         updateYearMonth();
                         toggleBonusField(); // 月変更時にボーナス表示を更新
-                        toggleLakeField(); // 月変更時にレイク返済表示を更新
                         toggleExpenseSection(); // 月変更時に支出セクション表示を更新
                         toggleBonusDetailFields(); // 月変更時にボーナス明細フィールド表示を更新
                         loadPlanData(); // 月変更時に既存データを読み込み

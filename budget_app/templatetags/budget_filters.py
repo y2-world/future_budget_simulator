@@ -97,3 +97,15 @@ def filter_by_year(plans, year):
     except (AttributeError, TypeError):
         return []
 
+
+@register.filter
+def call(obj, method_name):
+    """オブジェクトのメソッドを引数付きで呼び出す（テンプレート用）"""
+    try:
+        method = getattr(obj, method_name)
+        if callable(method):
+            return method()
+        return method
+    except Exception:
+        return None
+

@@ -252,11 +252,9 @@ class MonthlyPlanForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         from .models import MonthlyPlanDefault
-        from budget_app.views import get_field_mapping
 
         # MonthlyPlanDefaultから動的にフィールドを生成
         default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
-        field_mapping = get_field_mapping()
 
         # 給与明細の固定フィールドを追加
         detail_fields = {
@@ -275,12 +273,14 @@ class MonthlyPlanForm(forms.Form):
                 widget=forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'placeholder': '0'})
             )
 
-        # MonthlyPlanDefaultから動的フィールドを生成
+        # MonthlyPlanDefaultから動的フィールドを生成（keyを使用）
         for item in default_items:
-            field_name = field_mapping.get(item.title)
+            # keyをフィールド名として使用
+            field_name = item.key
             if not field_name:
                 continue
 
+            # ラベルを生成（編集時は最新のtitleを反映）
             # 引落日をラベルに含める
             withdrawal_day_str = ''
             if item.is_withdrawal_end_of_month:
@@ -299,8 +299,7 @@ class MonthlyPlanForm(forms.Form):
             )
 
             # クレカ項目の場合、繰上げ返済チェックボックスを追加
-            if field_name in ['view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
-                              'vermillion_card', 'amazon_card', 'olive_card']:
+            if item.is_credit_card():
                 exclude_field = f'exclude_{field_name}'
                 self.fields[exclude_field] = forms.BooleanField(
                     label='繰上げ返済',
@@ -336,8 +335,7 @@ class MonthlyPlanForm(forms.Form):
 
     def save(self, commit=True):
         """フォームデータをMonthlyPlanインスタンスに保存"""
-        from .models import MonthlyPlan
-        from budget_app.views import get_field_mapping
+        from .models import MonthlyPlan, MonthlyPlanDefault
 
         if self.instance and self.instance.pk:
             plan = self.instance
@@ -350,9 +348,13 @@ class MonthlyPlanForm(forms.Form):
             value = self.cleaned_data.get(field_name, 0) or 0
             plan.set_item(field_name, value)
 
-        # 動的フィールドを保存
-        field_mapping = get_field_mapping()
-        for field_name in field_mapping.values():
+        # MonthlyPlanDefaultから動的フィールドを保存（keyベース）
+        default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+        for item in default_items:
+            field_name = item.key
+            if not field_name:
+                continue
+
             if field_name in self.cleaned_data:
                 value = self.cleaned_data.get(field_name, 0) or 0
                 plan.set_item(field_name, value)
