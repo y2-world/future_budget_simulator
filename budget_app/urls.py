@@ -32,6 +32,10 @@ urlpatterns = [
     path('credit-defaults/', views.credit_default_list, name='credit_defaults'),
     path('credit-defaults/<int:pk>/delete/', views.credit_default_delete, name='credit_default_delete'),
 
+    # 月次計画デフォルト項目
+    path('monthly-plan-defaults/', views.monthly_plan_default_list, name='monthly_plan_defaults'),
+    path('monthly-plan-defaults/<int:pk>/delete/', views.monthly_plan_default_delete, name='monthly_plan_default_delete'),
+
     # シミュレーション実行
     path('simulate/', views.simulate, name='simulate'),
 

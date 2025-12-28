@@ -24,9 +24,22 @@ class AccountBalance(models.Model):
 
 
 class MonthlyPlan(models.Model):
-    """月次収支計画"""
+    """月次収支計画（フレキシブルな項目管理対応）"""
     year_month = models.CharField(max_length=7, unique=True, verbose_name="年月")  # YYYY-MM
 
+    # 新しいフレキシブルな項目管理
+    items = models.JSONField(
+        default=dict,
+        verbose_name="計画項目",
+        help_text="MonthlyPlanDefaultで定義された項目の金額を格納 例: {'salary': 271919, 'food': 50000}"
+    )
+    exclusions = models.JSONField(
+        default=dict,
+        verbose_name="繰上げ返済フラグ",
+        help_text="クレカ項目の繰上げ返済フラグ 例: {'view_card': True, 'rakuten_card': False}"
+    )
+
+    # 既存フィールド（後方互換性のため残す、段階的に非推奨化）
     # 収入
     salary = models.IntegerField(default=0, verbose_name="給与")
     bonus = models.IntegerField(default=0, verbose_name="ボーナス")
@@ -54,7 +67,6 @@ class MonthlyPlan(models.Model):
     savings = models.IntegerField(default=0, verbose_name="定期預金")
     loan = models.IntegerField(default=0, verbose_name="マネーアシスト返済")
     loan_borrowing = models.IntegerField(default=0, verbose_name="マネーアシスト借入")
-
     other = models.IntegerField(default=7700, verbose_name="ジム")
 
     # クレカ項目の繰上げ返済フラグ（チェックすると請求金額を引かない）
@@ -77,27 +89,82 @@ class MonthlyPlan(models.Model):
     def __str__(self):
         return f"{self.year_month}"
 
+    def get_item(self, field_name):
+        """
+        項目の金額を取得（items JSONFieldから、フォールバックとして既存フィールドから）
+        """
+        # まずitemsから取得
+        if field_name in self.items:
+            return self.items[field_name]
+        # フォールバック: 既存フィールドから取得
+        return getattr(self, field_name, 0)
+
+    def set_item(self, field_name, value):
+        """
+        項目の金額を設定（items JSONFieldと既存フィールドの両方に設定）
+        """
+        # itemsに設定
+        if not isinstance(self.items, dict):
+            self.items = {}
+        self.items[field_name] = value
+        # 既存フィールドにも設定（後方互換性のため）
+        if hasattr(self, field_name):
+            setattr(self, field_name, value)
+
+    def get_exclusion(self, field_name):
+        """繰上げ返済フラグを取得"""
+        # まずexclusionsから取得
+        if field_name in self.exclusions:
+            return self.exclusions[field_name]
+        # フォールバック: 既存フィールドから取得
+        exclude_field = f'exclude_{field_name}'
+        return getattr(self, exclude_field, False)
+
+    def set_exclusion(self, field_name, value):
+        """繰上げ返済フラグを設定"""
+        # exclusionsに設定
+        if not isinstance(self.exclusions, dict):
+            self.exclusions = {}
+        self.exclusions[field_name] = value
+        # 既存フィールドにも設定（後方互換性のため）
+        exclude_field = f'exclude_{field_name}'
+        if hasattr(self, exclude_field):
+            setattr(self, exclude_field, value)
+
     def get_total_income(self):
         """月次総収入を計算"""
-        return self.salary + self.bonus
+        return self.get_item('salary') + self.get_item('bonus')
 
     def get_total_expenses(self):
         """月次総支出を計算（除外フラグがチェックされたクレカ項目は含まない）"""
-        return (
-            self.food + self.rent + self.lake +
-            (0 if self.exclude_view_card else self.view_card) +
-            (0 if self.exclude_view_card_bonus else self.view_card_bonus) +
-            (0 if self.exclude_rakuten_card else self.rakuten_card) +
-            (0 if self.exclude_paypay_card else self.paypay_card) +
-            (0 if self.exclude_vermillion_card else self.vermillion_card) +
-            (0 if self.exclude_amazon_card else self.amazon_card) +
-            (0 if self.exclude_olive_card else self.olive_card) +
-            self.savings + self.loan + self.other
-        )
+        total = 0
+        # MonthlyPlanDefaultから有効な項目を取得
+        from .models import MonthlyPlanDefault
+        default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+
+        for default_item in default_items:
+            # フィールド名を取得
+            from budget_app.views import get_field_mapping
+            field_mapping = get_field_mapping()
+            field_name = field_mapping.get(default_item.title)
+
+            if field_name and default_item.payment_type == 'withdrawal':
+                # 引落項目の場合
+                amount = self.get_item(field_name)
+
+                # クレカ項目の場合、繰上げ返済フラグをチェック
+                if field_name in ['view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
+                                  'vermillion_card', 'amazon_card', 'olive_card']:
+                    if not self.get_exclusion(field_name):
+                        total += amount
+                else:
+                    total += amount
+
+        return total
     
     def get_total_borrowing(self):
         """月次総借入を計算"""
-        return self.loan_borrowing
+        return self.get_item('loan_borrowing')
 
     def get_net_income(self):
         """月次収支を計算"""
@@ -311,3 +378,59 @@ class DefaultChargeOverride(models.Model):
 
     def __str__(self):
         return f"{self.year_month} - {self.default.label}: {self.amount}"
+
+
+class MonthlyPlanDefault(models.Model):
+    """月次計画のデフォルト項目"""
+
+    PAYMENT_TYPE_CHOICES = [
+        ('deposit', '振込'),
+        ('withdrawal', '引き落とし'),
+    ]
+
+    title = models.CharField(max_length=100, verbose_name="項目名")
+    amount = models.IntegerField(default=0, verbose_name="デフォルト金額（円）")
+    payment_type = models.CharField(
+        max_length=20,
+        choices=PAYMENT_TYPE_CHOICES,
+        default='withdrawal',
+        verbose_name="種別",
+        help_text="振込または引き落とし"
+    )
+    withdrawal_day = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="引き落とし日/振込日",
+        help_text="1-31の数値。引き落とし日または振込日を設定"
+    )
+    is_withdrawal_end_of_month = models.BooleanField(
+        default=False,
+        verbose_name="引き落とし日/振込日を月末にする",
+        help_text="チェックすると引き落とし日/振込日が月末になります"
+    )
+    consider_holidays = models.BooleanField(
+        default=False,
+        verbose_name="休日を考慮",
+        help_text="振込:休日なら直前の金曜、引落:休日なら翌営業日"
+    )
+    closing_day = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="締め日",
+        help_text="クレジットカードの場合のみ設定。1-31の数値"
+    )
+    is_end_of_month = models.BooleanField(
+        default=False,
+        verbose_name="締め日を月末にする",
+        help_text="チェックすると締め日が月末になります"
+    )
+    is_active = models.BooleanField(default=True, verbose_name="有効")
+    order = models.IntegerField(default=0, verbose_name="表示順")
+
+    class Meta:
+        verbose_name = "月次計画デフォルト項目"
+        verbose_name_plural = "月次計画デフォルト項目"
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f"{self.title}: ¥{self.amount:,}"

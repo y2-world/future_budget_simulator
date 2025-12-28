@@ -1,7 +1,7 @@
 from django import forms
 from datetime import datetime, timedelta
 import calendar
-from .models import SimulationConfig, MonthlyPlan, CreditEstimate, CreditDefault
+from .models import SimulationConfig, MonthlyPlan, CreditEstimate, CreditDefault, MonthlyPlanDefault
 
 
 def get_bonus_month_from_date(purchase_date) -> str:
@@ -160,28 +160,11 @@ class SimulationConfigForm(forms.ModelForm):
     class Meta:
         model = SimulationConfig
         fields = [
-            'default_salary',
-            'default_food',
-            'default_view_card',
             'savings_enabled',
             'savings_amount',
             'savings_start_month',
         ]
         widgets = {
-            'default_salary': forms.NumberInput(attrs={
-                'class': 'w-full p-2 border rounded',
-                'placeholder': '例: 271919'
-            }),
-            'default_food': forms.NumberInput(attrs={
-                'class': 'w-full p-2 border rounded',
-                'placeholder': '例: 50000',
-                'min': 0
-            }),
-            'default_view_card': forms.NumberInput(attrs={
-                'class': 'w-full p-2 border rounded',
-                'placeholder': '例: 50000',
-                'min': 0
-            }),
             'savings_enabled': forms.CheckboxInput(attrs={
                 'class': 'rounded',
                 'id': 'savings_enabled_checkbox'
@@ -195,9 +178,6 @@ class SimulationConfigForm(forms.ModelForm):
             'savings_start_month': forms.HiddenInput(),
         }
         labels = {
-            'default_salary': 'デフォルト給与（円）',
-            'default_food': 'デフォルト食費（円）',
-            'default_view_card': 'VIEWカードデフォルト利用額（円）',
             'savings_amount': '定期預金額（円）',
             'savings_start_month': '定期預金開始月',
         }
@@ -253,87 +233,90 @@ class SimulationConfigForm(forms.ModelForm):
         return cleaned_data
 
 
-class MonthlyPlanForm(forms.ModelForm):
-    """月次計画フォーム"""
+class MonthlyPlanForm(forms.Form):
+    """月次計画フォーム（完全動的フィールド生成）"""
     year = forms.ChoiceField(
         label='年',
         required=False,
-        widget=forms.Select(attrs={
-            'class': 'w-full p-2 border rounded'
-        })
+        widget=forms.Select(attrs={'class': 'w-full p-2 border rounded'})
     )
     month = forms.ChoiceField(
         label='月',
         required=False,
-        widget=forms.Select(attrs={
-            'class': 'w-full p-2 border rounded'
-        })
+        widget=forms.Select(attrs={'class': 'w-full p-2 border rounded'})
     )
+    year_month = forms.CharField(widget=forms.HiddenInput(), required=False)
 
-    class Meta:
-        model = MonthlyPlan
-        fields = [
-            'year_month',
-            'salary', 'bonus',
-            'gross_salary', 'deductions', 'transportation',
-            'bonus_gross_salary', 'bonus_deductions',
-            'food', 'rent',
-            'lake',
-            'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
-            'vermillion_card', 'amazon_card', 'olive_card',
-            'loan_borrowing', 'other',
-            'exclude_view_card', 'exclude_view_card_bonus', 'exclude_rakuten_card',
-            'exclude_paypay_card', 'exclude_vermillion_card', 'exclude_amazon_card',
-            'exclude_olive_card'
-        ]
+    def __init__(self, *args, **kwargs):
+        self.instance = kwargs.pop('instance', None)
+        super().__init__(*args, **kwargs)
 
-        widgets = {
-            'year_month': forms.HiddenInput(),
-        }
+        from .models import MonthlyPlanDefault
+        from budget_app.views import get_field_mapping
 
-        labels = {
-            'year_month': '年月（YYYY-MM）',
-            'salary': '給与',
-            'bonus': 'ボーナス',
+        # MonthlyPlanDefaultから動的にフィールドを生成
+        default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+        field_mapping = get_field_mapping()
+
+        # 給与明細の固定フィールドを追加
+        detail_fields = {
             'gross_salary': '総支給額',
             'deductions': '控除額',
             'transportation': '交通費',
             'bonus_gross_salary': 'ボーナス総支給額',
             'bonus_deductions': 'ボーナス控除額',
-            'food': '食費',
-            'rent': '家賃',
-            'lake': 'レイク返済',
-            'view_card': 'VIEWカード（4日）',
-            'view_card_bonus': 'VIEWボーナス払い（4日）',
-            'rakuten_card': '楽天カード（27日）',
-            'paypay_card': 'PayPayカード（27日）',
-            'vermillion_card': 'VERMILLION CARD（4日）',
-            'amazon_card': 'Amazonカード（26日）',
-            'loan_borrowing': 'マネーアシスト借入',
-            'other': 'ジム',
-            'exclude_view_card': '繰上げ返済',
-            'exclude_view_card_bonus': '繰上げ返済',
-            'exclude_rakuten_card': '繰上げ返済',
-            'exclude_paypay_card': '繰上げ返済',
-            'exclude_vermillion_card': '繰上げ返済',
-            'exclude_amazon_card': '繰上げ返済',
-            'exclude_olive_card': '繰上げ返済',
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        for field_name, label in detail_fields.items():
+            self.fields[field_name] = forms.IntegerField(
+                label=label,
+                required=False,
+                initial=0,
+                widget=forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'placeholder': '0'})
+            )
+
+        # MonthlyPlanDefaultから動的フィールドを生成
+        for item in default_items:
+            field_name = field_mapping.get(item.title)
+            if not field_name:
+                continue
+
+            # 引落日をラベルに含める
+            withdrawal_day_str = ''
+            if item.is_withdrawal_end_of_month:
+                withdrawal_day_str = '（末日）'
+            elif item.withdrawal_day:
+                withdrawal_day_str = f'（{item.withdrawal_day}日）'
+
+            label = f'{item.title}{withdrawal_day_str}'
+
+            # 金額フィールドを追加
+            self.fields[field_name] = forms.IntegerField(
+                label=label,
+                required=False,
+                initial=item.amount if not self.instance else self.instance.get_item(field_name),
+                widget=forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'placeholder': '0'})
+            )
+
+            # クレカ項目の場合、繰上げ返済チェックボックスを追加
+            if field_name in ['view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
+                              'vermillion_card', 'amazon_card', 'olive_card']:
+                exclude_field = f'exclude_{field_name}'
+                self.fields[exclude_field] = forms.BooleanField(
+                    label='繰上げ返済',
+                    required=False,
+                    initial=self.instance.get_exclusion(field_name) if self.instance else False,
+                    widget=forms.CheckboxInput(attrs={'class': 'rounded'})
+                )
 
         # 年の選択肢を生成
         current_year = datetime.now().year
-        # 新規作成時は今年以降、編集時は過去も含む
         if self.instance and self.instance.pk:
-            # 編集時: 既存データの年も含める（過去の計画を編集できるように）
             year_choices = [(str(year), str(year)) for year in range(current_year - 3, current_year + 4)]
         else:
-            # 新規作成時: 今年以降のみ（今月以降の計画のみ作成可能）
             year_choices = [(str(year), str(year)) for year in range(current_year, current_year + 4)]
         self.fields['year'].choices = year_choices
-        
+
         # 月の選択肢を生成
         month_choices = [
             ('01', '1月'), ('02', '2月'), ('03', '3月'), ('04', '4月'),
@@ -341,112 +324,48 @@ class MonthlyPlanForm(forms.ModelForm):
             ('09', '9月'), ('10', '10月'), ('11', '11月'), ('12', '12月')
         ]
         self.fields['month'].choices = month_choices
-        
-        # 選択された年月を取得
-        selected_year = None
-        selected_month = None
-        
-        # 既存のインスタンスがある場合、年と月のフィールドを削除（編集時は表示しない）
+
+        # 編集時は年月フィールドを削除
         if self.instance and self.instance.pk and self.instance.year_month:
-            # 編集時は年月フィールドを表示しない
             if 'year' in self.fields:
                 del self.fields['year']
             if 'month' in self.fields:
                 del self.fields['month']
-        
-        # POSTデータから年月を取得（新規作成時）
-        if not selected_year and args and len(args) > 0:
-            post_data = args[0]
-            selected_year = post_data.get('year')
-            selected_month = post_data.get('month')
-        
-        # デフォルト値（現在の年月）- 新規作成時のみ
-        if 'year' in self.fields and not selected_year:
-            selected_year = str(current_year)
-            self.fields['year'].initial = selected_year
-        if 'month' in self.fields and not selected_month:
-            selected_month = f"{datetime.now().month:02d}"
-            self.fields['month'].initial = selected_month
-        
-        # 年月に基づいてラベルを動的に設定
-        if selected_year and selected_month:
-            try:
-                year_int = int(selected_year)
-                month_int = int(selected_month)
-                month_name = f"{month_int}月"
+            # 既存データをフォームに設定
+            self.initial['year_month'] = self.instance.year_month
 
-                # 前月を計算（クレカ引落用）
-                if month_int == 1:
-                    prev_year = year_int - 1
-                    prev_month = 12
-                else:
-                    prev_year = year_int
-                    prev_month = month_int - 1
-                prev_month_name = f"{prev_month}月"
+    def save(self, commit=True):
+        """フォームデータをMonthlyPlanインスタンスに保存"""
+        from .models import MonthlyPlan
+        from budget_app.views import get_field_mapping
 
-                # 28日の土日を考慮した実際の引き落とし日を計算
-                from datetime import date
-                from calendar import monthrange
-                gym_date = date(year_int, month_int, 28)
-                # 土曜日(5)なら月曜日、日曜日(6)なら月曜日に後ろ倒し
-                if gym_date.weekday() == 5:  # 土曜日
-                    gym_day = 30 if monthrange(year_int, month_int)[1] >= 30 else 29
-                elif gym_date.weekday() == 6:  # 日曜日
-                    gym_day = 29
-                else:
-                    gym_day = 28
+        if self.instance and self.instance.pk:
+            plan = self.instance
+        else:
+            plan = MonthlyPlan(year_month=self.cleaned_data['year_month'])
 
-                # 各フィールドのラベルを動的に設定
-                self.fields['salary'].label = f'給与（{year_int}年{month_name}25日）'
-                self.fields['food'].label = f'食費（{year_int}年{month_name}1日）'
-                self.fields['rent'].label = f'家賃（{year_int}年{month_name}27日）'
-                self.fields['lake'].label = f'レイク返済（{year_int}年{month_name}27日）'
-                self.fields['view_card'].label = f'VIEWカード（{year_int}年{month_name}4日）'
-                self.fields['rakuten_card'].label = f'楽天カード（{year_int}年{month_name}27日）'
-                self.fields['paypay_card'].label = f'PayPayカード（{year_int}年{month_name}27日）'
-                self.fields['vermillion_card'].label = f'VERMILLION CARD（{year_int}年{month_name}4日）'
-                self.fields['amazon_card'].label = f'Amazonカード（{year_int}年{month_name}26日）'
-                self.fields['loan_borrowing'].label = f'マネーアシスト借入（{year_int}年{month_name}1日）'
-                self.fields['other'].label = f'ジム（{year_int}年{month_name}{gym_day}日）'
+        # 給与明細の固定フィールドを保存
+        for field_name in ['gross_salary', 'deductions', 'transportation',
+                          'bonus_gross_salary', 'bonus_deductions']:
+            value = self.cleaned_data.get(field_name, 0) or 0
+            plan.set_item(field_name, value)
 
-                # レイク返済は2026年6月以降は表示しない
-                if year_int > 2026 or (year_int == 2026 and month_int > 5):
-                    if 'lake' in self.fields:
-                        del self.fields['lake']
+        # 動的フィールドを保存
+        field_mapping = get_field_mapping()
+        for field_name in field_mapping.values():
+            if field_name in self.cleaned_data:
+                value = self.cleaned_data.get(field_name, 0) or 0
+                plan.set_item(field_name, value)
 
-                # ボーナス払いフィールドは1月と8月のみ表示
-                if selected_month not in ['01', '08']:
-                    # VIEWカード以外のボーナス払いフィールドは常に削除
-                    bonus_fields = [
-                        'view_card_bonus'
-                    ]
-                    for field in bonus_fields:
-                        if field in self.fields:
-                            del self.fields[field]
-                else:
-                    if 'view_card_bonus' in self.fields:
-                        self.fields['view_card_bonus'].label = f'VIEWボーナス払い（{year_int}年{month_name}4日）'
+            # 繰上げ返済フラグを保存
+            exclude_field = f'exclude_{field_name}'
+            if exclude_field in self.cleaned_data:
+                plan.set_exclusion(field_name, self.cleaned_data.get(exclude_field, False))
 
-                # ボーナス明細フィールドは常にフォームに含めるが、
-                # JavaScriptで表示/非表示を制御するため、削除しない
-                # （6月、12月、2025年2月のみ表示）
-            except (ValueError, TypeError):
-                pass
+        if commit:
+            plan.save()
 
-        # すべての数値入力フィールドに共通のクラスを適用
-        for field_name in self.fields:
-            if field_name not in ['year_month', 'year', 'month']:
-                self.fields[field_name].widget.attrs.update({
-                    'class': 'w-full p-2 border rounded',
-                    'placeholder': '0'
-                })
-                # 条件付きフィールド（bonus, view_card_bonus, lake, bonus_gross_salary, bonus_deductions）はrequiredをFalseに
-                if field_name in ['bonus', 'view_card_bonus', 'lake', 'bonus_gross_salary', 'bonus_deductions']:
-                    self.fields[field_name].required = False
-
-        # 新規作成時のみotherフィールドのデフォルト値を7700に設定
-        if not self.instance.pk and 'other' in self.fields:
-            self.fields['other'].initial = 7700
+        return plan
 
     def clean(self):
         cleaned_data = super().clean()
@@ -463,7 +382,7 @@ class MonthlyPlanForm(forms.ModelForm):
                 raise forms.ValidationError('年と月を選択してください。')
 
         # 新規作成時のみ、今月以降の月次計画のみ許可（編集時は制限しない）
-        if not self.instance.pk:
+        if not (self.instance and self.instance.pk):
             current_year_month = datetime.now().strftime('%Y-%m')
             selected_year_month = cleaned_data.get('year_month')
             if selected_year_month and selected_year_month < current_year_month:
@@ -950,6 +869,77 @@ class CreditDefaultForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class MonthlyPlanDefaultForm(forms.ModelForm):
+    """月次計画デフォルト項目編集・作成用フォーム"""
+
+    class Meta:
+        model = MonthlyPlanDefault
+        fields = ['title', 'amount', 'payment_type', 'withdrawal_day', 'is_withdrawal_end_of_month', 'consider_holidays', 'closing_day', 'is_end_of_month']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'w-full p-2 border rounded',
+                'placeholder': '例: 家賃',
+            }),
+            'amount': forms.NumberInput(attrs={
+                'class': 'w-full p-2 border rounded',
+                'min': '0',
+                'placeholder': '50000',
+            }),
+            'payment_type': forms.Select(attrs={
+                'class': 'w-full p-2 border rounded',
+            }),
+            'withdrawal_day': forms.NumberInput(attrs={
+                'class': 'w-full p-2 border rounded',
+                'placeholder': '1-31',
+                'min': '1',
+                'max': '31',
+                'id': 'withdrawal_day_input',
+            }),
+            'is_withdrawal_end_of_month': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded',
+                'id': 'is_withdrawal_end_of_month_checkbox',
+            }),
+            'consider_holidays': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded',
+            }),
+            'closing_day': forms.NumberInput(attrs={
+                'class': 'w-full p-2 border rounded',
+                'placeholder': '1-31（クレカの場合のみ）',
+                'min': '1',
+                'max': '31',
+                'id': 'closing_day_input',
+            }),
+            'is_end_of_month': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded',
+                'id': 'is_end_of_month_checkbox',
+            }),
+        }
+        labels = {
+            'title': '項目名',
+            'amount': 'デフォルト金額（円）',
+            'payment_type': '種別',
+            'withdrawal_day': '引き落とし日/振込日',
+            'is_withdrawal_end_of_month': '引き落とし日/振込日を月末にする',
+            'consider_holidays': '休日を考慮',
+            'closing_day': '締め日（クレカの場合）',
+            'is_end_of_month': '締め日を月末にする',
+        }
+
+    def clean_withdrawal_day(self):
+        """引き落とし日のバリデーション"""
+        day = self.cleaned_data.get('withdrawal_day')
+        if day is not None and (day < 1 or day > 31):
+            raise forms.ValidationError('1から31の範囲で入力してください。')
+        return day
+
+    def clean_closing_day(self):
+        """締め日のバリデーション"""
+        day = self.cleaned_data.get('closing_day')
+        if day is not None and (day < 1 or day > 31):
+            raise forms.ValidationError('1から31の範囲で入力してください。')
+        return day
 
 
 class PastMonthlyPlanForm(forms.ModelForm):

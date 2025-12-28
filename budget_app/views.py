@@ -2,6 +2,7 @@ from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
+from django.db import models as django_models
 from django.db.models import Sum
 from django.utils import timezone
 from .models import (
@@ -11,30 +12,87 @@ from .models import (
     CreditEstimate,
     DefaultChargeOverride,
     CreditDefault,
+    MonthlyPlanDefault,
 )
 from .forms import (
     SimulationConfigForm,
     MonthlyPlanForm,
     CreditEstimateForm,
     CreditDefaultForm,
+    MonthlyPlanDefaultForm,
     get_next_bonus_month,
 )
 
-# 支払日・給与日の定数
-SALARY_DAY = 25  # 給与支給日
-BONUS_DAY = 25  # ボーナス支給日
-FOOD_EXPENSE_DAY = 25  # 食費引き落とし日
-RENT_DUE_DAY = 27  # 家賃引き落とし日
-LAKE_DUE_DAY = 27  # レイク返済日
-VIEW_CARD_DUE_DAY = 4  # VIEWカード引き落とし日
-RAKUTEN_CARD_DUE_DAY = 27  # 楽天カード引き落とし日
-PAYPAY_CARD_DUE_DAY = 27  # PayPayカード引き落とし日
-VERMILLION_CARD_DUE_DAY = 4  # VERMILLION CARD引き落とし日
-AMAZON_CARD_DUE_DAY = 26  # Amazonカード引き落とし日
-OLIVE_CARD_DUE_DAY = 26  # Olive引き落とし日
-LOAN_DUE_DAY_OF_MONTH = 'last'  # マネーアシスト返済日（月末）
-LOAN_BORROWING_DAY = 1  # マネーアシスト借入日（月初）
-GYM_DUE_DAY = 28  # ジム引き落とし日（土日の場合は翌営業日）
+def get_field_mapping():
+    """項目名からフィールド名へのマッピングを返す"""
+    return {
+        '給与': 'salary',
+        'ボーナス': 'bonus',
+        '総支給額': 'gross_salary',
+        '控除額': 'deductions',
+        '交通費': 'transportation',
+        'ボーナス総支給額': 'bonus_gross_salary',
+        'ボーナス控除額': 'bonus_deductions',
+        '食費': 'food',
+        '家賃': 'rent',
+        'レイク': 'lake',
+        'レイク返済': 'lake',
+        'VIEWカード': 'view_card',
+        'ボーナス払い': 'view_card_bonus',
+        '楽天カード': 'rakuten_card',
+        'PayPayカード': 'paypay_card',
+        'VERMILLION CARD': 'vermillion_card',
+        'Amazonカード': 'amazon_card',
+        'Olive': 'olive_card',
+        '定期預金': 'savings',
+        'マネーアシスト返済': 'loan',
+        'マネーアシスト借入': 'loan_borrowing',
+        'ジム': 'other',
+        'その他': 'other',
+    }
+
+
+def get_monthly_plan_defaults():
+    """
+    月次計画のデフォルト値を取得する
+    MonthlyPlanDefaultテーブルから有効なデフォルト項目を取得し、
+    項目名をキーとした辞書を返す
+    """
+    defaults = {}
+    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    field_mapping = get_field_mapping()
+
+    for item in default_items:
+        field_name = field_mapping.get(item.title, None)
+        if field_name:
+            defaults[field_name] = item.amount
+
+    return defaults
+
+
+def get_withdrawal_day(field_name):
+    """
+    指定されたフィールド名の引落日をMonthlyPlanDefaultから取得
+    返り値: (day: int|None, is_end_of_month: bool)
+    """
+    field_mapping = get_field_mapping()
+    # フィールド名から項目名への候補を取得（複数の項目名が同じfieldにマッピングされる場合があるため）
+    possible_titles = [title for title, field in field_mapping.items() if field == field_name]
+
+    if not possible_titles:
+        return (None, False)
+
+    # 有効な項目を検索（優先順位: ジム > その他）
+    for title in possible_titles:
+        default_item = MonthlyPlanDefault.objects.filter(
+            title=title,
+            is_active=True
+        ).first()
+
+        if default_item:
+            return (default_item.withdrawal_day, default_item.is_withdrawal_end_of_month)
+
+    return (None, False)
 
 
 def format_year_month_display(year_month: str) -> str:
@@ -423,11 +481,8 @@ def plan_create(request):
             from .forms import PastSalaryForm
             form = PastSalaryForm()
         else:
-            # 設定からデフォルト給与と食費を取得
-            config = SimulationConfig.objects.filter(is_active=True).first()
-            default_salary = config.default_salary if config else 271919
-            default_food = config.default_food if config else 50000
-            default_view_card = config.default_view_card if config else 0
+            # デフォルト値を取得
+            plan_defaults = get_monthly_plan_defaults()
 
             # 現在の年月を取得
             now = datetime.now()
@@ -492,12 +547,9 @@ def plan_create(request):
                     initial_data = {
                         'year': current_year,
                         'month': current_month,
-                        'salary': default_salary,
-                        'food': default_food,
-                        'view_card': default_view_card,
-                        'lake': 8000,
-                        'rent': 74396,
                     }
+                    # MonthlyPlanDefaultからデフォルト値を追加
+                    initial_data.update(plan_defaults)
             form = MonthlyPlanForm(initial=initial_data)
 
     return render(request, 'budget_app/plan_form.html', {
@@ -584,25 +636,21 @@ def get_plan_by_month(request):
                 }
             else:
                 # 未来の月の場合はデフォルト値を返す
-                config = SimulationConfig.objects.filter(is_active=True).first()
-                default_salary = config.default_salary if config else 271919
-                default_food = config.default_food if config else 50000
-                default_view_card = config.default_view_card if config else 0
-                default_other = 7700  # ジムのデフォルト値
+                plan_defaults = get_monthly_plan_defaults()
 
                 data = {
                     'exists': False,
-                    'salary': default_salary,
+                    'salary': plan_defaults.get('salary', 0),
                     'gross_salary': 0,
                     'transportation': 0,
                     'deductions': 0,
                     'bonus': 0,
                     'bonus_gross_salary': 0,
                     'bonus_deductions': 0,
-                    'food': default_food,
-                    'rent': 74396,
-                    'lake': 8000,
-                    'view_card': default_view_card,
+                    'food': plan_defaults.get('food', 0),
+                    'rent': plan_defaults.get('rent', 0),
+                    'lake': plan_defaults.get('lake', 0),
+                    'view_card': plan_defaults.get('view_card', 0),
                     'view_card_bonus': 0,
                     'rakuten_card': 0,
                     'paypay_card': 0,
@@ -611,7 +659,7 @@ def get_plan_by_month(request):
                     'olive_card': 0,
                     'loan': 0,
                     'loan_borrowing': 0,
-                    'other': default_other,
+                    'other': plan_defaults.get('other', 0),
                 }
             return JsonResponse(data)
     except Exception as e:
@@ -1906,6 +1954,105 @@ def credit_default_delete(request, pk):
     if is_ajax:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
     return redirect('budget_app:credit_defaults')
+
+
+def monthly_plan_default_list(request):
+    """月次計画デフォルト項目の管理"""
+    defaults = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+
+    # POST時の処理
+    if request.method == 'POST':
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        action = request.POST.get('action')
+
+        if action == 'create':
+            form = MonthlyPlanDefaultForm(request.POST)
+            if form.is_valid():
+                instance = form.save(commit=False)
+                # 表示順を設定（最後尾に追加）
+                max_order = MonthlyPlanDefault.objects.filter(is_active=True).aggregate(
+                    max_order=django_models.Max('order')
+                )['max_order']
+                instance.order = (max_order or 0) + 1
+                instance.save()
+                if is_ajax:
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': f'デフォルト項目「{instance.title}」を作成しました。',
+                        'default': {
+                            'id': instance.id,
+                            'title': instance.title,
+                            'amount': instance.amount,
+                            'withdrawal_day': instance.withdrawal_day,
+                            'is_withdrawal_end_of_month': instance.is_withdrawal_end_of_month,
+                            'consider_holidays': instance.consider_holidays,
+                            'closing_day': instance.closing_day,
+                            'is_end_of_month': instance.is_end_of_month,
+                        }
+                    })
+                messages.success(request, f'デフォルト項目「{instance.title}」を作成しました。')
+            else:
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+                messages.error(request, f'エラー: {form.errors.as_text()}')
+
+        elif action == 'update':
+            target_id = request.POST.get('id')
+            instance = get_object_or_404(MonthlyPlanDefault, pk=target_id)
+            form = MonthlyPlanDefaultForm(request.POST, instance=instance)
+            if form.is_valid():
+                instance = form.save()
+                if is_ajax:
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': f'{instance.title} を更新しました。',
+                        'default': {
+                            'id': instance.id,
+                            'title': instance.title,
+                            'amount': instance.amount,
+                            'withdrawal_day': instance.withdrawal_day,
+                            'is_withdrawal_end_of_month': instance.is_withdrawal_end_of_month,
+                            'consider_holidays': instance.consider_holidays,
+                            'closing_day': instance.closing_day,
+                            'is_end_of_month': instance.is_end_of_month,
+                        }
+                    })
+                messages.success(request, f'{instance.title} を更新しました。')
+            else:
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+                messages.error(request, f'エラー: {form.errors.as_text()}')
+
+        return redirect('budget_app:monthly_plan_defaults')
+
+    # GETリクエスト、またはバリデーションエラーがあった場合のフォーム
+    form = MonthlyPlanDefaultForm()
+    forms_by_id = {d.id: MonthlyPlanDefaultForm(instance=d, prefix=str(d.id)) for d in defaults}
+
+    return render(request, 'budget_app/monthly_plan_defaults.html', {
+        'defaults': defaults,
+        'forms_by_id': forms_by_id,
+        'form': form,
+    })
+
+
+def monthly_plan_default_delete(request, pk):
+    """月次計画デフォルト項目削除（論理削除）"""
+    default = get_object_or_404(MonthlyPlanDefault, pk=pk)
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+    if request.method == 'POST':
+        title = default.title
+        # 論理削除：is_activeをFalseに設定
+        default.is_active = False
+        default.save()
+        if is_ajax:
+            return JsonResponse({'status': 'success', 'message': f'{title} を削除しました。'})
+        messages.success(request, f'{title} を削除しました。')
+
+    if is_ajax:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
+    return redirect('budget_app:monthly_plan_defaults')
 
 
 def salary_list(request):

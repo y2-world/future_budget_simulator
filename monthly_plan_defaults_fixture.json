@@ -1,0 +1,258 @@
+[
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 7,
+  "fields": {
+    "title": "給与",
+    "amount": 271919,
+    "payment_type": "deposit",
+    "withdrawal_day": 25,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 1
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 8,
+  "fields": {
+    "title": "ボーナス",
+    "amount": 0,
+    "payment_type": "deposit",
+    "withdrawal_day": 25,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 2
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 9,
+  "fields": {
+    "title": "食費",
+    "amount": 50000,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 25,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": false,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 3
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 10,
+  "fields": {
+    "title": "家賃",
+    "amount": 74396,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 27,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 4
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 11,
+  "fields": {
+    "title": "レイク",
+    "amount": 8000,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 27,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 5
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 12,
+  "fields": {
+    "title": "VIEWカード",
+    "amount": 50000,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 4,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": 5,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 6
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 13,
+  "fields": {
+    "title": "ボーナス払い",
+    "amount": 0,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 4,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 7
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 14,
+  "fields": {
+    "title": "楽天カード",
+    "amount": 0,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 27,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": true,
+    "is_active": true,
+    "order": 8
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 15,
+  "fields": {
+    "title": "PayPayカード",
+    "amount": 0,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 27,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": true,
+    "is_active": true,
+    "order": 9
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 16,
+  "fields": {
+    "title": "VERMILLION CARD",
+    "amount": 0,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 4,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": 5,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 10
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 17,
+  "fields": {
+    "title": "Amazonカード",
+    "amount": 0,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 26,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": true,
+    "is_active": true,
+    "order": 11
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 18,
+  "fields": {
+    "title": "Olive",
+    "amount": 0,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 26,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": true,
+    "is_active": true,
+    "order": 12
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 19,
+  "fields": {
+    "title": "定期預金",
+    "amount": 0,
+    "payment_type": "withdrawal",
+    "withdrawal_day": null,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": false,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": false,
+    "order": 13
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 20,
+  "fields": {
+    "title": "マネーアシスト返済",
+    "amount": 50000,
+    "payment_type": "withdrawal",
+    "withdrawal_day": null,
+    "is_withdrawal_end_of_month": true,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 14
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 21,
+  "fields": {
+    "title": "マネーアシスト借入",
+    "amount": 50000,
+    "payment_type": "deposit",
+    "withdrawal_day": 1,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": false,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 15
+  }
+},
+{
+  "model": "budget_app.monthlyplandefault",
+  "pk": 22,
+  "fields": {
+    "title": "ジム",
+    "amount": 7700,
+    "payment_type": "withdrawal",
+    "withdrawal_day": 27,
+    "is_withdrawal_end_of_month": false,
+    "consider_holidays": true,
+    "closing_day": null,
+    "is_end_of_month": false,
+    "is_active": true,
+    "order": 16
+  }
+}
+]
