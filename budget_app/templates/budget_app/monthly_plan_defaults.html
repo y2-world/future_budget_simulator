@@ -96,7 +96,7 @@
     </script>
 
     <!-- デフォルト金額が登録されている項目 -->
-    <h3 class="hidden md:block text-xl font-bold mb-4 text-gray-800">デフォルト金額が登録されている項目</h3>
+    <h3 class="hidden md:block text-xl font-bold mb-4 text-gray-800">金額設定済み</h3>
 
     <!-- デスクトップ表示：テーブル -->
     <div class="hidden md:block overflow-x-auto mb-8">
@@ -159,7 +159,7 @@
     </div>
 
     <!-- デフォルト金額が登録されていない項目 -->
-    <h3 class="hidden md:block text-xl font-bold mb-4 text-gray-800">デフォルト金額が登録されていない項目</h3>
+    <h3 class="hidden md:block text-xl font-bold mb-4 text-gray-800">金額未設定</h3>
 
     <!-- デスクトップ表示：テーブル -->
     <div class="hidden md:block overflow-x-auto">
@@ -223,7 +223,7 @@
 
     <!-- モバイル表示：カード形式 - デフォルト金額が登録されている項目 -->
     {% if defaults_with_amount %}
-    <h3 class="md:hidden text-xl font-bold mb-4 text-gray-800">デフォルト金額が登録されている項目</h3>
+    <h3 class="md:hidden text-xl font-bold mb-4 text-gray-800">金額設定済み</h3>
     <div class="md:hidden space-y-4 mb-8">
         {% for d in defaults_with_amount %}
         <div class="border-l-4 border-blue-400 rounded-r-lg p-4 bg-white shadow-md hover:shadow-lg transition" data-id="{{ d.id }}">
@@ -273,7 +273,7 @@
 
     <!-- モバイル表示：カード形式 - デフォルト金額が登録されていない項目 -->
     {% if defaults_without_amount %}
-    <h3 class="md:hidden text-xl font-bold mb-4 text-gray-800">デフォルト金額が登録されていない項目</h3>
+    <h3 class="md:hidden text-xl font-bold mb-4 text-gray-800">金額未設定</h3>
     <div class="md:hidden space-y-4">
         {% for d in defaults_without_amount %}
         <div class="border-l-4 border-gray-400 rounded-r-lg p-4 bg-white shadow-md hover:shadow-lg transition" data-id="{{ d.id }}">
