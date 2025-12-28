@@ -4,32 +4,17 @@
 <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold mb-6">設定</h2>
 
+    <!-- 月次計画デフォルト項目へのリンク -->
+    <div class="mb-6 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+        <h3 class="text-lg font-bold text-gray-800 mb-2">月次計画デフォルト項目</h3>
+        <p class="text-sm text-gray-600 mb-3">給与、食費、家賃などの月次計画のデフォルト値を別のページで管理できます。</p>
+        <a href="{% url 'budget_app:monthly_plan_defaults' %}" class="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 font-medium text-sm transition">
+            デフォルト項目を管理
+        </a>
+    </div>
+
     <form method="post">
         {% csrf_token %}
-        <div class="mb-4">
-            <label class="block text-gray-700 font-bold mb-2">{{ form.default_salary.label }}</label>
-            {{ form.default_salary }}
-            {% if form.default_salary.errors %}
-                <p class="text-red-500 text-sm mt-1">{{ form.default_salary.errors.0 }}</p>
-            {% endif %}
-        </div>
-
-        <div class="mb-4">
-            <label class="block text-gray-700 font-bold mb-2">{{ form.default_food.label }}</label>
-            {{ form.default_food }}
-            {% if form.default_food.errors %}
-                <p class="text-red-500 text-sm mt-1">{{ form.default_food.errors.0 }}</p>
-            {% endif %}
-        </div>
-
-        <div class="mb-4">
-            <label class="block text-gray-700 font-bold mb-2">{{ form.default_view_card.label }}</label>
-            {{ form.default_view_card }}
-            {% if form.default_view_card.errors %}
-                <p class="text-red-500 text-sm mt-1">{{ form.default_view_card.errors.0 }}</p>
-            {% endif %}
-        </div>
-
         <div class="mb-4">
             <div class="flex items-center mb-4">
                 {{ form.savings_enabled }}
