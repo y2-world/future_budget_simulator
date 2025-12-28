@@ -355,6 +355,7 @@ class MonthlyPlanForm(forms.Form):
             if not field_name:
                 continue
 
+            # フォームに含まれている場合のみ更新（含まれていない場合は既存値を保持）
             if field_name in self.cleaned_data:
                 value = self.cleaned_data.get(field_name, 0) or 0
                 plan.set_item(field_name, value)

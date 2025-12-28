@@ -2444,10 +2444,14 @@ def past_transactions_list(request):
     default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
 
     # ハードコードされたフィールド（既存のテンプレートとの互換性のため）
+    # 古いフィールド名と新しいkey名の両方を含める
     hardcoded_fields = [
         'food', 'rent', 'lake', 'view_card', 'view_card_bonus',
         'rakuten_card', 'paypay_card', 'vermillion_card', 'amazon_card',
-        'olive_card', 'loan_borrowing'
+        'olive_card', 'loan_borrowing',
+        # migration 0049で変換された新しいkey名
+        'item_1', 'item_2', 'item_3', 'item_12', 'item_13',
+        'item_14', 'item_15', 'item_16', 'item_17', 'item_18', 'item_20'
     ]
 
     context = {

@@ -137,66 +137,84 @@
                                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">食費（円）</label>
-                                                            <input type="number" name="food" value="{{ item.plan.food }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_1" value="{{ item.plan|get_item:'item_1' }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">家賃（円）</label>
-                                                            <input type="number" name="rent" value="{{ item.plan.rent }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_2" value="{{ item.plan|get_item:'item_2' }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
-                                                        {% if item.plan.lake %}
+                                                        {% with lake_value=item.plan|get_item:'item_3' %}
+                                                        {% if lake_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">レイク（円）</label>
-                                                            <input type="number" name="lake" value="{{ item.plan.lake }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_3" value="{{ lake_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
-                                                        {% if item.plan.view_card %}
+                                                        {% endwith %}
+                                                        {% with view_card_value=item.plan|get_item:'item_12' %}
+                                                        {% if view_card_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">VIEWカード（円）</label>
-                                                            <input type="number" name="view_card" value="{{ item.plan.view_card }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_12" value="{{ view_card_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
-                                                        {% if item.plan.view_card_bonus %}
+                                                        {% endwith %}
+                                                        {% with view_card_bonus_value=item.plan|get_item:'item_13' %}
+                                                        {% if view_card_bonus_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">VIEWカード(ボーナス)（円）</label>
-                                                            <input type="number" name="view_card_bonus" value="{{ item.plan.view_card_bonus }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_13" value="{{ view_card_bonus_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
-                                                        {% if item.plan.rakuten_card %}
+                                                        {% endwith %}
+                                                        {% with rakuten_card_value=item.plan|get_item:'item_14' %}
+                                                        {% if rakuten_card_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">楽天カード（円）</label>
-                                                            <input type="number" name="rakuten_card" value="{{ item.plan.rakuten_card }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_14" value="{{ rakuten_card_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
-                                                        {% if item.plan.paypay_card %}
+                                                        {% endwith %}
+                                                        {% with paypay_card_value=item.plan|get_item:'item_15' %}
+                                                        {% if paypay_card_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">PayPayカード（円）</label>
-                                                            <input type="number" name="paypay_card" value="{{ item.plan.paypay_card }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_15" value="{{ paypay_card_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
-                                                        {% if item.plan.vermillion_card %}
+                                                        {% endwith %}
+                                                        {% with vermillion_card_value=item.plan|get_item:'item_16' %}
+                                                        {% if vermillion_card_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">VERMILLION CARD（円）</label>
-                                                            <input type="number" name="vermillion_card" value="{{ item.plan.vermillion_card }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_16" value="{{ vermillion_card_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
-                                                        {% if item.plan.amazon_card %}
+                                                        {% endwith %}
+                                                        {% with amazon_card_value=item.plan|get_item:'item_17' %}
+                                                        {% if amazon_card_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">Amazonカード（円）</label>
-                                                            <input type="number" name="amazon_card" value="{{ item.plan.amazon_card }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_17" value="{{ amazon_card_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
-                                                        {% if item.plan.olive_card %}
+                                                        {% endwith %}
+                                                        {% with olive_card_value=item.plan|get_item:'item_18' %}
+                                                        {% if olive_card_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">Olive（円）</label>
-                                                            <input type="number" name="olive_card" value="{{ item.plan.olive_card }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_18" value="{{ olive_card_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
-                                                        {% if item.plan.loan_borrowing %}
+                                                        {% endwith %}
+                                                        {% with loan_borrowing_value=item.plan|get_item:'item_20' %}
+                                                        {% if loan_borrowing_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">マネーアシスト（借入）（円）</label>
-                                                            <input type="number" name="loan_borrowing" value="{{ item.plan.loan_borrowing }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_20" value="{{ loan_borrowing_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
+                                                        {% endwith %}
                                                     </div>
 
                                                     <!-- 動的に追加された項目（ハードコードされていない項目のみ表示） -->
@@ -431,66 +449,84 @@
                                             <div class="space-y-3 text-sm">
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">食費（円）</label>
-                                                    <input type="number" name="food" value="{{ item.plan.food }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_1" value="{{ item.plan|get_item:'item_1' }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">家賃（円）</label>
-                                                    <input type="number" name="rent" value="{{ item.plan.rent }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_2" value="{{ item.plan|get_item:'item_2' }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
-                                                {% if item.plan.lake %}
+                                                {% with lake_value=item.plan|get_item:'item_3' %}
+                                                {% if lake_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">レイク（円）</label>
-                                                    <input type="number" name="lake" value="{{ item.plan.lake }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_3" value="{{ lake_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
-                                                {% if item.plan.view_card %}
+                                                {% endwith %}
+                                                {% with view_card_value=item.plan|get_item:'item_12' %}
+                                                {% if view_card_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">VIEWカード（円）</label>
-                                                    <input type="number" name="view_card" value="{{ item.plan.view_card }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_12" value="{{ view_card_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
-                                                {% if item.plan.view_card_bonus %}
+                                                {% endwith %}
+                                                {% with view_card_bonus_value=item.plan|get_item:'item_13' %}
+                                                {% if view_card_bonus_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">VIEWカード(ボーナス)（円）</label>
-                                                    <input type="number" name="view_card_bonus" value="{{ item.plan.view_card_bonus }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_13" value="{{ view_card_bonus_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
-                                                {% if item.plan.rakuten_card %}
+                                                {% endwith %}
+                                                {% with rakuten_card_value=item.plan|get_item:'item_14' %}
+                                                {% if rakuten_card_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">楽天カード（円）</label>
-                                                    <input type="number" name="rakuten_card" value="{{ item.plan.rakuten_card }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_14" value="{{ rakuten_card_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
-                                                {% if item.plan.paypay_card %}
+                                                {% endwith %}
+                                                {% with paypay_card_value=item.plan|get_item:'item_15' %}
+                                                {% if paypay_card_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">PayPayカード（円）</label>
-                                                    <input type="number" name="paypay_card" value="{{ item.plan.paypay_card }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_15" value="{{ paypay_card_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
-                                                {% if item.plan.vermillion_card %}
+                                                {% endwith %}
+                                                {% with vermillion_card_value=item.plan|get_item:'item_16' %}
+                                                {% if vermillion_card_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">VERMILLION CARD（円）</label>
-                                                    <input type="number" name="vermillion_card" value="{{ item.plan.vermillion_card }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_16" value="{{ vermillion_card_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
-                                                {% if item.plan.amazon_card %}
+                                                {% endwith %}
+                                                {% with amazon_card_value=item.plan|get_item:'item_17' %}
+                                                {% if amazon_card_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">Amazonカード（円）</label>
-                                                    <input type="number" name="amazon_card" value="{{ item.plan.amazon_card }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_17" value="{{ amazon_card_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
-                                                {% if item.plan.olive_card %}
+                                                {% endwith %}
+                                                {% with olive_card_value=item.plan|get_item:'item_18' %}
+                                                {% if olive_card_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">Olive（円）</label>
-                                                    <input type="number" name="olive_card" value="{{ item.plan.olive_card }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_18" value="{{ olive_card_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
-                                                {% if item.plan.loan_borrowing %}
+                                                {% endwith %}
+                                                {% with loan_borrowing_value=item.plan|get_item:'item_20' %}
+                                                {% if loan_borrowing_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">マネーアシスト（借入）（円）</label>
-                                                    <input type="number" name="loan_borrowing" value="{{ item.plan.loan_borrowing }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_20" value="{{ loan_borrowing_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
+                                                {% endwith %}
 
                                                 <!-- 動的に追加された項目（ハードコードされていない項目のみ表示） -->
                                                 {% if default_items %}
