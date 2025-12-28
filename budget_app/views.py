@@ -253,10 +253,14 @@ def plan_list(request):
             return min(max(day, 1), last_day)
 
         # MonthlyPlanDefaultから動的にトランザクションを生成
-        default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+        default_items = MonthlyPlanDefault.objects.all().order_by('order', 'id')
         transactions = []
 
         for item in default_items:
+            # この月に表示すべき項目かチェック
+            if not item.should_display_for_month(plan.year_month):
+                continue
+
             key = item.key
             if not key:
                 continue
@@ -2222,10 +2226,14 @@ def past_transactions_list(request):
             return min(max(day, 1), last_day)
 
         # MonthlyPlanDefaultから動的にトランザクションを生成
-        default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+        default_items = MonthlyPlanDefault.objects.all().order_by('order', 'id')
         transactions = []
 
         for item in default_items:
+            # この月に表示すべき項目かチェック
+            if not item.should_display_for_month(plan.year_month):
+                continue
+
             key = item.key
             if not key:
                 continue
