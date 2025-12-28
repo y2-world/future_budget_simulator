@@ -656,6 +656,7 @@ def plan_edit(request, pk):
         # チェックボックスの文字列値をbooleanに変換
         post_data = request.POST.copy()
         # MonthlyPlanDefaultからクレカ項目の除外フラグを動的に生成
+        from .models import MonthlyPlanDefault
         checkbox_fields = []
         default_items = MonthlyPlanDefault.objects.filter(is_active=True)
         for item in default_items:
