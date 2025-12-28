@@ -136,9 +136,13 @@ class MonthlyPlan(models.Model):
         total = 0
         # MonthlyPlanDefaultから入金項目を取得
         from .models import MonthlyPlanDefault
-        deposit_items = MonthlyPlanDefault.objects.filter(is_active=True, payment_type='deposit')
+        deposit_items = MonthlyPlanDefault.objects.filter(payment_type='deposit')
 
         for deposit_item in deposit_items:
+            # この月に表示すべき項目かチェック
+            if not deposit_item.should_display_for_month(self.year_month):
+                continue
+
             field_name = deposit_item.key
             if field_name:
                 total += self.get_item(field_name)
@@ -148,26 +152,29 @@ class MonthlyPlan(models.Model):
     def get_total_expenses(self):
         """月次総支出を計算（除外フラグがチェックされたクレカ項目は含まない）"""
         total = 0
-        # MonthlyPlanDefaultから有効な項目を取得
+        # MonthlyPlanDefaultから項目を取得
         from .models import MonthlyPlanDefault
-        default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+        default_items = MonthlyPlanDefault.objects.filter(payment_type='withdrawal')
 
         for default_item in default_items:
+            # この月に表示すべき項目かチェック
+            if not default_item.should_display_for_month(self.year_month):
+                continue
+
             # keyをフィールド名として使用
             field_name = default_item.key
             if not field_name:
                 continue
 
-            if default_item.payment_type == 'withdrawal':
-                # 引落項目の場合
-                amount = self.get_item(field_name)
+            # 引落項目の場合
+            amount = self.get_item(field_name)
 
-                # クレカ項目の場合、繰上げ返済フラグをチェック
-                if default_item.is_credit_card():
-                    if not self.get_exclusion(field_name):
-                        total += amount
-                else:
+            # クレカ項目の場合、繰上げ返済フラグをチェック
+            if default_item.is_credit_card():
+                if not self.get_exclusion(field_name):
                     total += amount
+            else:
+                total += amount
 
         return total
     
@@ -444,6 +451,20 @@ class MonthlyPlanDefault(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="有効")
     order = models.IntegerField(default=0, verbose_name="表示順")
 
+    # 条件付き表示フィールド
+    depends_on_key = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="依存する項目のkey",
+        help_text="この項目が表示される条件として、指定されたkeyの項目に値がある必要がある"
+    )
+    offset_months = models.IntegerField(
+        default=0,
+        verbose_name="表示月オフセット",
+        help_text="depends_on_keyで指定された項目から何ヶ月後に表示するか（例：1=翌月、0=同月）"
+    )
+
     class Meta:
         verbose_name = "月次計画デフォルト項目"
         verbose_name_plural = "月次計画デフォルト項目"
@@ -455,6 +476,34 @@ class MonthlyPlanDefault(models.Model):
     def is_credit_card(self):
         """クレジットカード項目かどうかを判定（締め日が設定されている項目）"""
         return self.closing_day is not None or self.is_end_of_month
+
+    def should_display_for_month(self, year_month):
+        """指定された年月にこの項目を表示すべきかを判定"""
+        # 依存関係がない場合は、is_activeに従う
+        if not self.depends_on_key:
+            return self.is_active
+
+        # is_activeがFalseの場合は常に非表示
+        if not self.is_active:
+            return False
+
+        # 依存関係がある場合、前月のデータをチェック
+        from datetime import datetime
+        from dateutil.relativedelta import relativedelta
+
+        current_date = datetime.strptime(year_month, '%Y-%m')
+        # offset_monthsの逆計算（例：offset_months=1なら、1ヶ月前をチェック）
+        check_date = current_date - relativedelta(months=self.offset_months)
+        check_year_month = check_date.strftime('%Y-%m')
+
+        # check_year_monthの MonthlyPlanで depends_on_keyに値があるかチェック
+        try:
+            from .models import MonthlyPlan
+            plan = MonthlyPlan.objects.get(year_month=check_year_month)
+            value = plan.get_item(self.depends_on_key)
+            return value > 0
+        except MonthlyPlan.DoesNotExist:
+            return False
 
     def save(self, *args, **kwargs):
         """保存時にkeyをIDベースで設定"""
