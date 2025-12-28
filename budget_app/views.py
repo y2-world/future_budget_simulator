@@ -2458,8 +2458,8 @@ def past_transactions_list(request):
         'rakuten_card', 'paypay_card', 'vermillion_card', 'amazon_card',
         'olive_card', 'loan_borrowing',
         # migration 0049で変換された新しいkey名
-        'item_1', 'item_2', 'item_3', 'item_12', 'item_13',
-        'item_14', 'item_15', 'item_16', 'item_17', 'item_18', 'item_20'
+        'item_1', 'item_2', 'item_3', 'item_7', 'item_8', 'item_9', 'item_10', 'item_11',
+        'item_12', 'item_13', 'item_14', 'item_15', 'item_16', 'item_17', 'item_18', 'item_20'
     ]
 
     context = {

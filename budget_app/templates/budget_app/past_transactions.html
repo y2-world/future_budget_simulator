@@ -137,17 +137,17 @@
                                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">食費（円）</label>
-                                                            <input type="number" name="item_1" value="{{ item.plan|get_item:'item_1' }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_9" value="{{ item.plan|get_item:'item_9' }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">家賃（円）</label>
-                                                            <input type="number" name="item_2" value="{{ item.plan|get_item:'item_2' }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_10" value="{{ item.plan|get_item:'item_10' }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
-                                                        {% with lake_value=item.plan|get_item:'item_3' %}
+                                                        {% with lake_value=item.plan|get_item:'item_11' %}
                                                         {% if lake_value %}
                                                         <div>
                                                             <label class="block text-gray-600 mb-1 text-xs">レイク（円）</label>
-                                                            <input type="number" name="item_3" value="{{ lake_value }}" class="w-full p-2 border rounded text-sm">
+                                                            <input type="number" name="item_11" value="{{ lake_value }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
                                                         {% endif %}
                                                         {% endwith %}
@@ -449,17 +449,17 @@
                                             <div class="space-y-3 text-sm">
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">食費（円）</label>
-                                                    <input type="number" name="item_1" value="{{ item.plan|get_item:'item_1' }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_9" value="{{ item.plan|get_item:'item_9' }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">家賃（円）</label>
-                                                    <input type="number" name="item_2" value="{{ item.plan|get_item:'item_2' }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_10" value="{{ item.plan|get_item:'item_10' }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
-                                                {% with lake_value=item.plan|get_item:'item_3' %}
+                                                {% with lake_value=item.plan|get_item:'item_11' %}
                                                 {% if lake_value %}
                                                 <div>
                                                     <label class="block text-gray-600 mb-1 text-xs">レイク（円）</label>
-                                                    <input type="number" name="item_3" value="{{ lake_value }}" class="w-full p-2 border rounded text-sm">
+                                                    <input type="number" name="item_11" value="{{ lake_value }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
                                                 {% endif %}
                                                 {% endwith %}
