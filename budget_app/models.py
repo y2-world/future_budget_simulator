@@ -133,7 +133,17 @@ class MonthlyPlan(models.Model):
 
     def get_total_income(self):
         """月次総収入を計算"""
-        return self.get_item('salary') + self.get_item('bonus')
+        total = 0
+        # MonthlyPlanDefaultから入金項目を取得
+        from .models import MonthlyPlanDefault
+        deposit_items = MonthlyPlanDefault.objects.filter(is_active=True, payment_type='deposit')
+
+        for deposit_item in deposit_items:
+            field_name = deposit_item.key
+            if field_name:
+                total += self.get_item(field_name)
+
+        return total
 
     def get_total_expenses(self):
         """月次総支出を計算（除外フラグがチェックされたクレカ項目は含まない）"""
