@@ -2440,8 +2440,20 @@ def past_transactions_list(request):
     # 年ごとに降順ソート
     sorted_years = sorted(filtered_yearly_data.keys(), reverse=True)
 
+    # MonthlyPlanDefaultから有効な項目を取得（テンプレートで使用）
+    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+
+    # ハードコードされたフィールド（既存のテンプレートとの互換性のため）
+    hardcoded_fields = [
+        'food', 'rent', 'lake', 'view_card', 'view_card_bonus',
+        'rakuten_card', 'paypay_card', 'vermillion_card', 'amazon_card',
+        'olive_card', 'loan_borrowing'
+    ]
+
     context = {
         'yearly_data': filtered_yearly_data,
         'sorted_years': sorted_years,
+        'default_items': default_items,
+        'hardcoded_fields': hardcoded_fields,
     }
     return render(request, 'budget_app/past_transactions.html', context)

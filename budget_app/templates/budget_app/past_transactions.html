@@ -179,11 +179,25 @@
                                                             <label class="block text-gray-600 mb-1 text-xs">マネーアシスト（借入）（円）</label>
                                                             <input type="number" name="loan_borrowing" value="{{ item.plan.loan_borrowing }}" class="w-full p-2 border rounded text-sm">
                                                         </div>
-                                                        <div>
-                                                            <label class="block text-gray-600 mb-1 text-xs">ジム（円）</label>
-                                                            <input type="number" name="other" value="{{ item.plan.other }}" class="w-full p-2 border rounded text-sm">
-                                                        </div>
                                                     </div>
+
+                                                    <!-- 動的に追加された項目（ハードコードされていない項目のみ表示） -->
+                                                    {% if default_items %}
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                        {% for default_item in default_items %}
+                                                            {% if default_item.key and default_item.key not in hardcoded_fields %}
+                                                            {% with item_value=item.plan|get_item:default_item.key %}
+                                                            {% if item_value and item_value != 0 %}
+                                                            <div>
+                                                                <label class="block text-gray-600 mb-1 text-xs">{{ default_item.title }}（円）</label>
+                                                                <input type="number" name="{{ default_item.key }}" value="{{ item_value }}" class="w-full p-2 border rounded text-sm">
+                                                            </div>
+                                                            {% endif %}
+                                                            {% endwith %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% endif %}
                                                 </div>
 
                                                 <input type="hidden" name="year_month" value="{{ item.plan.year_month }}">
@@ -441,10 +455,22 @@
                                                     <label class="block text-gray-600 mb-1 text-xs">マネーアシスト（借入）（円）</label>
                                                     <input type="number" name="loan_borrowing" value="{{ item.plan.loan_borrowing }}" class="w-full p-2 border rounded text-sm">
                                                 </div>
-                                                <div>
-                                                    <label class="block text-gray-600 mb-1 text-xs">ジム（円）</label>
-                                                    <input type="number" name="other" value="{{ item.plan.other }}" class="w-full p-2 border rounded text-sm">
-                                                </div>
+
+                                                <!-- 動的に追加された項目（ハードコードされていない項目のみ表示） -->
+                                                {% if default_items %}
+                                                {% for default_item in default_items %}
+                                                    {% if default_item.key and default_item.key not in hardcoded_fields %}
+                                                    {% with item_value=item.plan|get_item:default_item.key %}
+                                                    {% if item_value and item_value != 0 %}
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">{{ default_item.title }}（円）</label>
+                                                        <input type="number" name="{{ default_item.key }}" value="{{ item_value }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    {% endif %}
+                                                    {% endwith %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% endif %}
                                             </div>
                                         </div>
 
