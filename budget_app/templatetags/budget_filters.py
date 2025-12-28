@@ -32,10 +32,16 @@ def yen(value):
 
 
 @register.filter
-def get_item(mapping, key):
-    """辞書からキーで値を取り出す（テンプレート用）"""
+def get_item(obj, key):
+    """MonthlyPlanオブジェクトまたは辞書からキーで値を取り出す（テンプレート用）"""
     try:
-        return mapping.get(key)
+        # MonthlyPlanオブジェクトの場合はget_item()メソッドを呼ぶ
+        if hasattr(obj, 'get_item') and callable(obj.get_item):
+            return obj.get_item(key)
+        # 辞書の場合はget()を使う
+        elif hasattr(obj, 'get'):
+            return obj.get(key)
+        return None
     except Exception:
         return None
 
