@@ -89,6 +89,36 @@ class MonthlyPlan(models.Model):
     def __str__(self):
         return f"{self.year_month}"
 
+    def save(self, *args, **kwargs):
+        """
+        保存時に自動処理を実行
+        - マネーアシスト借入があった翌月に、自動的に返済額を設定
+        """
+        # マネーアシスト返済の自動設定
+        from datetime import datetime
+        from dateutil.relativedelta import relativedelta
+
+        try:
+            current_date = datetime.strptime(self.year_month, '%Y-%m')
+            previous_date = current_date - relativedelta(months=1)
+            previous_year_month = previous_date.strftime('%Y-%m')
+
+            # 前月のプランを取得
+            try:
+                previous_plan = MonthlyPlan.objects.get(year_month=previous_year_month)
+                # 前月にマネーアシスト借入があるかチェック
+                borrowing_amount = previous_plan.get_item('item_21')
+                if borrowing_amount > 0:
+                    # 当月の返済額を自動設定（借入額と同額）
+                    if 'item_20' not in self.items or self.items.get('item_20', 0) == 0:
+                        self.items['item_20'] = borrowing_amount
+            except MonthlyPlan.DoesNotExist:
+                pass
+        except (ValueError, AttributeError):
+            pass
+
+        super().save(*args, **kwargs)
+
     def get_item(self, field_name):
         """
         項目の金額を取得（items JSONFieldから、フォールバックとして既存フィールドから）
