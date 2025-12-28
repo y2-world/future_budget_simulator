@@ -95,6 +95,21 @@ def get_withdrawal_day(field_name):
     return (None, False)
 
 
+def get_day_for_field(field_name, year, month):
+    """
+    指定されたフィールド名の引落日/支払日を取得
+    月末の場合はその月の最終日を返す
+    """
+    from calendar import monthrange
+
+    day, is_end_of_month = get_withdrawal_day(field_name)
+
+    if is_end_of_month:
+        return monthrange(year, month)[1]  # その月の最終日
+
+    return day if day else 1  # デフォルトは1日
+
+
 def format_year_month_display(year_month: str) -> str:
     if not year_month:
         return ''
@@ -265,21 +280,21 @@ def plan_list(request):
         # 給与日（土日祝なら前の営業日）
         salary_day = get_salary_day(year, month)
         salary_date = adjust_to_previous_business_day(date(year, month, clamp_day(salary_day)))
-        bonus_date = adjust_to_previous_business_day(date(year, month, clamp_day(BONUS_DAY)))
-        food_date = adjust_to_previous_business_day(date(year, month, clamp_day(FOOD_EXPENSE_DAY)))
+        bonus_date = adjust_to_previous_business_day(date(year, month, clamp_day(get_day_for_field('bonus', year, month))))
+        food_date = adjust_to_previous_business_day(date(year, month, clamp_day(get_day_for_field('food', year, month))))
 
         # 支払日（土日祝なら次の営業日）
-        rent_date = adjust_to_next_business_day(date(year, month, clamp_day(RENT_DUE_DAY)))
-        lake_date = adjust_to_next_business_day(date(year, month, clamp_day(LAKE_DUE_DAY)))
-        view_card_date = adjust_to_next_business_day(date(year, month, clamp_day(VIEW_CARD_DUE_DAY)))
-        rakuten_card_date = adjust_to_next_business_day(date(year, month, clamp_day(RAKUTEN_CARD_DUE_DAY)))
-        paypay_card_date = adjust_to_next_business_day(date(year, month, clamp_day(PAYPAY_CARD_DUE_DAY)))
-        vermillion_card_date = adjust_to_next_business_day(date(year, month, clamp_day(VERMILLION_CARD_DUE_DAY)))
-        amazon_card_date = adjust_to_next_business_day(date(year, month, clamp_day(AMAZON_CARD_DUE_DAY)))
-        olive_card_date = adjust_to_next_business_day(date(year, month, clamp_day(OLIVE_CARD_DUE_DAY)))
+        rent_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('rent', year, month))))
+        lake_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('lake', year, month))))
+        view_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('view_card', year, month))))
+        rakuten_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('rakuten_card', year, month))))
+        paypay_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('paypay_card', year, month))))
+        vermillion_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('vermillion_card', year, month))))
+        amazon_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('amazon_card', year, month))))
+        olive_card_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('olive_card', year, month))))
         loan_date = adjust_to_next_business_day(date(year, month, clamp_day(last_day)))  # 月末
-        loan_borrowing_date = adjust_to_next_business_day(date(year, month, clamp_day(LOAN_BORROWING_DAY)))
-        gym_date = adjust_to_next_business_day(date(year, month, clamp_day(GYM_DUE_DAY)))
+        loan_borrowing_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('loan_borrowing', year, month))))
+        gym_date = adjust_to_next_business_day(date(year, month, clamp_day(get_day_for_field('other', year, month))))
 
         transactions = [
             {'date': salary_date, 'name': '給与', 'amount': plan.salary, 'is_view_card': False, 'is_excluded': False},
@@ -2029,8 +2044,14 @@ def monthly_plan_default_list(request):
     form = MonthlyPlanDefaultForm()
     forms_by_id = {d.id: MonthlyPlanDefaultForm(instance=d, prefix=str(d.id)) for d in defaults}
 
+    # デフォルト金額の有無で分ける
+    defaults_with_amount = [d for d in defaults if d.amount]
+    defaults_without_amount = [d for d in defaults if not d.amount]
+
     return render(request, 'budget_app/monthly_plan_defaults.html', {
         'defaults': defaults,
+        'defaults_with_amount': defaults_with_amount,
+        'defaults_without_amount': defaults_without_amount,
         'forms_by_id': forms_by_id,
         'form': form,
     })
@@ -2234,18 +2255,18 @@ def past_transactions_list(request):
         # 支払日・給与日の日付オブジェクトを生成
         salary_day = get_salary_day(plan_year, plan_month)
         salary_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(salary_day)))
-        bonus_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(BONUS_DAY)))
-        food_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(FOOD_EXPENSE_DAY)))
-        rent_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(RENT_DUE_DAY)))
-        lake_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(LAKE_DUE_DAY)))
-        view_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(VIEW_CARD_DUE_DAY)))
-        rakuten_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(RAKUTEN_CARD_DUE_DAY)))
-        paypay_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(PAYPAY_CARD_DUE_DAY)))
-        vermillion_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(VERMILLION_CARD_DUE_DAY)))
-        amazon_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(AMAZON_CARD_DUE_DAY)))
-        olive_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(OLIVE_CARD_DUE_DAY)))
-        loan_borrowing_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(LOAN_BORROWING_DAY)))
-        gym_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(GYM_DUE_DAY)))
+        bonus_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('bonus', plan_year, plan_month))))
+        food_date = adjust_to_previous_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('food', plan_year, plan_month))))
+        rent_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('rent', plan_year, plan_month))))
+        lake_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('lake', plan_year, plan_month))))
+        view_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('view_card', plan_year, plan_month))))
+        rakuten_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('rakuten_card', plan_year, plan_month))))
+        paypay_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('paypay_card', plan_year, plan_month))))
+        vermillion_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('vermillion_card', plan_year, plan_month))))
+        amazon_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('amazon_card', plan_year, plan_month))))
+        olive_card_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('olive_card', plan_year, plan_month))))
+        loan_borrowing_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('loan_borrowing', plan_year, plan_month))))
+        gym_date = adjust_to_next_business_day(date(plan_year, plan_month, clamp_day(get_day_for_field('other', plan_year, plan_month))))
 
         # 収入・支出の明細を作成
         transactions = []

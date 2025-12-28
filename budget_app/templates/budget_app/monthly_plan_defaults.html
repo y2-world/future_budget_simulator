@@ -10,7 +10,7 @@
         <button type="button" onclick="toggleDefaultCreateForm()" class="w-full flex justify-between items-center text-xl font-bold text-gray-800 cursor-pointer">
             <span class="flex items-center">
                 <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">+</span>
-                デフォルト項目の新規追加
+                新規追加
             </span>
             <svg id="toggleDefaultIcon" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -222,10 +222,10 @@
     </div>
 
     <!-- モバイル表示：カード形式 - デフォルト金額が登録されている項目 -->
+    {% if defaults_with_amount %}
     <h3 class="md:hidden text-xl font-bold mb-4 text-gray-800">デフォルト金額が登録されている項目</h3>
     <div class="md:hidden space-y-4 mb-8">
-        {% for d in defaults %}
-        {% if d.amount %}
+        {% for d in defaults_with_amount %}
         <div class="border-l-4 border-blue-400 rounded-r-lg p-4 bg-white shadow-md hover:shadow-lg transition" data-id="{{ d.id }}">
             <div class="mb-3">
                 <h3 class="font-bold text-lg text-gray-800 mb-2">{{ d.title }}</h3>
@@ -267,15 +267,15 @@
                 </form>
             </div>
         </div>
-        {% endif %}
         {% endfor %}
     </div>
+    {% endif %}
 
     <!-- モバイル表示：カード形式 - デフォルト金額が登録されていない項目 -->
+    {% if defaults_without_amount %}
     <h3 class="md:hidden text-xl font-bold mb-4 text-gray-800">デフォルト金額が登録されていない項目</h3>
     <div class="md:hidden space-y-4">
-        {% for d in defaults %}
-        {% if not d.amount %}
+        {% for d in defaults_without_amount %}
         <div class="border-l-4 border-gray-400 rounded-r-lg p-4 bg-white shadow-md hover:shadow-lg transition" data-id="{{ d.id }}">
             <div class="mb-3">
                 <h3 class="font-bold text-lg text-gray-800 mb-2">{{ d.title }}</h3>
@@ -317,9 +317,9 @@
                 </form>
             </div>
         </div>
-        {% endif %}
         {% endfor %}
     </div>
+    {% endif %}
 </div>
 
 <!-- デフォルト項目編集モーダル -->
