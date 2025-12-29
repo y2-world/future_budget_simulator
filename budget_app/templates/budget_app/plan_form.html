@@ -569,37 +569,11 @@
             <button type="submit" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 rounded-lg hover:from-blue-600 hover:to-blue-700 font-bold shadow-md transition transform hover:scale-[1.02]">
                 保存
             </button>
-            {% if request.GET.modal %}
-            <button type="button" onclick="window.parent.closePlanModal()" class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white p-3 rounded-lg hover:from-gray-600 hover:to-gray-700 font-bold text-center shadow-md transition transform hover:scale-[1.02]">
-                キャンセル
-            </button>
-            {% else %}
             <a href="{% if is_past_mode %}{% url 'budget_app:salary_list' %}{% else %}{% url 'budget_app:plan_list' %}{% endif %}" class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white p-3 rounded-lg hover:from-gray-600 hover:to-gray-700 font-bold text-center shadow-md transition transform hover:scale-[1.02]">
                 キャンセル
             </a>
-            {% endif %}
         </div>
     </form>
 </div>
-
-{% if request.GET.modal %}
-<script>
-// モーダルモードの場合、フォーム送信成功後に親ウィンドウに通知
-document.getElementById('planForm').addEventListener('submit', function(e) {
-    // フォーム送信は通常通り行われる
-    // 成功した場合、ビュー側でリダイレクトではなく成功メッセージを返す必要がある
-});
-
-// フォーム送信後のページでこのスクリプトが実行された場合
-// （成功メッセージが表示されている場合）、親ウィンドウに通知
-{% if messages %}
-    {% for message in messages %}
-        {% if message.tags == 'success' %}
-            window.parent.postMessage('plan_saved', '*');
-        {% endif %}
-    {% endfor %}
-{% endif %}
-</script>
-{% endif %}
 
 {% endblock %}

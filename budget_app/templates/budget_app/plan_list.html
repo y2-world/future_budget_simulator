@@ -345,38 +345,108 @@
             </button>
         </div>
 
-        <!-- モーダルコンテンツ（iframe） -->
-        <div class="flex-1 overflow-hidden">
-            <iframe id="planIframe" class="w-full h-full border-0"></iframe>
+        <!-- モーダルコンテンツ -->
+        <div class="flex-1 overflow-y-auto p-4" id="planModalContent">
+            <!-- フォームコンテンツがここに動的に読み込まれます -->
         </div>
     </div>
 </div>
 
 <script>
-function openPlanModal(url, title) {
+async function openPlanModal(url, title) {
     const modal = document.getElementById('planModal');
-    const iframe = document.getElementById('planIframe');
+    const modalContent = document.getElementById('planModalContent');
     const modalTitle = document.getElementById('modalTitle');
 
     modalTitle.textContent = title;
-    iframe.src = url + '?modal=1';
+    modalContent.innerHTML = '<div class="text-center py-8">読み込み中...</div>';
     modal.classList.remove('hidden');
 
-    // iframeからのメッセージを受信（保存完了時）
-    window.addEventListener('message', function(event) {
-        if (event.data === 'plan_saved') {
-            closePlanModal();
-            location.reload();
+    try {
+        const response = await fetch(url);
+        const html = await response.text();
+
+        // HTMLパーサーでフォーム部分を抽出
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const formContent = doc.querySelector('form');
+
+        if (formContent) {
+            // フォームをモーダルに挿入
+            modalContent.innerHTML = '';
+            modalContent.appendChild(formContent);
+
+            // スクリプトタグを実行
+            const scripts = doc.querySelectorAll('script');
+            scripts.forEach(script => {
+                const newScript = document.createElement('script');
+                if (script.src) {
+                    newScript.src = script.src;
+                } else {
+                    newScript.textContent = script.textContent;
+                }
+                document.body.appendChild(newScript);
+            });
+
+            // フォーム送信をAjaxに変更
+            const form = modalContent.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const formData = new FormData(form);
+
+                    try {
+                        const response = await fetch(form.action || url, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        const data = await response.json();
+
+                        if (data.status === 'success') {
+                            window.showToast(data.message);
+                            closePlanModal();
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 500);
+                        } else {
+                            if (data.errors) {
+                                let errorMessages = [];
+                                for (let field in data.errors) {
+                                    if (data.errors[field]) {
+                                        errorMessages.push(data.errors[field].join(' '));
+                                    }
+                                }
+                                window.showToast(errorMessages.join('\n') || '保存に失敗しました。', 'error');
+                            } else {
+                                window.showToast('保存に失敗しました。入力内容を確認してください。', 'error');
+                            }
+                        }
+                    } catch (error) {
+                        window.showToast('エラーが発生しました。', 'error');
+                        console.error('Error:', error);
+                    }
+                });
+            }
+        } else {
+            modalContent.innerHTML = '<div class="text-center text-red-600 py-8">フォームの読み込みに失敗しました</div>';
         }
-    });
+    } catch (error) {
+        modalContent.innerHTML = '<div class="text-center text-red-600 py-8">エラーが発生しました</div>';
+        console.error('Error loading form:', error);
+    }
 }
 
 function closePlanModal() {
     const modal = document.getElementById('planModal');
-    const iframe = document.getElementById('planIframe');
+    const modalContent = document.getElementById('planModalContent');
 
     modal.classList.add('hidden');
-    iframe.src = '';
+    modalContent.innerHTML = '';
 }
 </script>
 
