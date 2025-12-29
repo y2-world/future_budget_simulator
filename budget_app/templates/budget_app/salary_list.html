@@ -151,7 +151,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }}, {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
+                                        <button onclick="openEditBonusModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
                                         <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                     </td>
                                 </tr>
@@ -173,7 +173,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }}, {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
+                                        <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
                                         <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                     </td>
                                 </tr>
@@ -191,7 +191,7 @@
                             <div class="flex justify-between items-center mb-2">
                                 <div class="font-bold text-lg text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
                                 <div class="flex gap-2">
-                                    <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }}, {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
+                                    <button onclick="openEditBonusModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
                                     <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
                                 </div>
                             </div>
@@ -253,7 +253,7 @@
                             <div class="flex justify-between items-center mb-2">
                                 <div class="font-bold text-lg text-gray-800">{{ plan.year_month|format_year_month }}</div>
                                 <div class="flex gap-2">
-                                    <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }}, {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
+                                    <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
                                     <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
                                 </div>
                             </div>
@@ -394,7 +394,7 @@
             <input type="hidden" name="past_mode" value="true">
 
             <!-- 年月 -->
-            <div class="grid grid-cols-2 gap-3">
+            <div id="yearMonthSelectsContainer" class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">年</label>
                     <select id="salaryYearSelect" name="year" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
@@ -433,6 +433,7 @@ function openSalaryModal() {
     const modal = document.getElementById('salaryModal');
     const modalTitle = modal.querySelector('h3');
     const salaryForm = document.getElementById('salaryForm');
+    const formFields = document.getElementById('salaryFormFields');
 
     // タイトルをリセット
     modalTitle.textContent = '過去の給与作成';
@@ -449,6 +450,15 @@ function openSalaryModal() {
         pastModeInput.value = 'true';
         salaryForm.insertBefore(pastModeInput, salaryForm.firstChild);
     }
+
+    // 年月選択フィールドを表示
+    const yearMonthSelectsContainer = document.getElementById('yearMonthSelectsContainer');
+    if (yearMonthSelectsContainer) {
+        yearMonthSelectsContainer.style.display = '';
+    }
+
+    // フォームフィールドをクリア
+    formFields.innerHTML = '';
 
     initializeSalaryForm();
     modal.classList.remove('hidden');
@@ -591,8 +601,8 @@ function updateSalaryYearMonth() {
     }
 }
 
-// 編集モーダルを開く
-function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transportation, bonusGrossSalary, bonusDeductions) {
+// 給与編集モーダルを開く
+function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transportation) {
     const modal = document.getElementById('salaryModal');
     const modalTitle = modal.querySelector('h3');
     const salaryForm = document.getElementById('salaryForm');
@@ -610,23 +620,26 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
         pastModeInput.remove();
     }
 
+    // 年月選択コンテナを非表示
+    const yearMonthSelectsContainer = document.getElementById('yearMonthSelectsContainer');
+    if (yearMonthSelectsContainer) {
+        yearMonthSelectsContainer.style.display = 'none';
+    }
+
     // 年月を分解
     const [year, month] = yearMonth.split('-');
 
     // フォームフィールドを生成
     formFields.innerHTML = '';
 
-    // 年月表示（編集不可）
-    const yearMonthDisplay = document.createElement('div');
-    yearMonthDisplay.className = 'mb-4 p-3 bg-gray-50 rounded-lg';
-    yearMonthDisplay.innerHTML = `
-        <label class="block text-sm font-semibold text-gray-700 mb-1">対象年月</label>
-        <div class="text-lg font-bold">${year}年${parseInt(month)}月</div>
+    // 年月をhiddenフィールドで送信
+    const yearMonthHidden = document.createElement('div');
+    yearMonthHidden.innerHTML = `
         <input type="hidden" name="year" value="${year}">
         <input type="hidden" name="month" value="${month}">
         <input type="hidden" name="year_month" value="${yearMonth}">
     `;
-    formFields.appendChild(yearMonthDisplay);
+    formFields.appendChild(yearMonthHidden);
 
     // 給与明細セクション
     const incomeSection = document.createElement('div');
@@ -643,14 +656,6 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
         {name: 'transportation', label: '交通費', value: transportation},
     ];
 
-    // 6月と12月の場合、ボーナスフィールドも追加
-    if (month === '06' || month === '12') {
-        salaryFields.push(
-            {name: 'bonus_gross_salary', label: 'ボーナス総支給額', value: bonusGrossSalary},
-            {name: 'bonus_deductions', label: 'ボーナス控除額', value: bonusDeductions}
-        );
-    }
-
     salaryFields.forEach(field => {
         const div = document.createElement('div');
         div.innerHTML = `
@@ -662,6 +667,75 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
 
     incomeSection.appendChild(incomeGrid);
     formFields.appendChild(incomeSection);
+
+    // モーダルを表示
+    modal.classList.remove('hidden');
+}
+
+// ボーナス編集モーダルを開く
+function openEditBonusModal(planId, yearMonth, bonusGrossSalary, bonusDeductions) {
+    const modal = document.getElementById('salaryModal');
+    const modalTitle = modal.querySelector('h3');
+    const salaryForm = document.getElementById('salaryForm');
+    const formFields = document.getElementById('salaryFormFields');
+
+    // タイトルを変更
+    modalTitle.textContent = 'ボーナス編集';
+
+    // フォームアクションを編集URLに変更
+    salaryForm.action = `/plans/${planId}/edit/`;
+
+    // past_modeを削除
+    const pastModeInput = salaryForm.querySelector('input[name="past_mode"]');
+    if (pastModeInput) {
+        pastModeInput.remove();
+    }
+
+    // 年月選択コンテナを非表示
+    const yearMonthSelectsContainer = document.getElementById('yearMonthSelectsContainer');
+    if (yearMonthSelectsContainer) {
+        yearMonthSelectsContainer.style.display = 'none';
+    }
+
+    // 年月を分解
+    const [year, month] = yearMonth.split('-');
+
+    // フォームフィールドを生成
+    formFields.innerHTML = '';
+
+    // 年月をhiddenフィールドで送信
+    const yearMonthHidden = document.createElement('div');
+    yearMonthHidden.innerHTML = `
+        <input type="hidden" name="year" value="${year}">
+        <input type="hidden" name="month" value="${month}">
+        <input type="hidden" name="year_month" value="${yearMonth}">
+    `;
+    formFields.appendChild(yearMonthHidden);
+
+    // ボーナスセクション
+    const bonusSection = document.createElement('div');
+    bonusSection.className = 'bg-emerald-50 p-4 rounded-lg';
+    bonusSection.innerHTML = '<h4 class="font-semibold text-sm text-emerald-800 mb-3">🎁 ボーナス明細</h4>';
+
+    const bonusGrid = document.createElement('div');
+    bonusGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+
+    const bonusFields = [
+        {name: 'bonus_gross_salary', label: 'ボーナス総支給額', value: bonusGrossSalary},
+        {name: 'bonus_deductions', label: 'ボーナス控除額', value: bonusDeductions}
+    ];
+
+    bonusFields.forEach(field => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
+            <input type="number" name="${field.name}" value="${field.value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-sm">
+        `;
+        bonusGrid.appendChild(div);
+    });
+
+    bonusSection.appendChild(bonusGrid);
+    formFields.appendChild(bonusSection);
 
     // モーダルを表示
     modal.classList.remove('hidden');
