@@ -115,7 +115,7 @@
                 <!-- 収入セクション -->
                 <div class="bg-green-50 p-3 rounded-lg mb-4">
                     <h4 class="font-semibold text-green-800 mb-3 text-sm">💰 収入</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                         <!-- 給与明細固定フィールド -->
                         <div>
                             <label class="block text-sm font-medium mb-1">総支給額</label>
@@ -160,7 +160,7 @@
                 <!-- 支出セクション -->
                 <div class="bg-red-50 p-3 rounded-lg mb-4">
                     <h4 class="font-semibold text-red-800 mb-3 text-sm">💸 支出</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
                         {% for item in default_items %}
                             {% if item.payment_type == 'withdrawal' %}
                                 {# ボーナス払いは1月と8月のみ表示 #}
@@ -510,7 +510,7 @@ function generateFormFields() {
     incomeSection.innerHTML = '<h4 class="font-semibold text-sm text-green-800 mb-3">💰 収入</h4>';
 
     const incomeGrid = document.createElement('div');
-    incomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+    incomeGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3';
 
     // deposit（振込）タイプの動的項目
     defaultItems.forEach(item => {
@@ -533,7 +533,7 @@ function generateFormFields() {
     expenseSection.innerHTML = '<h4 class="font-semibold text-sm text-red-800 mb-3">💸 支出</h4>';
 
     const expenseGrid = document.createElement('div');
-    expenseGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+    expenseGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3';
 
     // withdrawal（引き落とし）タイプの動的項目
     defaultItems.forEach(item => {
@@ -592,7 +592,7 @@ function loadExistingPlanData(planData) {
         otherIncomeSection.innerHTML = '<h4 class="font-semibold text-sm text-green-800 mb-3">💰 収入</h4>';
 
         const otherIncomeGrid = document.createElement('div');
-        otherIncomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+        otherIncomeGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3';
 
         // deposit（振込）タイプの動的項目
         depositItems.forEach(item => {
@@ -615,7 +615,7 @@ function loadExistingPlanData(planData) {
     expenseSection.innerHTML = '<h4 class="font-semibold text-sm text-red-800 mb-3">💸 支出</h4>';
 
     const expenseGrid = document.createElement('div');
-    expenseGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+    expenseGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3';
 
     // withdrawal（引き落とし）タイプの動的項目
     defaultItems.forEach(item => {
