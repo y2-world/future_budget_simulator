@@ -50,7 +50,7 @@
                         <h3 class="text-lg md:text-xl font-bold">{{ plan.year_month|format_year_month }}</h3>
                     </div>
                     <div class="flex gap-2" onclick="event.stopPropagation()">
-                        <button onclick="openPlanModal('{% url 'budget_app:plan_update' plan.pk %}', '{{ plan.year_month|format_year_month }}の編集')" class="bg-blue-500 text-white px-2 md:px-3 py-1 rounded hover:bg-blue-600 text-xs md:text-sm">編集</button>
+                        <button onclick="openPlanModal('{% url 'budget_app:plan_edit' plan.pk %}', '{{ plan.year_month|format_year_month }}の編集')" class="bg-blue-500 text-white px-2 md:px-3 py-1 rounded hover:bg-blue-600 text-xs md:text-sm">編集</button>
                         <form method="post" action="{% url 'budget_app:plan_delete' plan.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？')">
                             {% csrf_token %}
                             <button type="submit" class="bg-red-500 text-white px-2 md:px-3 py-1 rounded hover:bg-red-600 text-xs md:text-sm">削除</button>
