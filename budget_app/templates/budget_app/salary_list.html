@@ -431,6 +431,25 @@
 // モーダル関連の関数
 function openSalaryModal() {
     const modal = document.getElementById('salaryModal');
+    const modalTitle = modal.querySelector('h3');
+    const salaryForm = document.getElementById('salaryForm');
+
+    // タイトルをリセット
+    modalTitle.textContent = '過去の給与作成';
+
+    // フォームアクションをリセット
+    salaryForm.action = '{% url "budget_app:plan_create" %}';
+
+    // past_modeを追加（存在しない場合）
+    let pastModeInput = salaryForm.querySelector('input[name="past_mode"]');
+    if (!pastModeInput) {
+        pastModeInput = document.createElement('input');
+        pastModeInput.type = 'hidden';
+        pastModeInput.name = 'past_mode';
+        pastModeInput.value = 'true';
+        salaryForm.insertBefore(pastModeInput, salaryForm.firstChild);
+    }
+
     initializeSalaryForm();
     modal.classList.remove('hidden');
 }
@@ -570,6 +589,82 @@ function updateSalaryYearMonth() {
         const month = monthSelect.value;
         yearMonthInput.value = `${year}-${month}`;
     }
+}
+
+// 編集モーダルを開く
+function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transportation, bonusGrossSalary, bonusDeductions) {
+    const modal = document.getElementById('salaryModal');
+    const modalTitle = modal.querySelector('h3');
+    const salaryForm = document.getElementById('salaryForm');
+    const formFields = document.getElementById('salaryFormFields');
+
+    // タイトルを変更
+    modalTitle.textContent = '給与編集';
+
+    // フォームアクションを編集URLに変更
+    salaryForm.action = `/plans/${planId}/edit/`;
+
+    // past_modeを削除
+    const pastModeInput = salaryForm.querySelector('input[name="past_mode"]');
+    if (pastModeInput) {
+        pastModeInput.remove();
+    }
+
+    // 年月を分解
+    const [year, month] = yearMonth.split('-');
+
+    // フォームフィールドを生成
+    formFields.innerHTML = '';
+
+    // 年月表示（編集不可）
+    const yearMonthDisplay = document.createElement('div');
+    yearMonthDisplay.className = 'mb-4 p-3 bg-gray-50 rounded-lg';
+    yearMonthDisplay.innerHTML = `
+        <label class="block text-sm font-semibold text-gray-700 mb-1">対象年月</label>
+        <div class="text-lg font-bold">${year}年${parseInt(month)}月</div>
+        <input type="hidden" name="year" value="${year}">
+        <input type="hidden" name="month" value="${month}">
+        <input type="hidden" name="year_month" value="${yearMonth}">
+    `;
+    formFields.appendChild(yearMonthDisplay);
+
+    // 給与明細セクション
+    const incomeSection = document.createElement('div');
+    incomeSection.className = 'bg-green-50 p-4 rounded-lg';
+    incomeSection.innerHTML = '<h4 class="font-semibold text-sm text-green-800 mb-3">💰 給与明細</h4>';
+
+    const incomeGrid = document.createElement('div');
+    incomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+
+    // 給与明細フィールド
+    const salaryFields = [
+        {name: 'gross_salary', label: '総支給額', value: grossSalary},
+        {name: 'deductions', label: '控除額', value: deductions},
+        {name: 'transportation', label: '交通費', value: transportation},
+    ];
+
+    // 6月と12月の場合、ボーナスフィールドも追加
+    if (month === '06' || month === '12') {
+        salaryFields.push(
+            {name: 'bonus_gross_salary', label: 'ボーナス総支給額', value: bonusGrossSalary},
+            {name: 'bonus_deductions', label: 'ボーナス控除額', value: bonusDeductions}
+        );
+    }
+
+    salaryFields.forEach(field => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
+            <input type="number" name="${field.name}" value="${field.value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
+        `;
+        incomeGrid.appendChild(div);
+    });
+
+    incomeSection.appendChild(incomeGrid);
+    formFields.appendChild(incomeSection);
+
+    // モーダルを表示
+    modal.classList.remove('hidden');
 }
 </script>
 {% endblock %}
