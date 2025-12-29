@@ -2155,9 +2155,30 @@ def salary_list(request):
             'count': year_plans.count(),
         })
 
+    # 登録済みの年月リストを取得（モーダルで除外するため）
+    import json
+    from datetime import datetime
+    registered_year_months = list(
+        MonthlyPlan.objects.values_list('year_month', flat=True)
+    )
+
+    # デフォルト項目の情報をJSON形式で渡す（モーダルのフォーム生成用）
+    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items_data = [
+        {
+            'key': item.key,
+            'title': item.title,
+            'amount': item.amount,
+            'payment_type': item.payment_type,
+        }
+        for item in default_items
+    ]
+
     context = {
         'salary_plans': plans_with_salary,
         'annual_summaries': annual_summaries,
+        'registered_year_months': json.dumps(registered_year_months),
+        'default_items_json': json.dumps(default_items_data),
     }
     return render(request, 'budget_app/salary_list.html', context)
 
