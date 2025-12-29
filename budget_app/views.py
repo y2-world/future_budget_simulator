@@ -385,6 +385,12 @@ def plan_list(request):
     # MonthlyPlanDefaultのデータを取得
     default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
 
+    # 登録済みの年月リストを取得（モーダルで除外するため）
+    import json
+    registered_year_months = list(
+        MonthlyPlan.objects.values_list('year_month', flat=True)
+    )
+
     return render(request, 'budget_app/plan_list.html', {
         'plans': plans,
         'current_and_future_plans': current_and_future_plans,
@@ -392,6 +398,7 @@ def plan_list(request):
         'initial_balance': initial_balance,
         'today': today,
         'default_items': default_items,
+        'registered_year_months': json.dumps(registered_year_months),
     })
 
 
