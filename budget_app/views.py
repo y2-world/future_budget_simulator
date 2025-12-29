@@ -402,6 +402,19 @@ def plan_list(request):
         for item in default_items
     ]
 
+    # 各プランのデータをJSON形式で渡す（編集モーダル用）
+    plans_data = {}
+    for plan in plans:
+        plans_data[plan.pk] = {
+            'year_month': plan.year_month,
+            'gross_salary': plan.gross_salary or 0,
+            'deductions': plan.deductions or 0,
+            'transportation': plan.transportation or 0,
+            'bonus_gross_salary': plan.bonus_gross_salary or 0,
+            'bonus_deductions': plan.bonus_deductions or 0,
+            'items': plan.items or {},
+        }
+
     return render(request, 'budget_app/plan_list.html', {
         'plans': plans,
         'current_and_future_plans': current_and_future_plans,
@@ -411,6 +424,7 @@ def plan_list(request):
         'default_items': default_items,
         'registered_year_months': json.dumps(registered_year_months),
         'default_items_json': json.dumps(default_items_data),
+        'plans_data_json': json.dumps(plans_data),
     })
 
 

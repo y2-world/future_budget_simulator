@@ -151,7 +151,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</a>
+                                        <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }}, {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
                                         <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                     </td>
                                 </tr>
@@ -173,7 +173,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</a>
+                                        <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }}, {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
                                         <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                     </td>
                                 </tr>
@@ -191,7 +191,7 @@
                             <div class="flex justify-between items-center mb-2">
                                 <div class="font-bold text-lg text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
                                 <div class="flex gap-2">
-                                    <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">編集</a>
+                                    <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }}, {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
                                     <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
                                 </div>
                             </div>
@@ -253,7 +253,7 @@
                             <div class="flex justify-between items-center mb-2">
                                 <div class="font-bold text-lg text-gray-800">{{ plan.year_month|format_year_month }}</div>
                                 <div class="flex gap-2">
-                                    <a href="{% url 'budget_app:plan_edit' plan.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">編集</a>
+                                    <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }}, {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
                                     <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
                                 </div>
                             </div>
