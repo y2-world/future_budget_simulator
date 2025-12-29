@@ -6,7 +6,7 @@
     <div class="mb-6 flex items-center justify-between">
         <h2 class="text-2xl md:text-3xl font-bold">給与一覧</h2>
         <button onclick="openSalaryModal()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-            過去の給与新規作成
+            過去の給与登録
         </button>
     </div>
 
@@ -97,8 +97,8 @@
 
                 <!-- 月別明細（折りたたみ可能） -->
                 <div id="details-{{ annual_summary.year }}" class="mt-2">
-                    {% with year_plans=salary_plans|filter_by_year:annual_summary.year %}
-                    {% if year_plans %}
+                    {% with year_salaries=salaries|filter_by_year:annual_summary.year %}
+                    {% if year_salaries %}
                     <!-- デスクトップ表示：テーブル -->
                     <div class="hidden md:block overflow-x-auto">
                         <table class="min-w-full text-sm border">
@@ -115,66 +115,66 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for plan in year_plans %}
-                                {% if plan.bonus and plan.bonus > 0 %}
+                                {% for salary in year_salaries %}
+                                {% if salary.has_bonus %}
                                 <tr class="border-b hover:bg-gray-50">
-                                    <td class="px-4 py-3 font-medium">賞与 ({{ plan.year_month|format_year_month }})</td>
+                                    <td class="px-4 py-3 font-medium">賞与 ({{ salary.year_month|format_year_month }})</td>
                                     <td class="px-4 py-3 text-right text-emerald-700 font-semibold">
-                                        {% if plan.bonus_gross_salary and plan.bonus_gross_salary > 0 %}
-                                            {{ plan.bonus_gross_salary|yen }}
+                                        {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
+                                            {{ salary.bonus_gross_salary|yen }}
                                         {% else %}
                                             -
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-right text-blue-700">
-                                        {% if plan.bonus_gross_salary and plan.bonus_gross_salary > 0 %}
-                                            {{ plan.bonus_gross_salary|yen }}
+                                        {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
+                                            {{ salary.bonus_gross_salary|yen }}
                                         {% else %}
                                             -
                                         {% endif %}
                                     </td>
-                                    <td class="px-4 py-3 text-right text-violet-700 font-semibold">{{ plan.bonus|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-violet-700 font-semibold">{{ salary.get_net_bonus|yen }}</td>
                                     <td class="px-4 py-3 text-right text-teal-700">-</td>
                                     <td class="px-4 py-3 text-right text-rose-700">
-                                        {% if plan.bonus_deductions and plan.bonus_deductions > 0 %}
-                                            {{ plan.bonus_deductions|yen }}
+                                        {% if salary.bonus_deductions and salary.bonus_deductions > 0 %}
+                                            {{ salary.bonus_deductions|yen }}
                                         {% else %}
                                             -
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-right text-orange-700">
-                                        {% if plan.bonus_gross_salary and plan.bonus_gross_salary > 0 %}
-                                            {% widthratio plan.bonus_deductions plan.bonus_gross_salary 100 as bonus_deduction_pct %}
+                                        {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
+                                            {% widthratio salary.bonus_deductions salary.bonus_gross_salary 100 as bonus_deduction_pct %}
                                             {{ bonus_deduction_pct|floatformat:2 }}%
                                         {% else %}
                                             -
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <button onclick="openEditBonusModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
-                                        <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
+                                        <button onclick="openEditBonusModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.bonus_gross_salary|default:0 }}, {{ salary.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
+                                        <button onclick="deleteSalary({{ salary.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                     </td>
                                 </tr>
                                 {% endif %}
-                                {% if plan.gross_salary and plan.gross_salary > 0 %}
+                                {% if salary.gross_salary and salary.gross_salary > 0 %}
                                 <tr class="border-b hover:bg-gray-50">
-                                    <td class="px-4 py-3 font-medium">{{ plan.year_month|format_year_month }}</td>
-                                    <td class="px-4 py-3 text-right text-green-700 font-semibold">{{ plan.gross_salary|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-blue-700">{{ plan.gross_salary|subtract:plan.transportation|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-purple-700 font-semibold">{{ plan.salary|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-teal-700">{{ plan.transportation|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-red-700">{{ plan.deductions|yen }}</td>
+                                    <td class="px-4 py-3 font-medium">{{ salary.year_month|format_year_month }}</td>
+                                    <td class="px-4 py-3 text-right text-green-700 font-semibold">{{ salary.gross_salary|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-blue-700">{{ salary.gross_salary|subtract:salary.transportation|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-purple-700 font-semibold">{{ salary.get_net_salary|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-teal-700">{{ salary.transportation|yen }}</td>
+                                    <td class="px-4 py-3 text-right text-red-700">{{ salary.deductions|yen }}</td>
                                     <td class="px-4 py-3 text-right text-orange-700">
-                                        {% if plan.gross_salary and plan.transportation %}
-                                            {% widthratio plan.deductions plan.gross_salary|subtract:plan.transportation 100 as deduction_pct %}
+                                        {% if salary.gross_salary and salary.transportation %}
+                                            {% widthratio salary.deductions salary.gross_salary|subtract:salary.transportation 100 as deduction_pct %}
                                             {{ deduction_pct|floatformat:2 }}%
                                         {% else %}
                                             -
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
-                                        <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
+                                        <button onclick="openEditSalaryModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.gross_salary|default:0 }}, {{ salary.deductions|default:0 }}, {{ salary.transportation|default:0 }}, {{ salary.has_bonus|yesno:'true,false' }}, {{ salary.bonus_gross_salary|default:0 }}, {{ salary.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-xs mr-2">編集</button>
+                                        <button onclick="deleteSalary({{ salary.pk }})" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                     </td>
                                 </tr>
                                 {% endif %}
@@ -185,22 +185,22 @@
 
                     <!-- モバイル表示：カード形式 -->
                     <div class="md:hidden space-y-2">
-                        {% for plan in year_plans %}
-                        {% if plan.bonus and plan.bonus > 0 %}
+                        {% for salary in year_salaries %}
+                        {% if salary.has_bonus %}
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
                             <div class="flex justify-between items-center mb-2">
-                                <div class="font-bold text-lg text-gray-800">賞与 ({{ plan.year_month|format_year_month }})</div>
+                                <div class="font-bold text-lg text-gray-800">賞与 ({{ salary.year_month|format_year_month }})</div>
                                 <div class="flex gap-2">
-                                    <button onclick="openEditBonusModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.bonus_gross_salary|default:0 }}, {{ plan.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
-                                    <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
+                                    <button onclick="openEditBonusModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.bonus_gross_salary|default:0 }}, {{ salary.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
+                                    <button onclick="deleteSalary({{ salary.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-sm">
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">総支給額</div>
                                     <div class="font-semibold text-emerald-700">
-                                        {% if plan.bonus_gross_salary and plan.bonus_gross_salary > 0 %}
-                                            {{ plan.bonus_gross_salary|yen }}
+                                        {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
+                                            {{ salary.bonus_gross_salary|yen }}
                                         {% else %}
                                             -
                                         {% endif %}
@@ -209,8 +209,8 @@
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">総支給額-交通費</div>
                                     <div class="font-semibold text-blue-700">
-                                        {% if plan.bonus_gross_salary and plan.bonus_gross_salary > 0 %}
-                                            {{ plan.bonus_gross_salary|yen }}
+                                        {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
+                                            {{ salary.bonus_gross_salary|yen }}
                                         {% else %}
                                             -
                                         {% endif %}
@@ -218,7 +218,7 @@
                                 </div>
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">差引支給額</div>
-                                    <div class="font-semibold text-violet-700">{{ plan.bonus|yen }}</div>
+                                    <div class="font-semibold text-violet-700">{{ salary.get_net_bonus|yen }}</div>
                                 </div>
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">交通費</div>
@@ -227,8 +227,8 @@
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">控除合計</div>
                                     <div class="font-semibold text-rose-700">
-                                        {% if plan.bonus_deductions and plan.bonus_deductions > 0 %}
-                                            {{ plan.bonus_deductions|yen }}
+                                        {% if salary.bonus_deductions and salary.bonus_deductions > 0 %}
+                                            {{ salary.bonus_deductions|yen }}
                                         {% else %}
                                             -
                                         {% endif %}
@@ -237,8 +237,8 @@
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">控除率</div>
                                     <div class="font-semibold text-orange-700">
-                                        {% if plan.bonus_gross_salary and plan.bonus_gross_salary > 0 %}
-                                            {% widthratio plan.bonus_deductions plan.bonus_gross_salary 100 as bonus_deduction_pct %}
+                                        {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
+                                            {% widthratio salary.bonus_deductions salary.bonus_gross_salary 100 as bonus_deduction_pct %}
                                             {{ bonus_deduction_pct|floatformat:2 }}%
                                         {% else %}
                                             -
@@ -248,41 +248,41 @@
                             </div>
                         </div>
                         {% endif %}
-                        {% if plan.gross_salary and plan.gross_salary > 0 %}
+                        {% if salary.gross_salary and salary.gross_salary > 0 %}
                         <div class="border rounded-lg p-4 bg-white shadow-sm">
                             <div class="flex justify-between items-center mb-2">
-                                <div class="font-bold text-lg text-gray-800">{{ plan.year_month|format_year_month }}</div>
+                                <div class="font-bold text-lg text-gray-800">{{ salary.year_month|format_year_month }}</div>
                                 <div class="flex gap-2">
-                                    <button onclick="openEditSalaryModal({{ plan.pk }}, '{{ plan.year_month }}', {{ plan.gross_salary|default:0 }}, {{ plan.deductions|default:0 }}, {{ plan.transportation|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
-                                    <button onclick="deletePlan({{ plan.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
+                                    <button onclick="openEditSalaryModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.gross_salary|default:0 }}, {{ salary.deductions|default:0 }}, {{ salary.transportation|default:0 }}, {{ salary.has_bonus|yesno:'true,false' }}, {{ salary.bonus_gross_salary|default:0 }}, {{ salary.bonus_deductions|default:0 }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
+                                    <button onclick="deleteSalary({{ salary.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-sm">
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">総支給額</div>
-                                    <div class="font-semibold text-green-700">{{ plan.gross_salary|yen }}</div>
+                                    <div class="font-semibold text-green-700">{{ salary.gross_salary|yen }}</div>
                                 </div>
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">総支給額-交通費</div>
-                                    <div class="font-semibold text-blue-700">{{ plan.gross_salary|subtract:plan.transportation|yen }}</div>
+                                    <div class="font-semibold text-blue-700">{{ salary.gross_salary|subtract:salary.transportation|yen }}</div>
                                 </div>
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">差引支給額</div>
-                                    <div class="font-semibold text-purple-700">{{ plan.salary|yen }}</div>
+                                    <div class="font-semibold text-purple-700">{{ salary.get_net_salary|yen }}</div>
                                 </div>
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">交通費</div>
-                                    <div class="font-semibold text-teal-700">{{ plan.transportation|yen }}</div>
+                                    <div class="font-semibold text-teal-700">{{ salary.transportation|yen }}</div>
                                 </div>
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">控除合計</div>
-                                    <div class="font-semibold text-red-700">{{ plan.deductions|yen }}</div>
+                                    <div class="font-semibold text-red-700">{{ salary.deductions|yen }}</div>
                                 </div>
                                 <div>
                                     <div class="text-xs text-gray-600 mb-1">控除率</div>
                                     <div class="font-semibold text-orange-700">
-                                        {% if plan.gross_salary and plan.transportation %}
-                                            {% widthratio plan.deductions plan.gross_salary|subtract:plan.transportation 100 as deduction_pct %}
+                                        {% if salary.gross_salary and salary.transportation %}
+                                            {% widthratio salary.deductions salary.gross_salary|subtract:salary.transportation 100 as deduction_pct %}
                                             {{ deduction_pct|floatformat:2 }}%
                                         {% else %}
                                             -
@@ -325,9 +325,9 @@
     }
 
     // 削除機能
-    function deletePlan(planId) {
+    function deleteSalary(salaryId) {
         if (confirm('この給与データを削除してもよろしいですか？')) {
-            fetch(`/plans/${planId}/delete/`, {
+            fetch(`/salaries/${salaryId}/delete/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
@@ -375,12 +375,12 @@
     });
 </script>
 
-<!-- 給与作成モーダル -->
+<!-- 給与登録モーダル -->
 <div id="salaryModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
     <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
         <!-- ヘッダー -->
         <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-2xl px-4 py-3 flex justify-between items-center sticky top-0 z-10">
-            <h3 class="text-lg font-bold text-white">過去の給与作成</h3>
+            <h3 class="text-lg font-bold text-white">過去の給与登録</h3>
             <button type="button" onclick="closeSalaryModal()" class="text-white hover:text-gray-200 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -389,7 +389,7 @@
         </div>
 
         <!-- ボディ -->
-        <form id="salaryForm" method="post" action="{% url 'budget_app:plan_create' %}" class="p-4 space-y-4">
+        <form id="salaryForm" method="post" action="{% url 'budget_app:salary_create' %}" class="p-4 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="past_mode" value="true">
 
@@ -436,10 +436,10 @@ function openSalaryModal() {
     const formFields = document.getElementById('salaryFormFields');
 
     // タイトルをリセット
-    modalTitle.textContent = '過去の給与作成';
+    modalTitle.textContent = '過去の給与登録';
 
     // フォームアクションをリセット
-    salaryForm.action = '{% url "budget_app:plan_create" %}';
+    salaryForm.action = '{% url "budget_app:salary_create" %}';
 
     // past_modeを追加（存在しない場合）
     let pastModeInput = salaryForm.querySelector('input[name="past_mode"]');
@@ -559,6 +559,53 @@ function generateSalaryFormFields() {
 
     incomeSection.appendChild(incomeGrid);
     formFields.appendChild(incomeSection);
+
+    // ボーナスあり チェックボックス
+    const bonusCheckboxDiv = document.createElement('div');
+    bonusCheckboxDiv.className = 'mt-4';
+    bonusCheckboxDiv.innerHTML = `
+        <label class="flex items-center cursor-pointer">
+            <input type="checkbox" id="hasBonusCheckbox" name="has_bonus" value="true" class="w-4 h-4 text-emerald-600 rounded focus:ring-2 focus:ring-emerald-500">
+            <span class="ml-2 text-sm font-semibold text-gray-700">ボーナスあり</span>
+        </label>
+    `;
+    formFields.appendChild(bonusCheckboxDiv);
+
+    // ボーナス明細セクション（初期状態は非表示）
+    const bonusSection = document.createElement('div');
+    bonusSection.id = 'bonusSection';
+    bonusSection.className = 'bg-emerald-50 p-4 rounded-lg mt-4 hidden';
+    bonusSection.innerHTML = '<h4 class="font-semibold text-sm text-emerald-800 mb-3">🎁 ボーナス明細</h4>';
+
+    const bonusGrid = document.createElement('div');
+    bonusGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+
+    const bonusFields = [
+        {name: 'bonus_gross_salary', label: 'ボーナス総支給額', defaultValue: 0},
+        {name: 'bonus_deductions', label: 'ボーナス控除額', defaultValue: 0},
+    ];
+
+    bonusFields.forEach(field => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
+            <input type="number" name="${field.name}" value="${field.defaultValue}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-sm">
+        `;
+        bonusGrid.appendChild(div);
+    });
+
+    bonusSection.appendChild(bonusGrid);
+    formFields.appendChild(bonusSection);
+
+    // チェックボックスの変更イベント
+    const hasBonusCheckbox = document.getElementById('hasBonusCheckbox');
+    hasBonusCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            bonusSection.classList.remove('hidden');
+        } else {
+            bonusSection.classList.add('hidden');
+        }
+    });
 }
 
 function updateSalaryMonthOptions() {
@@ -602,7 +649,7 @@ function updateSalaryYearMonth() {
 }
 
 // 給与編集モーダルを開く
-function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transportation) {
+function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transportation, hasBonus, bonusGrossSalary, bonusDeductions) {
     const modal = document.getElementById('salaryModal');
     const modalTitle = modal.querySelector('h3');
     const salaryForm = document.getElementById('salaryForm');
@@ -612,7 +659,7 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
     modalTitle.textContent = '給与編集';
 
     // フォームアクションを編集URLに変更
-    salaryForm.action = `/plans/${planId}/edit/`;
+    salaryForm.action = `/salaries/${planId}/edit/`;
 
     // past_modeを削除
     const pastModeInput = salaryForm.querySelector('input[name="past_mode"]');
@@ -671,6 +718,57 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
     incomeSection.appendChild(incomeGrid);
     formFields.appendChild(incomeSection);
 
+    // ボーナス未登録の場合のみ、ボーナスチェックボックスとセクションを表示
+    if (!hasBonus) {
+        // ボーナスありチェックボックス
+        const bonusCheckboxDiv = document.createElement('div');
+        bonusCheckboxDiv.className = 'mt-4';
+        bonusCheckboxDiv.innerHTML = `
+            <label class="flex items-center cursor-pointer">
+                <input type="checkbox" id="hasBonusCheckbox" name="has_bonus" value="true">
+                <span class="ml-2">ボーナスあり</span>
+            </label>
+        `;
+        formFields.appendChild(bonusCheckboxDiv);
+
+        // ボーナス明細セクション
+        const bonusSection = document.createElement('div');
+        bonusSection.id = 'bonusSection';
+        bonusSection.className = 'bg-emerald-50 p-4 rounded-lg mt-4 hidden';
+        bonusSection.innerHTML = '<h4 class="font-semibold text-sm text-emerald-800 mb-3">🎁 ボーナス明細</h4>';
+
+        const bonusGrid = document.createElement('div');
+        bonusGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+
+        // ボーナス明細フィールド
+        const bonusFields = [
+            {name: 'bonus_gross_salary', label: 'ボーナス総支給額', value: 0},
+            {name: 'bonus_deductions', label: 'ボーナス控除額', value: 0},
+        ];
+
+        bonusFields.forEach(field => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
+                <input type="number" name="${field.name}" value="${field.value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-sm">
+            `;
+            bonusGrid.appendChild(div);
+        });
+
+        bonusSection.appendChild(bonusGrid);
+        formFields.appendChild(bonusSection);
+
+        // チェックボックスの変更イベントを設定
+        const hasBonusCheckbox = document.getElementById('hasBonusCheckbox');
+        hasBonusCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                bonusSection.classList.remove('hidden');
+            } else {
+                bonusSection.classList.add('hidden');
+            }
+        });
+    }
+
     // モーダルを表示
     modal.classList.remove('hidden');
 }
@@ -686,7 +784,7 @@ function openEditBonusModal(planId, yearMonth, bonusGrossSalary, bonusDeductions
     modalTitle.textContent = 'ボーナス編集';
 
     // フォームアクションを編集URLに変更
-    salaryForm.action = `/plans/${planId}/edit/`;
+    salaryForm.action = `/salaries/${planId}/edit-bonus/`;
 
     // past_modeを削除
     const pastModeInput = salaryForm.querySelector('input[name="past_mode"]');

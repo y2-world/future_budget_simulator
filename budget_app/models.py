@@ -2,6 +2,42 @@ from django.db import models
 from django.core.validators import MinValueValidator
 
 
+class Salary(models.Model):
+    """給与明細"""
+    year_month = models.CharField(max_length=7, unique=True, verbose_name="年月")  # YYYY-MM
+
+    # 給与明細
+    gross_salary = models.IntegerField(default=0, verbose_name="総支給額")
+    deductions = models.IntegerField(default=0, verbose_name="控除額")
+    transportation = models.IntegerField(default=0, verbose_name="交通費")
+
+    # ボーナス明細（ボーナスがある月のみ入力）
+    has_bonus = models.BooleanField(default=False, verbose_name="ボーナスあり")
+    bonus_gross_salary = models.IntegerField(default=0, verbose_name="ボーナス総支給額")
+    bonus_deductions = models.IntegerField(default=0, verbose_name="ボーナス控除額")
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新日時")
+
+    class Meta:
+        verbose_name = "給与明細"
+        verbose_name_plural = "給与明細"
+        ordering = ['year_month']
+
+    def __str__(self):
+        return f"{self.year_month}"
+
+    def get_net_salary(self):
+        """手取り給与を計算"""
+        return self.gross_salary - self.deductions + self.transportation
+
+    def get_net_bonus(self):
+        """手取りボーナスを計算"""
+        if self.has_bonus:
+            return self.bonus_gross_salary - self.bonus_deductions
+        return 0
+
+
 class AccountBalance(models.Model):
     """口座残高"""
     date = models.DateField(verbose_name="日付", unique=True)

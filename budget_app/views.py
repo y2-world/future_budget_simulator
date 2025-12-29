@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.db import models as django_models
 from django.db.models import Sum
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 from .models import (
     SimulationConfig,
     MonthlyPlan,
@@ -2101,18 +2102,16 @@ def monthly_plan_default_delete(request, pk):
 
 def salary_list(request):
     """給与一覧"""
-    from django.db.models import Q
+    from .models import Salary
+    import json
 
-    # 給与明細データまたはボーナス明細データがある月次計画を取得（新しい順）
-    # 0の値も含めて表示（明示的に0を入力した場合も表示するため）
-    plans_with_salary = MonthlyPlan.objects.filter(
-        Q(gross_salary__isnull=False) | Q(bonus_gross_salary__isnull=False)
-    ).order_by('-year_month')
+    # 全ての給与明細を取得（新しい順）
+    salaries = Salary.objects.all().order_by('-year_month')
 
     # 全ての年を取得
     all_years = set()
-    for plan in plans_with_salary:
-        year = int(plan.year_month.split('-')[0])
+    for salary in salaries:
+        year = int(salary.year_month.split('-')[0])
         all_years.add(year)
 
     # 年を降順でソート（新しい年が先）
@@ -2122,20 +2121,19 @@ def salary_list(request):
     annual_summaries = []
     for year in sorted_years:
         # その年のデータを取得
-        year_plans = plans_with_salary.filter(year_month__startswith=str(year))
+        year_salaries = salaries.filter(year_month__startswith=str(year))
 
         # データがない年はスキップ
-        if year_plans.count() == 0:
+        if year_salaries.count() == 0:
             continue
 
         # その年の集計（通常給与 + ボーナス）
-        total_gross = sum(p.get_item('gross_salary') for p in year_plans)
-        total_bonus_gross = sum(p.get_item('bonus_gross_salary') or 0 for p in year_plans)
-        total_transportation = sum(p.get_item('transportation') for p in year_plans)
-        total_deductions = sum(p.get_item('deductions') for p in year_plans)
-        total_bonus_deductions = sum(p.get_item('bonus_deductions') or 0 for p in year_plans)
-        total_net = sum(p.get_total_income() for p in year_plans)
-        total_bonus_net = 0  # ボーナスはget_total_income()に含まれる
+        total_gross = sum(s.gross_salary for s in year_salaries)
+        total_bonus_gross = sum(s.bonus_gross_salary for s in year_salaries if s.has_bonus)
+        total_transportation = sum(s.transportation for s in year_salaries)
+        total_deductions = sum(s.deductions for s in year_salaries)
+        total_bonus_deductions = sum(s.bonus_deductions for s in year_salaries if s.has_bonus)
+        total_net = sum(s.get_net_salary() + s.get_net_bonus() for s in year_salaries)
 
         # 合計
         total_all_gross = total_gross + total_bonus_gross
@@ -2162,39 +2160,157 @@ def salary_list(request):
             'total_bonus_deductions': total_bonus_deductions,
             'total_all_deductions': total_all_deductions,
             'total_net': total_net,
-            'total_bonus_net': total_bonus_net,
             'total_all_net': total_all_net,
             'gross_minus_transport': gross_minus_transport,
             'avg_deduction_rate': round(avg_deduction_rate, 1),
-            'count': year_plans.count(),
+            'count': year_salaries.count(),
         })
 
     # 登録済みの年月リストを取得（モーダルで除外するため）
-    import json
-    from datetime import datetime
     registered_year_months = list(
-        MonthlyPlan.objects.values_list('year_month', flat=True)
+        Salary.objects.values_list('year_month', flat=True)
     )
 
-    # デフォルト項目の情報をJSON形式で渡す（モーダルのフォーム生成用）
-    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
-    default_items_data = [
-        {
-            'key': item.key,
-            'title': item.title,
-            'amount': item.amount,
-            'payment_type': item.payment_type,
-        }
-        for item in default_items
-    ]
-
     context = {
-        'salary_plans': plans_with_salary,
+        'salaries': salaries,
         'annual_summaries': annual_summaries,
         'registered_year_months': json.dumps(registered_year_months),
-        'default_items_json': json.dumps(default_items_data),
     }
     return render(request, 'budget_app/salary_list.html', context)
+
+
+@require_http_methods(["POST"])
+def salary_create(request):
+    """給与明細の新規登録"""
+    from .models import Salary
+    from django.contrib import messages
+
+    try:
+        year = request.POST.get('year')
+        month = request.POST.get('month')
+        year_month = f"{year}-{month}"
+
+        # 既に存在する場合はエラー
+        if Salary.objects.filter(year_month=year_month).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': f'{year}年{int(month)}月の給与明細は既に登録されています。'
+            }, status=400)
+
+        # 給与明細作成
+        salary = Salary.objects.create(
+            year_month=year_month,
+            gross_salary=int(request.POST.get('gross_salary', 0)),
+            deductions=int(request.POST.get('deductions', 0)),
+            transportation=int(request.POST.get('transportation', 0)),
+            has_bonus=request.POST.get('has_bonus') == 'true',
+            bonus_gross_salary=int(request.POST.get('bonus_gross_salary', 0)),
+            bonus_deductions=int(request.POST.get('bonus_deductions', 0)),
+        )
+
+        messages.success(request, f'{year}年{int(month)}月の給与明細を登録しました。')
+        return JsonResponse({'status': 'success'})
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'給与明細の登録に失敗しました: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def salary_edit(request, salary_id):
+    """給与明細の編集"""
+    from .models import Salary
+    from django.contrib import messages
+
+    try:
+        salary = Salary.objects.get(pk=salary_id)
+
+        # 給与明細更新
+        salary.gross_salary = int(request.POST.get('gross_salary', 0))
+        salary.deductions = int(request.POST.get('deductions', 0))
+        salary.transportation = int(request.POST.get('transportation', 0))
+
+        # ボーナス明細更新（ボーナス未登録の場合のみ）
+        if not salary.has_bonus:
+            has_bonus_param = request.POST.get('has_bonus') == 'true'
+            if has_bonus_param:
+                salary.has_bonus = True
+                salary.bonus_gross_salary = int(request.POST.get('bonus_gross_salary', 0))
+                salary.bonus_deductions = int(request.POST.get('bonus_deductions', 0))
+
+        salary.save()
+
+        messages.success(request, f'{salary.year_month}の給与明細を更新しました。')
+        return JsonResponse({'status': 'success'})
+
+    except Salary.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': '給与明細が見つかりません。'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'給与明細の更新に失敗しました: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def salary_edit_bonus(request, salary_id):
+    """ボーナス明細の編集"""
+    from .models import Salary
+    from django.contrib import messages
+
+    try:
+        salary = Salary.objects.get(pk=salary_id)
+
+        # ボーナス明細更新
+        salary.bonus_gross_salary = int(request.POST.get('bonus_gross_salary', 0))
+        salary.bonus_deductions = int(request.POST.get('bonus_deductions', 0))
+        salary.has_bonus = salary.bonus_gross_salary > 0 or salary.bonus_deductions > 0
+        salary.save()
+
+        messages.success(request, f'{salary.year_month}のボーナス明細を更新しました。')
+        return JsonResponse({'status': 'success'})
+
+    except Salary.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': '給与明細が見つかりません。'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'ボーナス明細の更新に失敗しました: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def salary_delete(request, salary_id):
+    """給与明細の削除"""
+    from .models import Salary
+    from django.contrib import messages
+
+    try:
+        salary = Salary.objects.get(pk=salary_id)
+        year_month = salary.year_month
+        salary.delete()
+
+        messages.success(request, f'{year_month}の給与明細を削除しました。')
+        return JsonResponse({'status': 'success'})
+
+    except Salary.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': '給与明細が見つかりません。'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'給与明細の削除に失敗しました: {str(e)}'
+        }, status=500)
 
 
 def past_transactions_list(request):

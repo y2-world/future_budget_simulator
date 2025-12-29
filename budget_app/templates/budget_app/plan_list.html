@@ -512,22 +512,6 @@ function generateFormFields() {
     const incomeGrid = document.createElement('div');
     incomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
 
-    // 固定フィールド（給与、総支給額、控除額、交通費）
-    const fixedIncomeFields = [
-        {name: 'gross_salary', label: '総支給額', defaultValue: 0},
-        {name: 'deductions', label: '控除額', defaultValue: 0},
-        {name: 'transportation', label: '交通費', defaultValue: 0},
-    ];
-
-    fixedIncomeFields.forEach(field => {
-        const div = document.createElement('div');
-        div.innerHTML = `
-            <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
-            <input type="number" name="${field.name}" value="${field.defaultValue}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
-        `;
-        incomeGrid.appendChild(div);
-    });
-
     // deposit（振込）タイプの動的項目
     defaultItems.forEach(item => {
         if (item.payment_type === 'deposit') {
@@ -599,60 +583,6 @@ function loadExistingPlanData(planData) {
         <input type="hidden" name="year_month" value="${yearMonth}">
     `;
     formFields.appendChild(yearMonthDisplay);
-
-    // 給与明細セクション
-    const salarySection = document.createElement('div');
-    salarySection.className = 'bg-green-50 p-4 rounded-lg mb-4';
-    salarySection.innerHTML = '<h4 class="font-semibold text-sm text-green-800 mb-3">💰 給与明細</h4>';
-
-    const salaryGrid = document.createElement('div');
-    salaryGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
-
-    // 給与明細フィールド
-    const salaryFields = [
-        {name: 'gross_salary', label: '総支給額', value: planData.gross_salary || 0},
-        {name: 'deductions', label: '控除額', value: planData.deductions || 0},
-        {name: 'transportation', label: '交通費', value: planData.transportation || 0},
-    ];
-
-    salaryFields.forEach(field => {
-        const div = document.createElement('div');
-        div.innerHTML = `
-            <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
-            <input type="number" name="${field.name}" value="${field.value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
-        `;
-        salaryGrid.appendChild(div);
-    });
-
-    salarySection.appendChild(salaryGrid);
-    formFields.appendChild(salarySection);
-
-    // 6月と12月の場合、ボーナスセクションを追加
-    if (month === '06' || month === '12') {
-        const bonusSection = document.createElement('div');
-        bonusSection.className = 'bg-emerald-50 p-4 rounded-lg mb-4';
-        bonusSection.innerHTML = '<h4 class="font-semibold text-sm text-emerald-800 mb-3">🎁 ボーナス明細</h4>';
-
-        const bonusGrid = document.createElement('div');
-        bonusGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
-
-        const bonusFields = [
-            {name: 'bonus_gross_salary', label: 'ボーナス総支給額', value: planData.bonus_gross_salary || 0},
-            {name: 'bonus_deductions', label: 'ボーナス控除額', value: planData.bonus_deductions || 0}
-        ];
-
-        bonusFields.forEach(field => {
-            const div = document.createElement('div');
-            div.innerHTML = `
-                <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
-                <input type="number" name="${field.name}" value="${field.value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-sm">
-            `;
-            bonusGrid.appendChild(div);
-        });
-
-        bonusSection.appendChild(bonusGrid);
-        formFields.appendChild(bonusSection);
-    }
 
     // 収入セクション（deposit項目がある場合のみ）
     const depositItems = defaultItems.filter(item => item.payment_type === 'deposit');

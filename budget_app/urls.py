@@ -20,6 +20,10 @@ urlpatterns = [
 
     # 給与一覧
     path('salaries/', views.salary_list, name='salary_list'),
+    path('salaries/create/', views.salary_create, name='salary_create'),
+    path('salaries/<int:salary_id>/edit/', views.salary_edit, name='salary_edit'),
+    path('salaries/<int:salary_id>/edit-bonus/', views.salary_edit_bonus, name='salary_edit_bonus'),
+    path('salaries/<int:salary_id>/delete/', views.salary_delete, name='salary_delete'),
 
     # 過去の明細
     path('past-transactions/', views.past_transactions_list, name='past_transactions'),
