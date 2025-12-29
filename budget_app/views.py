@@ -795,11 +795,17 @@ def plan_edit(request, pk):
         for item in default_items
     ]
 
+    # 登録済みの年月リストを取得（新規作成時のドロップダウンから除外するため）
+    registered_months = list(
+        MonthlyPlan.objects.values_list('year_month', flat=True)
+    )
+
     return render(request, 'budget_app/plan_form.html', {
         'form': form,
         'title': f'{format_year_month_display(plan.year_month)} の編集',
         'is_past_mode': is_past_month,
-        'default_items_json': json.dumps(default_items_data)
+        'default_items_json': json.dumps(default_items_data),
+        'registered_months_json': json.dumps(registered_months)
     })
 
 
