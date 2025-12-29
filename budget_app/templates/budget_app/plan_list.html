@@ -460,6 +460,78 @@ function initializeForm() {
 
     // 初期値を設定
     updateYearMonth();
+
+    // フォームフィールドを生成
+    generateFormFields();
+}
+
+function generateFormFields() {
+    const formFields = document.getElementById('formFields');
+    const defaultItems = {{ default_items_json|safe|default:"[]" }};
+
+    formFields.innerHTML = '';
+
+    // 収入セクション
+    const incomeSection = document.createElement('div');
+    incomeSection.className = 'mb-6';
+    incomeSection.innerHTML = '<h4 class="font-bold text-lg mb-3 text-green-700">収入</h4>';
+
+    const incomeGrid = document.createElement('div');
+    incomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+
+    // 固定フィールド（給与、総支給額、控除額、交通費）
+    const fixedIncomeFields = [
+        {name: 'gross_salary', label: '総支給額', defaultValue: 0},
+        {name: 'deductions', label: '控除額', defaultValue: 0},
+        {name: 'transportation', label: '交通費', defaultValue: 0},
+    ];
+
+    fixedIncomeFields.forEach(field => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label class="block text-sm font-medium text-gray-700 mb-1">${field.label}（円）</label>
+            <input type="number" name="${field.name}" value="${field.defaultValue}" class="w-full p-2 border rounded">
+        `;
+        incomeGrid.appendChild(div);
+    });
+
+    // deposit（振込）タイプの動的項目
+    defaultItems.forEach(item => {
+        if (item.payment_type === 'deposit') {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label class="block text-sm font-medium text-gray-700 mb-1">${item.title}（円）</label>
+                <input type="number" name="${item.key}" value="${item.amount || 0}" class="w-full p-2 border rounded">
+            `;
+            incomeGrid.appendChild(div);
+        }
+    });
+
+    incomeSection.appendChild(incomeGrid);
+    formFields.appendChild(incomeSection);
+
+    // 支出セクション
+    const expenseSection = document.createElement('div');
+    expenseSection.className = 'mb-6';
+    expenseSection.innerHTML = '<h4 class="font-bold text-lg mb-3 text-red-700">支出</h4>';
+
+    const expenseGrid = document.createElement('div');
+    expenseGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+
+    // withdrawal（引き落とし）タイプの動的項目
+    defaultItems.forEach(item => {
+        if (item.payment_type === 'withdrawal') {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label class="block text-sm font-medium text-gray-700 mb-1">${item.title}（円）</label>
+                <input type="number" name="${item.key}" value="${item.amount || 0}" class="w-full p-2 border rounded">
+            `;
+            expenseGrid.appendChild(div);
+        }
+    });
+
+    expenseSection.appendChild(expenseGrid);
+    formFields.appendChild(expenseSection);
 }
 
 function updateMonthOptions() {

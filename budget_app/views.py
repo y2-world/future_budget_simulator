@@ -391,6 +391,17 @@ def plan_list(request):
         MonthlyPlan.objects.values_list('year_month', flat=True)
     )
 
+    # デフォルト項目の情報をJSON形式で渡す（モーダルのフォーム生成用）
+    default_items_data = [
+        {
+            'key': item.key,
+            'title': item.title,
+            'amount': item.amount,
+            'payment_type': item.payment_type,
+        }
+        for item in default_items
+    ]
+
     return render(request, 'budget_app/plan_list.html', {
         'plans': plans,
         'current_and_future_plans': current_and_future_plans,
@@ -399,6 +410,7 @@ def plan_list(request):
         'today': today,
         'default_items': default_items,
         'registered_year_months': json.dumps(registered_year_months),
+        'default_items_json': json.dumps(default_items_data),
     })
 
 
