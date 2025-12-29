@@ -564,11 +564,17 @@ def plan_create(request):
         for item in default_items
     ]
 
+    # 登録済みの年月リストを取得（新規作成時のドロップダウンから除外するため）
+    registered_months = list(
+        MonthlyPlan.objects.values_list('year_month', flat=True)
+    )
+
     return render(request, 'budget_app/plan_form.html', {
         'form': form,
         'title': '月次計画の作成' if not is_past_mode else '過去の給与データ登録',
         'is_past_mode': is_past_mode,
-        'default_items_json': json.dumps(default_items_data)
+        'default_items_json': json.dumps(default_items_data),
+        'registered_months_json': json.dumps(registered_months)
     })
 
 
