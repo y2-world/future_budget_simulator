@@ -251,15 +251,15 @@
 
                     <!-- モバイル表示 -->
                     <div class="md:hidden p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="flex-1">
+                        <div class="flex justify-between items-start mb-2 gap-2">
+                            <div class="flex-1 min-w-0">
                                 {% if item.date %}
-                                <div class="text-xs text-gray-500 mb-1">{{ item.date|date:"m/d（D）" }}</div>
+                                <div class="text-xs text-gray-500 mb-1 whitespace-nowrap">{{ item.date|date:"m/d（D）" }}</div>
                                 {% endif %}
-                                <div class="font-medium text-sm">{{ item.name }}</div>
+                                <div class="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis">{{ item.name }}</div>
                             </div>
-                            <div class="text-right ml-2">
-                                <div class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold text-sm" {% if item.is_excluded %}style="text-decoration: line-through; color: #9ca3af;"{% endif %}>
+                            <div class="text-right flex-shrink-0">
+                                <div class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold text-sm whitespace-nowrap" {% if item.is_excluded %}style="text-decoration: line-through; color: #9ca3af;"{% endif %}>
                                     {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
                                 </div>
                             </div>
