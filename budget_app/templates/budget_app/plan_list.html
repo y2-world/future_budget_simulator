@@ -588,14 +588,17 @@ function loadExistingPlanData(planData) {
     const formFields = document.getElementById('formFields');
     formFields.innerHTML = '';
 
-    // 年月をhiddenフィールドで送信
-    const yearMonthHidden = document.createElement('div');
-    yearMonthHidden.innerHTML = `
+    // 年月表示エリア
+    const yearMonthDisplay = document.createElement('div');
+    yearMonthDisplay.className = 'mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200';
+    yearMonthDisplay.innerHTML = `
+        <div class="text-sm text-gray-600 mb-1">対象年月</div>
+        <div class="text-xl font-bold text-gray-800">${year}年${parseInt(month)}月</div>
         <input type="hidden" name="year" value="${year}">
         <input type="hidden" name="month" value="${month}">
         <input type="hidden" name="year_month" value="${yearMonth}">
     `;
-    formFields.appendChild(yearMonthHidden);
+    formFields.appendChild(yearMonthDisplay);
 
     // 給与明細セクション
     const salarySection = document.createElement('div');
