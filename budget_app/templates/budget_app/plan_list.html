@@ -412,14 +412,43 @@ function initializeForm() {
     const yearSelect = document.getElementById('yearSelect');
     const monthSelect = document.getElementById('monthSelect');
 
-    // 年の選択肢を生成（現在年から2年後まで）
-    yearSelect.innerHTML = '';
+    const registeredMonths = {{ registered_year_months|safe|default:"[]" }};
     const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+
+    // 年の選択肢を生成（未登録の月がある年のみ）
+    yearSelect.innerHTML = '';
     for (let year = currentYear; year <= currentYear + 2; year++) {
+        // この年に未登録の月があるかチェック
+        let hasUnregisteredMonth = false;
+        for (let month = 1; month <= 12; month++) {
+            const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
+            // 今月以降かつ未登録の月があるか
+            if (year > currentYear || (year === currentYear && month >= currentMonth)) {
+                if (!registeredMonths.includes(yearMonth)) {
+                    hasUnregisteredMonth = true;
+                    break;
+                }
+            }
+        }
+
+        // 未登録の月がある年のみ追加
+        if (hasUnregisteredMonth) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year + '年';
+            yearSelect.appendChild(option);
+        }
+    }
+
+    // 選択肢がない場合の処理
+    if (yearSelect.options.length === 0) {
         const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year + '年';
+        option.value = '';
+        option.textContent = '選択可能な月がありません';
         yearSelect.appendChild(option);
+        monthSelect.innerHTML = '';
+        return;
     }
 
     // 月の選択肢を生成
