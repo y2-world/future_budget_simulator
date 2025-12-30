@@ -7,15 +7,16 @@
  * @param {string} message - 表示するメッセージ
  * @param {string} type - メッセージタイプ ('success', 'error', 'info')
  * @param {number} duration - 表示時間（ミリ秒）
+ * @param {string} targetUrl - クリック時の遷移先URL（オプション）
  */
-window.showToast = function(message, type = 'info', duration = 4000) {
+window.showToast = function(message, type = 'info', duration = 4000, targetUrl = null) {
     const backgrounds = {
         success: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
         error: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
         info: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
     };
 
-    Toastify({
+    const toastConfig = {
         text: message,
         duration: duration,
         close: true,
@@ -31,7 +32,17 @@ window.showToast = function(message, type = 'info', duration = 4000) {
             fontWeight: "500",
             boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1)",
         }
-    }).showToast();
+    };
+
+    // URLが指定されている場合はクリック時に遷移
+    if (targetUrl) {
+        toastConfig.onClick = function() {
+            window.location.href = targetUrl;
+        };
+        toastConfig.style.cursor = 'pointer';
+    }
+
+    Toastify(toastConfig).showToast();
 };
 
 /**
@@ -83,14 +94,20 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
 
             // 成功時の処理
             if (showSuccessToast) {
-                window.showToast(data.message || '処理が完了しました。', 'success', 3000);
+                // target_urlがある場合は遷移先URLを設定
+                const targetUrl = data.target_url || null;
+                window.showToast(data.message || '処理が完了しました。', 'success', 3000, targetUrl);
             }
 
             if (onSuccess) {
                 onSuccess(data);
             }
 
-            if (reloadOnSuccess) {
+            // target_urlがある場合は遷移、ない場合はリロード
+            if (data.target_url) {
+                // URLが指定されている場合は自動遷移（トーストをクリックしなくても遷移）
+                setTimeout(() => window.location.href = data.target_url, reloadDelay);
+            } else if (reloadOnSuccess) {
                 setTimeout(() => window.location.reload(), reloadDelay);
             }
 
