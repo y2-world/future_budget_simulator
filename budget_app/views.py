@@ -1206,6 +1206,11 @@ def credit_estimate_list(request):
                 billing_year += 1
             billing_month = f"{billing_year}-{billing_month_num:02d}"
 
+            # 引き落とし月が現在の月より前の場合はスキップ（過去の定期項目は表示しない）
+            current_year_month = f"{today.year}-{today.month:02d}"
+            if billing_month < current_year_month:
+                continue
+
             # この引き落とし月に既存の見積もりがない場合はスキップ
             if billing_month not in existing_billing_months:
                 continue
