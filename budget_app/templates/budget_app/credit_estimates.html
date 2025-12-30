@@ -841,7 +841,7 @@
                 e.preventDefault();
                 if (!confirm('このカードの合計額を月次計画に反映しますか？')) return;
 
-                const success = await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(form));
+                await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(form));
             });
         });
 

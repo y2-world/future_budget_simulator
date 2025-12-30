@@ -927,7 +927,7 @@ def credit_estimate_list(request):
     # 事前に上書きデータを取得して辞書に格納（金額、カード種別、2回払い）
     overrides = DefaultChargeOverride.objects.all()
     override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment} for ov in overrides}
-    estimates = list(CreditEstimate.objects.all().order_by('year_month', 'card_type', 'due_date', 'created_at'))
+    estimates = list(CreditEstimate.objects.all().order_by('-year_month', 'card_type', 'due_date', 'created_at'))
     credit_defaults = list(CreditDefault.objects.filter(is_active=True))
 
     # サマリー（年月 -> カード -> {total, entries}）
