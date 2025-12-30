@@ -1197,10 +1197,8 @@ def credit_estimate_list(request):
             # 引き落とし月を計算（利用月year_monthから）
             from datetime import datetime
             usage_date = datetime.strptime(year_month, '%Y-%m')
-            if actual_card_type in ['view', 'vermillion']:
-                billing_offset = 2  # 翌々月
-            else:
-                billing_offset = 1  # 翌月
+            # card_offset_monthsを使用して引き落とし月を計算
+            billing_offset = card_offset_months.get(actual_card_type, 1)  # デフォルトは翌月
             billing_month_num = usage_date.month + billing_offset
             billing_year = usage_date.year
             while billing_month_num > 12:
@@ -1216,13 +1214,8 @@ def credit_estimate_list(request):
             month_group = summary.setdefault(billing_month, OrderedDict())
 
             # 該当カードのグループを取得または作成（実際のカード種別を使用）
-            # カード名 + 支払日のラベル作成
-            due_day = card_due_days.get(actual_card_type, '')
-            if due_day:
-                b_year, b_month = map(int, billing_month.split('-'))
-                default_label = f"{card_labels.get(actual_card_type, actual_card_type)} ({b_month}/{due_day}支払)"
-            else:
-                default_label = card_labels.get(actual_card_type, actual_card_type)
+            # カード名 + 支払日のラベル作成（get_card_label_with_due_day関数を使用）
+            default_label = get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=year_month)
 
             card_group = month_group.setdefault(actual_card_type, {
                 'label': default_label,
