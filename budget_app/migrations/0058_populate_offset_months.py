@@ -11,7 +11,7 @@ def populate_offset_months(apps, schema_editor):
     # card_id -> offset_months のマッピング
     offset_mapping = {
         'card_12': 2,  # VIEWカード (1/5支払) = 翌々月
-        'card_13': 2,  # VIEWカード (ボーナス払い) = 翌々月
+        'card_13': 0,  # VIEWカード (ボーナス払い) = due_dateで管理、offsetは使わない
         'card_14': 1,  # 楽天カード = 翌月
         'card_15': 1,  # PayPayカード = 翌月
         'card_16': 2,  # VERMILLION CARD = 翌々月
