@@ -387,6 +387,8 @@ def plan_list(request):
             'title': item.title,
             'amount': item.amount,
             'payment_type': item.payment_type,
+            'is_credit_card': item.is_credit_card(),
+            'is_bonus_payment': item.is_bonus_payment,
         }
         for item in default_items
     ]
@@ -402,6 +404,7 @@ def plan_list(request):
             'bonus_gross_salary': plan.bonus_gross_salary or 0,
             'bonus_deductions': plan.bonus_deductions or 0,
             'items': plan.items or {},
+            'exclusions': plan.exclusions or {},
         }
 
     return render(request, 'budget_app/plan_list.html', {
@@ -465,15 +468,16 @@ def plan_create(request):
                 next_month_str = next_month.strftime('%Y-%m')
 
                 # 翌月の計画を取得または作成
-                config = SimulationConfig.objects.filter(is_active=True).first()
+                # MonthlyPlanDefaultからデフォルト値を取得
+                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                items_defaults = {}
+                for item in default_items:
+                    if item.key:
+                        items_defaults[item.key] = item.amount or 0
+
                 next_plan, _ = MonthlyPlan.objects.get_or_create(
                     year_month=next_month_str,
-                    defaults={
-                        'salary': config.default_salary if config else 271919,
-                        'food': config.default_food if config else 50000,
-                        'rent': 74396,
-                        'lake': 8000,
-                    }
+                    defaults={'items': items_defaults}
                 )
 
                 # 翌月の返済額に借入額を加算
@@ -788,15 +792,16 @@ def plan_edit(request, pk):
                 next_month_str = next_month.strftime('%Y-%m')
 
                 # 翌月の計画を取得または作成
-                config = SimulationConfig.objects.filter(is_active=True).first()
+                # MonthlyPlanDefaultからデフォルト値を取得
+                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                items_defaults = {}
+                for item in default_items:
+                    if item.key:
+                        items_defaults[item.key] = item.amount or 0
+
                 next_plan, _ = MonthlyPlan.objects.get_or_create(
                     year_month=next_month_str,
-                    defaults={
-                        'salary': config.default_salary if config else 271919,
-                        'food': config.default_food if config else 50000,
-                        'rent': 74396,
-                        'lake': 8000,
-                    }
+                    defaults={'items': items_defaults}
                 )
 
                 # 翌月の返済額を調整（古い借入額を引いて、新しい借入額を加算）

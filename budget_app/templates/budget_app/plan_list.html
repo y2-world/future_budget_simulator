@@ -516,8 +516,8 @@ function loadExistingPlanData(planData) {
                 <input type="number" name="${item.key}" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
             `;
 
-            // クレジットカード項目の場合、繰上げ返済チェックボックスを追加
-            if (item.is_credit_card) {
+            // クレジットカード項目の場合、繰上げ返済チェックボックスを追加（ボーナス払いは除く）
+            if (item.is_credit_card && !item.is_bonus_payment) {
                 html += `
                     <label class="flex items-center mt-1 text-xs text-gray-600">
                         <input type="hidden" name="exclude_${item.key}" value="false">
@@ -534,6 +534,44 @@ function loadExistingPlanData(planData) {
 
     expenseSection.appendChild(expenseGrid);
     formFields.appendChild(expenseSection);
+
+    // 繰上げ返済チェックボックスのイベントリスナーを設定
+    setupExclusionCheckboxListeners();
+}
+
+function setupExclusionCheckboxListeners() {
+    // 全ての繰上げ返済チェックボックスにイベントリスナーを追加
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="exclude_"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // チェックボックスのname属性から項目キーを取得 (exclude_item_6 -> item_6)
+            const itemKey = this.name.replace('exclude_', '');
+            // 対応する金額入力欄を取得
+            const amountInput = document.querySelector(`input[name="${itemKey}"]`);
+
+            if (amountInput) {
+                if (this.checked) {
+                    // チェックが入ったら取り消し線を追加
+                    amountInput.style.textDecoration = 'line-through';
+                    amountInput.style.color = '#9CA3AF'; // グレー色
+                } else {
+                    // チェックが外れたら取り消し線を削除
+                    amountInput.style.textDecoration = 'none';
+                    amountInput.style.color = '';
+                }
+            }
+        });
+
+        // 初期状態の設定（ページ読み込み時にチェックが入っている場合）
+        if (checkbox.checked) {
+            const itemKey = checkbox.name.replace('exclude_', '');
+            const amountInput = document.querySelector(`input[name="${itemKey}"]`);
+            if (amountInput) {
+                amountInput.style.textDecoration = 'line-through';
+                amountInput.style.color = '#9CA3AF';
+            }
+        }
+    });
 }
 
 function updateMonthOptions() {
