@@ -94,20 +94,22 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
 
             // 成功時の処理
             if (showSuccessToast) {
-                // target_urlがある場合は遷移先URLを設定
+                // target_urlがある場合は遷移先URLを設定し、メッセージに案内を追加
                 const targetUrl = data.target_url || null;
-                window.showToast(data.message || '処理が完了しました。', 'success', 3000, targetUrl);
+                let message = data.message || '処理が完了しました。';
+                if (targetUrl) {
+                    message += ' （クリックで確認）';
+                }
+                window.showToast(message, 'success', 5000, targetUrl);
             }
 
             if (onSuccess) {
                 onSuccess(data);
             }
 
-            // target_urlがある場合は遷移、ない場合はリロード
-            if (data.target_url) {
-                // URLが指定されている場合は自動遷移（トーストをクリックしなくても遷移）
-                setTimeout(() => window.location.href = data.target_url, reloadDelay);
-            } else if (reloadOnSuccess) {
+            // target_urlがある場合でも自動遷移はせず、トーストをクリックした場合のみ遷移
+            // リロードが必要な場合のみ実行
+            if (!data.target_url && reloadOnSuccess) {
                 setTimeout(() => window.location.reload(), reloadDelay);
             }
 
