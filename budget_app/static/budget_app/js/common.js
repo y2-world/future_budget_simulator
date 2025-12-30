@@ -34,11 +34,10 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
         }
     };
 
-    // URLが指定されている場合はクリック時に遷移
+    // URLが指定されている場合はリンクとして設定
     if (targetUrl) {
-        toastConfig.onClick = function() {
-            window.location.href = targetUrl;
-        };
+        toastConfig.destination = targetUrl;
+        toastConfig.newWindow = false;  // 同じウィンドウで開く
         toastConfig.style.cursor = 'pointer';
     }
 
