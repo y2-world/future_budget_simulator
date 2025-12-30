@@ -202,7 +202,7 @@ class MonthlyPlan(models.Model):
     
     def get_total_borrowing(self):
         """月次総借入を計算"""
-        return self.get_item('item_21')  # マネーアシスト借入
+        return self.get_item('item_15')  # マネーアシスト借入
 
     def get_net_income(self):
         """月次収支を計算"""

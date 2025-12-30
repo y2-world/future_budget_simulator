@@ -470,7 +470,7 @@ def plan_create(request):
             plan = form.save()
 
             # マネーアシスト借入がある場合、翌月末に自動で返済を登録
-            loan_borrowing = plan.get_item('item_21')
+            loan_borrowing = plan.get_item('item_15')  # マネーアシスト借入
             if loan_borrowing > 0:
                 current_date = datetime.strptime(plan.year_month, '%Y-%m')
                 # 翌月の1日を計算（月末の28日後 + 数日）
@@ -490,8 +490,8 @@ def plan_create(request):
                 )
 
                 # 翌月の返済額に借入額を加算
-                loan_value = next_plan.get_item('item_20')
-                next_plan.set_item('item_20', loan_value + loan_borrowing)
+                loan_value = next_plan.get_item('item_14')  # マネーアシスト返済
+                next_plan.set_item('item_14', loan_value + loan_borrowing)
                 next_plan.save()
 
             # 成功メッセージを年月付きで作成
@@ -737,7 +737,7 @@ def plan_edit(request, pk):
 
     if request.method == 'POST':
         # 編集前の借入額を保存
-        old_loan_borrowing = plan.get_item('item_21')
+        old_loan_borrowing = plan.get_item('item_15')  # マネーアシスト借入
 
         # デバッグ: POSTデータを確認
         logger.info(f"POST data: bonus_gross_salary={request.POST.get('bonus_gross_salary')}, bonus_deductions={request.POST.get('bonus_deductions')}")
@@ -794,7 +794,7 @@ def plan_edit(request, pk):
             plan = form.save()
 
             # マネーアシスト借入額が変更された場合、翌月の返済額を更新
-            new_loan_borrowing = plan.get_item('item_21')
+            new_loan_borrowing = plan.get_item('item_15')  # マネーアシスト借入
             if new_loan_borrowing != old_loan_borrowing:
                 current_date = datetime.strptime(plan.year_month, '%Y-%m')
                 next_month = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
@@ -813,8 +813,8 @@ def plan_edit(request, pk):
                 )
 
                 # 翌月の返済額を調整（古い借入額を引いて、新しい借入額を加算）
-                loan_value = next_plan.get_item('item_20')
-                next_plan.set_item('item_20', loan_value - old_loan_borrowing + new_loan_borrowing)
+                loan_value = next_plan.get_item('item_14')  # マネーアシスト返済
+                next_plan.set_item('item_14', loan_value - old_loan_borrowing + new_loan_borrowing)
                 next_plan.save()
 
             display_month = format_year_month_display(plan.year_month)
@@ -2662,14 +2662,8 @@ def past_transactions_list(request):
 
     # ハードコードされたフィールド（既存のテンプレートとの互換性のため）
     # 古いフィールド名と新しいkey名の両方を含める
-    hardcoded_fields = [
-        'food', 'rent', 'lake', 'view_card', 'view_card_bonus',
-        'rakuten_card', 'paypay_card', 'vermillion_card', 'amazon_card',
-        'olive_card', 'loan_borrowing',
-        # migration 0049で変換された新しいkey名
-        'item_1', 'item_2', 'item_3', 'item_7', 'item_8', 'item_9', 'item_10', 'item_11',
-        'item_12', 'item_13', 'item_14', 'item_15', 'item_16', 'item_17', 'item_18', 'item_20'
-    ]
+    # 動的フィールド（MonthlyPlanDefaultから取得）
+    hardcoded_fields = [item.key for item in default_items if item.key]
 
     context = {
         'yearly_data': filtered_yearly_data,
