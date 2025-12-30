@@ -291,10 +291,18 @@ class MonthlyPlanForm(forms.Form):
             label = f'{item.title}{withdrawal_day_str}'
 
             # 金額フィールドを追加
+            # 編集時はitemsから取得、新規作成時はデフォルト値を使用
+            if self.instance and self.instance.pk:
+                # 編集時: itemsに値がある場合はその値、ない場合は0（デフォルト値は使わない）
+                initial_value = self.instance.items.get(field_name, 0) if isinstance(self.instance.items, dict) else 0
+            else:
+                # 新規作成時: デフォルト値を使用
+                initial_value = item.amount
+
             self.fields[field_name] = forms.IntegerField(
                 label=label,
                 required=False,
-                initial=item.amount if not self.instance else self.instance.get_item(field_name),
+                initial=initial_value,
                 widget=forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'placeholder': '0'})
             )
 
