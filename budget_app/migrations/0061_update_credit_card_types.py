@@ -7,13 +7,17 @@ def update_card_types(apps, schema_editor):
     """
     CreditEstimateとCreditDefaultのcard_typeを新しいitem番号に更新
     旧card_XX形式および古いカード名から新しいitem_XX形式に変換
+
+    card_typeはMonthlyPlanDefaultのkeyと完全に統一される。
+    card_という接頭辞は使わず、直接item_6, item_7のように
+    MonthlyPlanDefaultのkeyと同じ値を使用する。
     """
     CreditEstimate = apps.get_model('budget_app', 'CreditEstimate')
     CreditDefault = apps.get_model('budget_app', 'CreditDefault')
     DefaultChargeOverride = apps.get_model('budget_app', 'DefaultChargeOverride')
 
     # 古いcard_type → 新しいitem_key のマッピング
-    # ID順で振り直されたので、card_12=item_6, card_13=item_7, ... となる
+    # MonthlyPlanDefaultのkeyと完全に統一（card_接頭辞は使わない）
     card_mapping = {
         # 古いcard_XX形式
         'card_12': 'item_6',   # VIEWカード (ID 12)
