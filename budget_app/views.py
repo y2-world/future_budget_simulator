@@ -1653,25 +1653,19 @@ def credit_estimate_list(request):
                 else:
                     field_name = f'{actual_card_type}_card'
 
-                if hasattr(plan, field_name):
-                    setattr(plan, field_name, total_amount)
-                    plan.save()
+                # set_itemメソッドを使用（items JSONFieldに保存）
+                plan.set_item(field_name, total_amount)
+                plan.save()
 
-                    success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
+                success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
 
-                    if is_ajax:
-                        return JsonResponse({
-                            'status': 'success',
-                            'message': success_message
-                        })
-                    else:
-                        messages.success(request, success_message)
+                if is_ajax:
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': success_message
+                    })
                 else:
-                    error_message = f'フィールド {field_name} が見つかりません。'
-                    if is_ajax:
-                        return JsonResponse({'status': 'error', 'message': error_message}, status=400)
-                    else:
-                        messages.error(request, error_message)
+                    messages.success(request, success_message)
             else:
                 error_message = 'カードデータが見つかりません。'
                 if is_ajax:
@@ -1769,9 +1763,8 @@ def credit_estimate_list(request):
                         else:
                             field_name = f'{card_type}_card'
 
-                        if hasattr(plan, field_name):
-                            setattr(plan, field_name, total_amount)
-
+                        # set_itemメソッドを使用（items JSONFieldに保存）
+                        plan.set_item(field_name, total_amount)
                         plan.save()
 
                         # 反映詳細を記録
