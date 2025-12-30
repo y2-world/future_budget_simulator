@@ -509,7 +509,7 @@ function generateFormFields() {
     incomeSection.innerHTML = '<h4 class="font-semibold text-sm text-green-800 mb-3">💰 収入</h4>';
 
     const incomeGrid = document.createElement('div');
-    incomeGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3';
+    incomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3';
 
     // deposit（振込）タイプの動的項目
     defaultItems.forEach(item => {
@@ -532,7 +532,7 @@ function generateFormFields() {
     expenseSection.innerHTML = '<h4 class="font-semibold text-sm text-red-800 mb-3">💸 支出</h4>';
 
     const expenseGrid = document.createElement('div');
-    expenseGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3';
+    expenseGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3';
 
     // withdrawal（引き落とし）タイプの動的項目
     defaultItems.forEach(item => {
@@ -591,7 +591,7 @@ function loadExistingPlanData(planData) {
         otherIncomeSection.innerHTML = '<h4 class="font-semibold text-sm text-green-800 mb-3">💰 収入</h4>';
 
         const otherIncomeGrid = document.createElement('div');
-        otherIncomeGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3';
+        otherIncomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3';
 
         // deposit（振込）タイプの動的項目
         depositItems.forEach(item => {
@@ -614,7 +614,7 @@ function loadExistingPlanData(planData) {
     expenseSection.innerHTML = '<h4 class="font-semibold text-sm text-red-800 mb-3">💸 支出</h4>';
 
     const expenseGrid = document.createElement('div');
-    expenseGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3';
+    expenseGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3';
 
     // withdrawal（引き落とし）タイプの動的項目
     defaultItems.forEach(item => {
