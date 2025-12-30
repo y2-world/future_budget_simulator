@@ -1107,6 +1107,8 @@ def credit_estimate_list(request):
     # 定期デフォルトを追加する利用月を決定
     # 既存の引き落とし月から逆算して、対応する利用月を計算
     candidate_usage_months = set()
+    current_year_month = f"{today.year}-{today.month:02d}"
+
     for billing_month in existing_billing_months:
         # ボーナス払いのキー（"YYYY-MM_bonus"形式）はスキップ
         if '_bonus' in billing_month:
@@ -1114,21 +1116,17 @@ def credit_estimate_list(request):
 
         billing_year, billing_month_num = map(int, billing_month.split('-'))
 
-        # VIEW/VERMILLIONカード用の利用月を計算（引き落とし月の2ヶ月前）
-        view_usage_month_num = billing_month_num - 2
-        view_usage_year = billing_year
-        if view_usage_month_num < 1:
-            view_usage_month_num += 12
-            view_usage_year -= 1
-        candidate_usage_months.add(f"{view_usage_year}-{view_usage_month_num:02d}")
-
-        # その他のカード用の利用月を計算（引き落とし月の1ヶ月前）
-        other_usage_month_num = billing_month_num - 1
-        other_usage_year = billing_year
-        if other_usage_month_num < 1:
-            other_usage_month_num += 12
-            other_usage_year -= 1
-        candidate_usage_months.add(f"{other_usage_year}-{other_usage_month_num:02d}")
+        # 各カードのoffset_monthsを使って利用月を計算
+        for card_id, offset_months in card_offset_months.items():
+            usage_month_num = billing_month_num - offset_months
+            usage_year = billing_year
+            if usage_month_num < 1:
+                usage_month_num += 12
+                usage_year -= 1
+            usage_month = f"{usage_year}-{usage_month_num:02d}"
+            # 現在の月以降のみ追加
+            if usage_month >= current_year_month:
+                candidate_usage_months.add(usage_month)
 
     # セットをリストに変換してソート
     candidate_usage_months = sorted(list(candidate_usage_months))
@@ -1193,11 +1191,6 @@ def credit_estimate_list(request):
 
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
-
-            # 利用月が現在の月より前の場合はスキップ（過去の定期項目は表示しない）
-            current_year_month = f"{today.year}-{today.month:02d}"
-            if year_month < current_year_month:
-                continue
 
             # 引き落とし月を計算（利用月year_monthから）
             from datetime import datetime
