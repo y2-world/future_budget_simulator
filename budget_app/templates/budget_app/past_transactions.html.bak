@@ -52,7 +52,7 @@
                                                 {{ item.year_month|format_year_month }}
                                                 <span class="text-xs text-gray-400 ml-1">▼</span>
                                             </span>
-                                            <button type="button" onclick="openPlanModal({{ item.plan.pk }}, '{{ item.year_month|format_year_month }}', '{{ item.year_month }}')" class="ml-2 text-xs text-blue-600 hover:text-blue-800">編集</button>
+                                            <button type="button" onclick="toggleEdit('edit-form-{{ item.plan.pk }}')" class="ml-2 text-xs text-blue-600 hover:text-blue-800">編集</button>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 font-medium">
                                             {{ item.income|yen }}
@@ -80,6 +80,167 @@
                                                     </div>
                                                 {% endfor %}
                                             </div>
+                                        </td>
+                                    </tr>
+                                    <!-- 編集フォーム -->
+                                    <tr id="edit-form-{{ item.plan.pk }}" class="hidden bg-yellow-50">
+                                        <td colspan="4" class="px-4 py-4">
+                                            <form method="post" action="{% url 'budget_app:plan_edit' item.plan.pk %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="year" value="{{ item.year_month|slice:':4' }}">
+                                                <input type="hidden" name="month" value="{{ item.year_month|slice:'5:7' }}">
+                                                <div class="text-sm font-semibold text-gray-700 mb-3">{{ item.year_month|format_year_month }} の情報を編集</div>
+
+                                                <!-- 収入セクション -->
+                                                <div class="bg-green-50 p-3 rounded-lg mb-3">
+                                                    <div class="text-sm font-semibold text-green-800 mb-2">収入</div>
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">給与（円）</label>
+                                                        <input type="number" name="salary" value="{{ item.plan.salary }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">総支給額（円）</label>
+                                                        <input type="number" name="gross_salary" value="{{ item.plan.gross_salary }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">控除額（円）</label>
+                                                        <input type="number" name="deductions" value="{{ item.plan.deductions }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">交通費（円）</label>
+                                                        <input type="number" name="transportation" value="{{ item.plan.transportation }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    {% with month_str=item.year_month|slice:"5:7" %}
+                                                    {% if month_str == '06' or month_str == '12' %}
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">ボーナス（円）</label>
+                                                        <input type="number" name="bonus" value="{{ item.plan.bonus }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">ボーナス総支給額（円）</label>
+                                                        <input type="number" name="bonus_gross_salary" value="{{ item.plan.bonus_gross_salary }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">ボーナス控除額（円）</label>
+                                                        <input type="number" name="bonus_deductions" value="{{ item.plan.bonus_deductions }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    {% endif %}
+                                                    {% endwith %}
+                                                    </div>
+                                                </div>
+
+                                                <!-- 支出セクション -->
+                                                <div class="bg-red-50 p-3 rounded-lg mb-3">
+                                                    <div class="text-sm font-semibold text-red-800 mb-2">支出</div>
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">食費（円）</label>
+                                                            <input type="number" name="item_9" value="{{ item.plan|get_item:'item_9' }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">家賃（円）</label>
+                                                            <input type="number" name="item_10" value="{{ item.plan|get_item:'item_10' }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% with lake_value=item.plan|get_item:'item_11' %}
+                                                        {% if lake_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">レイク（円）</label>
+                                                            <input type="number" name="item_11" value="{{ lake_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                        {% with view_card_value=item.plan|get_item:'item_12' %}
+                                                        {% if view_card_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">VIEWカード（円）</label>
+                                                            <input type="number" name="item_12" value="{{ view_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                        {% with view_card_bonus_value=item.plan|get_item:'item_13' %}
+                                                        {% if view_card_bonus_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">VIEWカード(ボーナス)（円）</label>
+                                                            <input type="number" name="item_13" value="{{ view_card_bonus_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                        {% with rakuten_card_value=item.plan|get_item:'item_14' %}
+                                                        {% if rakuten_card_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">楽天カード（円）</label>
+                                                            <input type="number" name="item_14" value="{{ rakuten_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                        {% with paypay_card_value=item.plan|get_item:'item_15' %}
+                                                        {% if paypay_card_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">PayPayカード（円）</label>
+                                                            <input type="number" name="item_15" value="{{ paypay_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                        {% with vermillion_card_value=item.plan|get_item:'item_16' %}
+                                                        {% if vermillion_card_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">VERMILLION CARD（円）</label>
+                                                            <input type="number" name="item_16" value="{{ vermillion_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                        {% with amazon_card_value=item.plan|get_item:'item_17' %}
+                                                        {% if amazon_card_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">Amazonカード（円）</label>
+                                                            <input type="number" name="item_17" value="{{ amazon_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                        {% with olive_card_value=item.plan|get_item:'item_18' %}
+                                                        {% if olive_card_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">Olive（円）</label>
+                                                            <input type="number" name="item_18" value="{{ olive_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                        {% with loan_borrowing_value=item.plan|get_item:'item_20' %}
+                                                        {% if loan_borrowing_value %}
+                                                        <div>
+                                                            <label class="block text-gray-600 mb-1 text-xs">マネーアシスト（借入）（円）</label>
+                                                            <input type="number" name="item_20" value="{{ loan_borrowing_value }}" class="w-full p-2 border rounded text-sm">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% endwith %}
+                                                    </div>
+
+                                                    <!-- 動的に追加された項目（ハードコードされていない項目のみ表示） -->
+                                                    {% if default_items %}
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                        {% for default_item in default_items %}
+                                                            {% if default_item.key and default_item.key not in hardcoded_fields %}
+                                                            {% with item_value=item.plan|get_item:default_item.key %}
+                                                            {% if item_value and item_value != 0 %}
+                                                            <div>
+                                                                <label class="block text-gray-600 mb-1 text-xs">{{ default_item.title }}（円）</label>
+                                                                <input type="number" name="{{ default_item.key }}" value="{{ item_value }}" class="w-full p-2 border rounded text-sm">
+                                                            </div>
+                                                            {% endif %}
+                                                            {% endwith %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+
+                                                <input type="hidden" name="year_month" value="{{ item.plan.year_month }}">
+                                                <div class="flex gap-2 mt-4">
+                                                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">保存</button>
+                                                    <button type="button" onclick="toggleEdit('edit-form-{{ item.plan.pk }}')" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm">キャンセル</button>
+                                                </div>
+                                            </form>
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -203,7 +364,7 @@
                                         {{ item.year_month|format_year_month }}
                                         <span class="text-xs text-gray-400 ml-1">▼</span>
                                     </span>
-                                    <button type="button" onclick="openPlanModal({{ item.plan.pk }}, '{{ item.year_month|format_year_month }}', '{{ item.year_month }}')" class="text-xs text-blue-600 hover:text-blue-800">編集</button>
+                                    <button type="button" onclick="toggleEdit('mobile-edit-form-{{ item.plan.pk }}')" class="text-xs text-blue-600 hover:text-blue-800">編集</button>
                                 </div>
                                 <div class="space-y-2">
                                     <div class="flex justify-between items-center">
@@ -234,6 +395,162 @@
                                             </div>
                                         {% endfor %}
                                     </div>
+                                </div>
+
+                                <!-- モバイル編集フォーム -->
+                                <div id="mobile-edit-form-{{ item.plan.pk }}" class="hidden mt-3 pt-3 border-t border-gray-300 bg-yellow-50 -mx-4 -mb-4 p-4 rounded-b-lg">
+                                    <form method="post" action="{% url 'budget_app:plan_edit' item.plan.pk %}">
+                                        {% csrf_token %}
+                                        <div class="text-sm font-semibold text-gray-700 mb-3">情報を編集</div>
+
+                                        <!-- 収入セクション -->
+                                        <div class="bg-green-50 p-3 rounded-lg mb-3">
+                                            <div class="text-sm font-semibold text-green-800 mb-2">収入</div>
+                                            <div class="space-y-3 text-sm">
+                                            <div>
+                                                <label class="block text-gray-600 mb-1 text-xs">給与（円）</label>
+                                                <input type="number" name="salary" value="{{ item.plan.salary }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1 text-xs">総支給額（円）</label>
+                                                <input type="number" name="gross_salary" value="{{ item.plan.gross_salary }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1 text-xs">控除額（円）</label>
+                                                <input type="number" name="deductions" value="{{ item.plan.deductions }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1 text-xs">交通費（円）</label>
+                                                <input type="number" name="transportation" value="{{ item.plan.transportation }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            {% with month_str=item.year_month|slice:"5:7" %}
+                                            {% if month_str == '06' or month_str == '12' %}
+                                            <div>
+                                                <label class="block text-gray-600 mb-1 text-xs">ボーナス（円）</label>
+                                                <input type="number" name="bonus" value="{{ item.plan.bonus }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1 text-xs">ボーナス総支給額（円）</label>
+                                                <input type="number" name="bonus_gross_salary" value="{{ item.plan.bonus_gross_salary }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-600 mb-1 text-xs">ボーナス控除額（円）</label>
+                                                <input type="number" name="bonus_deductions" value="{{ item.plan.bonus_deductions }}" class="w-full p-2 border rounded text-sm">
+                                            </div>
+                                            {% endif %}
+                                            {% endwith %}
+                                            </div>
+                                        </div>
+
+                                        <!-- 支出セクション -->
+                                        <div class="bg-red-50 p-3 rounded-lg mb-3">
+                                            <div class="text-sm font-semibold text-red-800 mb-2">支出</div>
+                                            <div class="space-y-3 text-sm">
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">食費（円）</label>
+                                                    <input type="number" name="item_9" value="{{ item.plan|get_item:'item_9' }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">家賃（円）</label>
+                                                    <input type="number" name="item_10" value="{{ item.plan|get_item:'item_10' }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% with lake_value=item.plan|get_item:'item_11' %}
+                                                {% if lake_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">レイク（円）</label>
+                                                    <input type="number" name="item_11" value="{{ lake_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+                                                {% with view_card_value=item.plan|get_item:'item_12' %}
+                                                {% if view_card_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">VIEWカード（円）</label>
+                                                    <input type="number" name="item_12" value="{{ view_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+                                                {% with view_card_bonus_value=item.plan|get_item:'item_13' %}
+                                                {% if view_card_bonus_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">VIEWカード(ボーナス)（円）</label>
+                                                    <input type="number" name="item_13" value="{{ view_card_bonus_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+                                                {% with rakuten_card_value=item.plan|get_item:'item_14' %}
+                                                {% if rakuten_card_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">楽天カード（円）</label>
+                                                    <input type="number" name="item_14" value="{{ rakuten_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+                                                {% with paypay_card_value=item.plan|get_item:'item_15' %}
+                                                {% if paypay_card_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">PayPayカード（円）</label>
+                                                    <input type="number" name="item_15" value="{{ paypay_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+                                                {% with vermillion_card_value=item.plan|get_item:'item_16' %}
+                                                {% if vermillion_card_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">VERMILLION CARD（円）</label>
+                                                    <input type="number" name="item_16" value="{{ vermillion_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+                                                {% with amazon_card_value=item.plan|get_item:'item_17' %}
+                                                {% if amazon_card_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">Amazonカード（円）</label>
+                                                    <input type="number" name="item_17" value="{{ amazon_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+                                                {% with olive_card_value=item.plan|get_item:'item_18' %}
+                                                {% if olive_card_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">Olive（円）</label>
+                                                    <input type="number" name="item_18" value="{{ olive_card_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+                                                {% with loan_borrowing_value=item.plan|get_item:'item_20' %}
+                                                {% if loan_borrowing_value %}
+                                                <div>
+                                                    <label class="block text-gray-600 mb-1 text-xs">マネーアシスト（借入）（円）</label>
+                                                    <input type="number" name="item_20" value="{{ loan_borrowing_value }}" class="w-full p-2 border rounded text-sm">
+                                                </div>
+                                                {% endif %}
+                                                {% endwith %}
+
+                                                <!-- 動的に追加された項目（ハードコードされていない項目のみ表示） -->
+                                                {% if default_items %}
+                                                {% for default_item in default_items %}
+                                                    {% if default_item.key and default_item.key not in hardcoded_fields %}
+                                                    {% with item_value=item.plan|get_item:default_item.key %}
+                                                    {% if item_value and item_value != 0 %}
+                                                    <div>
+                                                        <label class="block text-gray-600 mb-1 text-xs">{{ default_item.title }}（円）</label>
+                                                        <input type="number" name="{{ default_item.key }}" value="{{ item_value }}" class="w-full p-2 border rounded text-sm">
+                                                    </div>
+                                                    {% endif %}
+                                                    {% endwith %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <input type="hidden" name="year_month" value="{{ item.plan.year_month }}">
+                                        <div class="flex gap-2 mt-4">
+                                            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">保存</button>
+                                            <button type="button" onclick="toggleEdit('mobile-edit-form-{{ item.plan.pk }}')" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm">キャンセル</button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         {% endfor %}
@@ -346,46 +663,6 @@
             </div>
         {% endfor %}
     {% endif %}
-</div>
-
-<!-- 月次計画編集モーダル -->
-<div id="planModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-2 sm:p-4" onclick="closePlanModal()">
-    <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-lg sm:rounded-2xl transform transition-all my-2 sm:my-4 max-h-[98vh] sm:max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
-        <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-lg sm:rounded-t-2xl px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center sticky top-0 z-10">
-            <h3 id="planModalTitle" class="text-base sm:text-lg font-bold text-white">月次計画の編集</h3>
-            <button type="button" onclick="closePlanModal()" class="text-white hover:text-gray-200 transition">
-                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-
-        <form id="planForm" method="post" class="p-3 sm:p-4 space-y-3 sm:space-y-4">
-            {% csrf_token %}
-            <input type="hidden" name="year_month" id="plan_year_month">
-
-            <!-- 収入セクション -->
-            <div class="bg-green-50 p-3 sm:p-4 rounded-lg">
-                <h4 class="font-semibold text-sm text-green-800 mb-2 sm:mb-3">収入</h4>
-                <div id="incomeFields" class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3"></div>
-            </div>
-
-            <!-- 支出セクション -->
-            <div class="bg-red-50 p-3 sm:p-4 rounded-lg">
-                <h4 class="font-semibold text-sm text-red-800 mb-2 sm:mb-3">支出</h4>
-                <div id="expenseFields" class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3"></div>
-            </div>
-
-            <div class="flex gap-2 pt-2 sm:pt-3 sticky bottom-0 bg-white pb-1">
-                <button type="button" onclick="closePlanModal()" class="flex-1 px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition text-sm">
-                    キャンセル
-                </button>
-                <button type="submit" class="flex-1 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 font-medium transition shadow-md text-sm">
-                    保存
-                </button>
-            </div>
-        </form>
-    </div>
 </div>
 
 <!-- クレカ見積もり編集モーダル -->
@@ -649,103 +926,11 @@ function toggleDetails(id) {
     }
 }
 
-// 月次計画モーダルを開く
-async function openPlanModal(planId, displayYearMonth, yearMonth) {
-    const modal = document.getElementById('planModal');
-    const form = document.getElementById('planForm');
-    const title = document.getElementById('planModalTitle');
-
-    form.action = `/plans/${planId}/edit/`;
-    title.textContent = `${displayYearMonth} の編集`;
-    document.getElementById('plan_year_month').value = yearMonth;
-
-    // プランデータを取得
-    try {
-        const response = await fetch(`/plans/${planId}/data/`);
-        const data = await response.json();
-
-        // 収入フィールドを生成
-        const incomeFields = document.getElementById('incomeFields');
-        incomeFields.innerHTML = '';
-
-        const incomeItems = [
-            { name: 'salary', label: '給与', value: data.salary || 0 },
-            { name: 'gross_salary', label: '総支給額', value: data.gross_salary || 0 },
-            { name: 'deductions', label: '控除額', value: data.deductions || 0 },
-            { name: 'transportation', label: '交通費', value: data.transportation || 0 }
-        ];
-
-        // 6月と12月のみボーナスフィールドを追加
-        const month = yearMonth.split('-')[1];
-        if (month === '06' || month === '12') {
-            incomeItems.push(
-                { name: 'bonus', label: 'ボーナス', value: data.bonus || 0 },
-                { name: 'bonus_gross_salary', label: 'ボーナス総支給額', value: data.bonus_gross_salary || 0 },
-                { name: 'bonus_deductions', label: 'ボーナス控除額', value: data.bonus_deductions || 0 }
-            );
-        }
-
-        incomeItems.forEach(item => {
-            const div = document.createElement('div');
-            div.innerHTML = `
-                <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">${item.label}（円）</label>
-                <input type="number" name="${item.name}" value="${item.value}" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
-            `;
-            incomeFields.appendChild(div);
-        });
-
-        // 支出フィールドを生成
-        const expenseFields = document.getElementById('expenseFields');
-        expenseFields.innerHTML = '';
-
-        const expenseItems = [
-            { key: 'item_9', label: '食費' },
-            { key: 'item_10', label: '家賃' },
-            { key: 'item_11', label: 'レイク' },
-            { key: 'item_12', label: 'VIEWカード' },
-            { key: 'item_13', label: 'VIEWカード(ボーナス)' },
-            { key: 'item_14', label: '楽天カード' },
-            { key: 'item_15', label: 'PayPayカード' },
-            { key: 'item_16', label: 'VERMILLION CARD' },
-            { key: 'item_17', label: 'Amazonカード' },
-            { key: 'item_18', label: 'Olive' },
-            { key: 'item_20', label: 'マネーアシスト（借入）' }
-        ];
-
-        // 値がある項目のみ表示
-        expenseItems.forEach(item => {
-            const value = data[item.key] || 0;
-            if (value) {
-                const div = document.createElement('div');
-                div.innerHTML = `
-                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">${item.label}（円）</label>
-                    <input type="number" name="${item.key}" value="${value}" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
-                `;
-                expenseFields.appendChild(div);
-            }
-        });
-
-        // 動的な項目を追加
-        if (data.dynamic_items) {
-            data.dynamic_items.forEach(item => {
-                const div = document.createElement('div');
-                div.innerHTML = `
-                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">${item.label}（円）</label>
-                    <input type="number" name="${item.key}" value="${item.value}" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
-                `;
-                expenseFields.appendChild(div);
-            });
-        }
-
-        modal.classList.remove('hidden');
-    } catch (error) {
-        console.error('Error loading plan data:', error);
-        showToast('データの読み込みに失敗しました', 'error');
+function toggleEdit(id) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.classList.toggle('hidden');
     }
-}
-
-function closePlanModal() {
-    document.getElementById('planModal').classList.add('hidden');
 }
 
 // 分割払い・ボーナス払いの表示制御
@@ -892,14 +1077,14 @@ editForm.addEventListener('submit', function(e) {
     });
 });
 
-// 月次計画モーダルフォームの送信処理（AJAX）
-const planForm = document.getElementById('planForm');
-if (planForm) {
-    planForm.addEventListener('submit', function(e) {
-        e.preventDefault();
+// 月次計画フォームの送信処理（AJAX）
+document.querySelectorAll('form[action*="/plans/"][action*="/edit/"]').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // デフォルトのフォーム送信を防ぐ
 
         const formData = new FormData(this);
 
+        // AJAXで送信
         fetch(this.action, {
             method: 'POST',
             body: formData,
@@ -908,6 +1093,7 @@ if (planForm) {
             }
         })
         .then(response => {
+            console.log('Response status:', response.status);
             return response.json().then(data => ({
                 ok: response.ok,
                 status: response.status,
@@ -915,15 +1101,24 @@ if (planForm) {
             }));
         })
         .then(result => {
+            console.log('Response data:', result.data);
             if (result.ok && result.data.status === 'success') {
                 showToast(result.data.message);
-                closePlanModal();
+                // 編集フォームを閉じる
+                const planId = this.action.match(/\/plans\/(\d+)\/edit\//)[1];
+                const editFormId = document.getElementById(`edit-form-${planId}`);
+                const mobileEditFormId = document.getElementById(`mobile-edit-form-${planId}`);
+                if (editFormId) editFormId.classList.add('hidden');
+                if (mobileEditFormId) mobileEditFormId.classList.add('hidden');
+                // ページをリロード
                 setTimeout(() => {
                     window.location.reload();
                 }, 500);
             } else {
+                // エラーメッセージを表示
                 let errorMsg = '更新に失敗しました。';
                 if (result.data.errors) {
+                    console.error('Form errors:', result.data.errors);
                     const errorList = [];
                     for (const [field, errors] of Object.entries(result.data.errors)) {
                         errorList.push(...errors);
@@ -937,10 +1132,10 @@ if (planForm) {
         })
         .catch(error => {
             console.error('Error:', error);
-            showToast('エラーが発生しました。', 'error');
+            showToast('エラーが発生しました。コンソールを確認してください。', 'error');
         });
     });
-}
+});
 
 // Djangoのmessagesフレームワークからのメッセージをトーストで表示
 document.addEventListener('DOMContentLoaded', function() {
