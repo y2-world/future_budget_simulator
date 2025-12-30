@@ -1194,6 +1194,11 @@ def credit_estimate_list(request):
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
 
+            # 利用月が現在の月より前の場合はスキップ（過去の定期項目は表示しない）
+            current_year_month = f"{today.year}-{today.month:02d}"
+            if year_month < current_year_month:
+                continue
+
             # 引き落とし月を計算（利用月year_monthから）
             from datetime import datetime
             usage_date = datetime.strptime(year_month, '%Y-%m')
@@ -1205,11 +1210,6 @@ def credit_estimate_list(request):
                 billing_month_num -= 12
                 billing_year += 1
             billing_month = f"{billing_year}-{billing_month_num:02d}"
-
-            # 引き落とし月が現在の月より前の場合はスキップ（過去の定期項目は表示しない）
-            current_year_month = f"{today.year}-{today.month:02d}"
-            if billing_month < current_year_month:
-                continue
 
             # この引き落とし月に既存の見積もりがない場合はスキップ
             if billing_month not in existing_billing_months:
