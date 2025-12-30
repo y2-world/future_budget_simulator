@@ -1063,29 +1063,6 @@ class PastMonthlyPlanForm(forms.ModelForm):
             selected_month = f"{datetime.now().month:02d}"
             self.fields['month'].initial = selected_month
 
-        # 編集時: legacyフィールドの初期値をitemsから取得するように上書き
-        if self.instance and self.instance.pk:
-            legacy_to_item_mapping = {
-                'salary': 'item_7',
-                'food': 'item_1',
-                'rent': 'item_2',
-                'lake': 'item_3',
-                'view_card': 'item_9',
-                'view_card_bonus': 'item_10',
-                'rakuten_card': 'item_11',
-                'paypay_card': 'item_12',
-                'vermillion_card': 'item_13',
-                'amazon_card': 'item_14',
-                'olive_card': 'item_15',
-                'loan': 'item_20',
-                'loan_borrowing': 'item_21',
-                'other': 'item_24',
-            }
-
-            for legacy_field, item_key in legacy_to_item_mapping.items():
-                if legacy_field in self.fields and isinstance(self.instance.items, dict):
-                    # itemsに値がある場合はその値を使用、ない場合は0
-                    self.fields[legacy_field].initial = self.instance.items.get(item_key, 0)
 
         # すべての数値入力フィールドに共通のクラスを適用
         for field_name in self.fields:
@@ -1132,37 +1109,9 @@ class PastMonthlyPlanForm(forms.ModelForm):
 
     def save(self, commit=True):
         """
-        保存時にlegacyフィールドの値をitemsにも同期
+        保存処理
         """
         instance = super().save(commit=False)
-
-        # legacy フィールドから items へ同期するマッピング
-        # MonthlyPlanDefault の key と legacy field の対応関係
-        legacy_to_item_mapping = {
-            'salary': 'item_7',  # 給与
-            'food': 'item_1',  # 食費
-            'rent': 'item_2',  # 家賃
-            'lake': 'item_3',  # レイク
-            'view_card': 'item_9',  # VIEWカード
-            'view_card_bonus': 'item_10',  # VIEWカードボーナス
-            'rakuten_card': 'item_11',  # 楽天カード
-            'paypay_card': 'item_12',  # PayPayカード
-            'vermillion_card': 'item_13',  # VERMILLION CARD
-            'amazon_card': 'item_14',  # Amazonカード
-            'olive_card': 'item_15',  # Olive
-            'loan': 'item_20',  # マネーアシスト返済
-            'loan_borrowing': 'item_21',  # マネーアシスト借入
-            'other': 'item_24',  # ジム
-        }
-
-        # legacyフィールドの値をitemsに同期
-        if not isinstance(instance.items, dict):
-            instance.items = {}
-
-        for legacy_field, item_key in legacy_to_item_mapping.items():
-            if hasattr(instance, legacy_field):
-                value = getattr(instance, legacy_field, 0)
-                instance.items[item_key] = value
 
         if commit:
             instance.save()

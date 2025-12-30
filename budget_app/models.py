@@ -113,11 +113,11 @@ class MonthlyPlan(models.Model):
             try:
                 previous_plan = MonthlyPlan.objects.get(year_month=previous_year_month)
                 # 前月にマネーアシスト借入があるかチェック
-                borrowing_amount = previous_plan.get_item('item_21')
+                borrowing_amount = previous_plan.get_item('item_15')
                 if borrowing_amount > 0:
                     # 当月の返済額を自動設定（借入額と同額）
-                    if 'item_20' not in self.items or self.items.get('item_20', 0) == 0:
-                        self.items['item_20'] = borrowing_amount
+                    if 'item_14' not in self.items or self.items.get('item_14', 0) == 0:
+                        self.items['item_14'] = borrowing_amount
             except MonthlyPlan.DoesNotExist:
                 pass
         except (ValueError, AttributeError):

@@ -421,8 +421,8 @@ function generateFormFields() {
     // withdrawal（引き落とし）タイプの動的項目
     defaultItems.forEach(item => {
         if (item.payment_type === 'withdrawal') {
-            // item_20（マネーアシスト借入）はスキップ（自動登録されるため）
-            if (item.key === 'item_20') {
+            // item_14（マネーアシスト返済）はスキップ（自動登録されるため）
+            if (item.key === 'item_14') {
                 return;
             }
             const div = document.createElement('div');
@@ -503,8 +503,8 @@ function loadExistingPlanData(planData) {
     // withdrawal（引き落とし）タイプの動的項目
     defaultItems.forEach(item => {
         if (item.payment_type === 'withdrawal') {
-            // item_20（マネーアシスト借入）はスキップ
-            if (item.key === 'item_20') {
+            // item_14（マネーアシスト返済）はスキップ
+            if (item.key === 'item_14') {
                 return;
             }
             const value = planData.items[item.key] || item.amount || 0;
