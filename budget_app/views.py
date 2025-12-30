@@ -683,44 +683,38 @@ def plan_data(request, pk):
     plan = get_object_or_404(MonthlyPlan, pk=pk)
     from .models import MonthlyPlanDefault
 
-    # 基本データを取得（給与関連は既存フィールドから）
-    data = {
-        'salary': plan.salary or 0,
-        'gross_salary': plan.gross_salary or 0,
-        'deductions': plan.deductions or 0,
-        'transportation': plan.transportation or 0,
-        'bonus': plan.bonus or 0,
-        'bonus_gross_salary': plan.bonus_gross_salary or 0,
-        'bonus_deductions': plan.bonus_deductions or 0,
-        'item_9': plan.get_item('item_9') or 0,
-        'item_10': plan.get_item('item_10') or 0,
-        'item_11': plan.get_item('item_11') or 0,
-        'item_12': plan.get_item('item_12') or 0,
-        'item_13': plan.get_item('item_13') or 0,
-        'item_14': plan.get_item('item_14') or 0,
-        'item_15': plan.get_item('item_15') or 0,
-        'item_16': plan.get_item('item_16') or 0,
-        'item_17': plan.get_item('item_17') or 0,
-        'item_18': plan.get_item('item_18') or 0,
-        'item_20': plan.get_item('item_20') or 0,
-    }
-
-    # 動的項目を追加
+    # MonthlyPlanDefaultから収入・支出項目を取得
     default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
-    hardcoded_fields = ['item_9', 'item_10', 'item_11', 'item_12', 'item_13', 'item_14', 'item_15', 'item_16', 'item_17', 'item_18', 'item_20']
-    dynamic_items = []
+
+    income_items = []
+    expense_items = []
 
     for item in default_items:
-        if item.key and item.key not in hardcoded_fields:
-            value = plan.get_item(item.key) or 0
-            if value:
-                dynamic_items.append({
-                    'key': item.key,
-                    'label': item.title,
-                    'value': value
-                })
+        if not item.key:
+            continue
 
-    data['dynamic_items'] = dynamic_items
+        # この月に表示すべき項目かチェック
+        if not item.should_display_for_month(plan.year_month):
+            continue
+
+        value = plan.get_item(item.key) or 0
+
+        item_data = {
+            'key': item.key,
+            'label': item.title,
+            'value': value
+        }
+
+        # payment_typeで収入・支出を分類
+        if item.payment_type == 'deposit':
+            income_items.append(item_data)
+        else:
+            expense_items.append(item_data)
+
+    data = {
+        'income_items': income_items,
+        'expense_items': expense_items
+    }
 
     return JsonResponse(data)
 
