@@ -229,19 +229,18 @@
                     {% for item in plan.timeline %}
                     {% if not item.date or item.date > today or plan.year_month != today|date:"Y-m" %}
                     <!-- デスクトップ表示 -->
-                    <div class="hidden md:flex items-center justify-between p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded hover:{% if item.balance < 0 %}bg-red-200{% else %}bg-gray-50{% endif %}">
-                        <div class="flex items-center space-x-3 flex-1 min-w-0">
-                            {% if item.date %}
-                            <span class="text-sm text-gray-600 w-20 flex-shrink-0">{{ item.date|date:"m/d（D）" }}</span>
-                            {% else %}
-                            <span class="text-sm text-gray-600 w-20 flex-shrink-0"></span>
-                            {% endif %}
-                            <span class="font-medium whitespace-nowrap">{{ item.name }}</span>
-                            <span class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold w-32 text-right flex-shrink-0" {% if item.is_excluded %}style="text-decoration: line-through; color: #9ca3af;"{% endif %}>
-                                {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
-                            </span>
-                        </div>
-                        <div class="text-right flex-shrink-0 ml-4">
+                    <div class="hidden md:flex items-center p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded hover:{% if item.balance < 0 %}bg-red-200{% else %}bg-gray-50{% endif %}">
+                        {% if item.date %}
+                        <span class="text-sm text-gray-600 w-24 flex-shrink-0">{{ item.date|date:"m/d（D）" }}</span>
+                        {% else %}
+                        <span class="text-sm text-gray-600 w-24 flex-shrink-0"></span>
+                        {% endif %}
+                        <span class="font-medium truncate" style="flex: 0 1 35%;">{{ item.name }}</span>
+                        <span class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold whitespace-nowrap ml-4 flex-shrink-0" {% if item.is_excluded %}style="text-decoration: line-through; color: #9ca3af;"{% endif %}>
+                            {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
+                        </span>
+                        <div class="flex-1"></div>
+                        <div class="text-right flex-shrink-0">
                             <span class="text-sm text-gray-500">残高:</span>
                             <span class="font-bold ml-2 {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
                                 {{ item.balance|yen }}
