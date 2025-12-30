@@ -140,7 +140,7 @@
         </div>
 
         <!-- ボディ -->
-        <form id="editForm" method="post" class="p-4 pb-6 space-y-4 overflow-y-auto overflow-x-hidden">
+        <form id="editForm" method="post" class="p-4 pb-6 space-y-4 overflow-y-auto">
             {% csrf_token %}
             <input type="hidden" name="year_month" id="edit_year_month_hidden">
             <input type="hidden" name="card_type" id="edit_card_type_hidden" disabled>
@@ -302,7 +302,7 @@
         </div>
 
         <!-- ボディ -->
-        <form id="defaultEditForm" method="post" action="{% url 'budget_app:credit_estimates' %}" class="p-4 pb-6 space-y-4 overflow-y-auto overflow-x-hidden">
+        <form id="defaultEditForm" method="post" action="{% url 'budget_app:credit_estimates' %}" class="p-4 pb-6 space-y-4 overflow-y-auto">
             {% csrf_token %}
             <input type="hidden" name="action" value="edit_default">
             <input type="hidden" name="id" id="default_edit_id">
