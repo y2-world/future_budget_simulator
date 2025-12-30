@@ -516,8 +516,8 @@ function loadExistingPlanData(planData) {
                 <input type="number" name="${item.key}" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
             `;
 
-            // クレジットカード項目の場合、繰上げ返済チェックボックスを追加（ボーナス払いは除く）
-            if (item.is_credit_card && !item.is_bonus_payment) {
+            // クレジットカード項目の場合、繰上げ返済チェックボックスを追加
+            if (item.is_credit_card) {
                 html += `
                     <label class="flex items-center mt-1 text-xs text-gray-600">
                         <input type="hidden" name="exclude_${item.key}" value="false">
