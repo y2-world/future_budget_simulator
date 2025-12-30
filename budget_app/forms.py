@@ -1111,6 +1111,45 @@ class PastMonthlyPlanForm(forms.ModelForm):
 
         return cleaned_data
 
+    def save(self, commit=True):
+        """
+        保存時にlegacyフィールドの値をitemsにも同期
+        """
+        instance = super().save(commit=False)
+
+        # legacy フィールドから items へ同期するマッピング
+        # MonthlyPlanDefault の key と legacy field の対応関係
+        legacy_to_item_mapping = {
+            'salary': 'item_7',  # 給与
+            'food': 'item_1',  # 食費
+            'rent': 'item_2',  # 家賃
+            'lake': 'item_3',  # レイク
+            'view_card': 'item_9',  # VIEWカード
+            'view_card_bonus': 'item_10',  # VIEWカードボーナス
+            'rakuten_card': 'item_11',  # 楽天カード
+            'paypay_card': 'item_12',  # PayPayカード
+            'vermillion_card': 'item_13',  # VERMILLION CARD
+            'amazon_card': 'item_14',  # Amazonカード
+            'olive_card': 'item_15',  # Olive
+            'loan': 'item_20',  # マネーアシスト返済
+            'loan_borrowing': 'item_21',  # マネーアシスト借入
+            'other': 'item_24',  # ジム
+        }
+
+        # legacyフィールドの値をitemsに同期
+        if not isinstance(instance.items, dict):
+            instance.items = {}
+
+        for legacy_field, item_key in legacy_to_item_mapping.items():
+            if hasattr(instance, legacy_field):
+                value = getattr(instance, legacy_field, 0)
+                instance.items[item_key] = value
+
+        if commit:
+            instance.save()
+
+        return instance
+
 
 class PastSalaryForm(forms.ModelForm):
     """過去の給与情報新規作成フォーム（収入のみ）"""
@@ -1240,3 +1279,28 @@ class PastSalaryForm(forms.ModelForm):
                     cleaned_data[field_name] = 0
 
         return cleaned_data
+
+    def save(self, commit=True):
+        """
+        保存時にlegacyフィールドの値をitemsにも同期（給与情報）
+        """
+        instance = super().save(commit=False)
+
+        # legacy フィールドから items へ同期するマッピング（給与情報のみ）
+        legacy_to_item_mapping = {
+            'salary': 'item_7',  # 給与
+        }
+
+        # legacyフィールドの値をitemsに同期
+        if not isinstance(instance.items, dict):
+            instance.items = {}
+
+        for legacy_field, item_key in legacy_to_item_mapping.items():
+            if hasattr(instance, legacy_field):
+                value = getattr(instance, legacy_field, 0)
+                instance.items[item_key] = value
+
+        if commit:
+            instance.save()
+
+        return instance
