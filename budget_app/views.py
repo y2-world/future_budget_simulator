@@ -282,9 +282,30 @@ def plan_list(request):
             # VIEWカードかどうかを判定（後方互換性のため）
             is_view_card = 'view' in key.lower() and item.is_credit_card()
 
+            # item_14（マネーアシスト返済）の場合、借入月情報を追加
+            display_name = item.title
+            if key == 'item_14':
+                # 前月の借入情報を取得
+                from datetime import datetime
+                from dateutil.relativedelta import relativedelta
+                try:
+                    current_date = datetime.strptime(plan.year_month, '%Y-%m')
+                    previous_date = current_date - relativedelta(months=1)
+                    previous_year_month = previous_date.strftime('%Y-%m')
+                    previous_plan = MonthlyPlan.objects.filter(year_month=previous_year_month).first()
+
+                    if previous_plan:
+                        borrowing_amount = previous_plan.get_item('item_15')
+                        if borrowing_amount > 0:
+                            # 借入日は通常25日（給与日）
+                            prev_month = previous_date.month
+                            display_name = f"{item.title} ({prev_month}/25借入分)"
+                except Exception:
+                    pass
+
             transactions.append({
                 'date': item_date,
-                'name': item.title,
+                'name': display_name,
                 'amount': transaction_amount,
                 'is_view_card': is_view_card,
                 'is_excluded': is_excluded
