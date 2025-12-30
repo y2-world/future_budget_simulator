@@ -1372,15 +1372,15 @@ def credit_estimate_list(request):
                         card_group['entries'].append(default_entry)
                         card_group['total'] += default_entry.amount
 
-    # 各カードのエントリーを支払日順にソート（定期デフォルトは最後）
+    # 各カードのエントリーを支払日順にソート（定期デフォルトは最後、日付は降順）
     for year_month, month_group in summary.items():
         for card_type, card_data in month_group.items():
             card_data['entries'].sort(key=lambda x: (
                 x.is_default if hasattr(x, 'is_default') else False,  # 定期デフォルトを最後に
-                x.due_date if x.due_date else datetime.max.date(),  # due_dateがNoneの場合は最後に
+                -(x.due_date.toordinal()) if x.due_date else float('-inf'),  # due_dateを降順に（新しい日付が先）
                 x.is_bonus_payment if hasattr(x, 'is_bonus_payment') else False,  # 同じ日付なら通常払いを先に
-                # 定期デフォルト項目の場合はdefault_idでソート、通常項目はpkでソート
-                x.default_id if (hasattr(x, 'is_default') and x.is_default and hasattr(x, 'default_id')) else (x.pk if hasattr(x, 'pk') and x.pk else float('inf'))
+                # 定期デフォルト項目の場合はdefault_idでソート、通常項目はpkでソート（降順）
+                -(x.default_id if (hasattr(x, 'is_default') and x.is_default and hasattr(x, 'default_id')) else (x.pk if hasattr(x, 'pk') and x.pk else 0))
             ))
 
     # 各月のカードを支払日順にソート
@@ -1640,6 +1640,7 @@ def credit_estimate_list(request):
                         'paypay_card': 0,
                         'vermillion_card': 0,
                         'amazon_card': 0,
+                        'olive_card': 0,
                         'loan': 0,
                         'loan_borrowing': 0,
                         'other': 0,
@@ -1650,7 +1651,7 @@ def credit_estimate_list(request):
                 if is_bonus:
                     field_name = f'{actual_card_type}_card_bonus'
                 else:
-                    field_name = f'{actual_card_type}_card' if actual_card_type != 'view' else 'view_card'
+                    field_name = f'{actual_card_type}_card'
 
                 if hasattr(plan, field_name):
                     setattr(plan, field_name, total_amount)
@@ -1731,7 +1732,7 @@ def credit_estimate_list(request):
                                     payment_month -= 12
                                     payment_year += 1
                                 target_year_month = f"{payment_year}-{payment_month:02d}"
-                            elif card_type in ['rakuten', 'paypay', 'amazon']:
+                            elif card_type in ['rakuten', 'paypay', 'amazon', 'olive']:
                                 # 翌月払い
                                 payment_month = use_month + 1
                                 payment_year = use_year
@@ -1755,6 +1756,7 @@ def credit_estimate_list(request):
                                 'paypay_card': 0,
                                 'vermillion_card': 0,
                                 'amazon_card': 0,
+                                'olive_card': 0,
                                 'loan': 0,
                                 'loan_borrowing': 0,
                                 'other': 0,
@@ -1765,7 +1767,7 @@ def credit_estimate_list(request):
                         if is_bonus:
                             field_name = f'{card_type}_card_bonus'
                         else:
-                            field_name = f'{card_type}_card' if card_type != 'view' else 'view_card'
+                            field_name = f'{card_type}_card'
 
                         if hasattr(plan, field_name):
                             setattr(plan, field_name, total_amount)
