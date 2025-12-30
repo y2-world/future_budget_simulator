@@ -345,7 +345,10 @@ class MonthlyPlanForm(forms.Form):
         # 給与明細の固定フィールドを保存
         for field_name in ['gross_salary', 'deductions', 'transportation',
                           'bonus_gross_salary', 'bonus_deductions']:
-            value = self.cleaned_data.get(field_name, 0) or 0
+            value = self.cleaned_data.get(field_name)
+            # Noneや空文字列の場合のみ0にする（0自体は有効な値として扱う）
+            if value is None or value == '':
+                value = 0
             plan.set_item(field_name, value)
 
         # MonthlyPlanDefaultから動的フィールドを保存（keyベース）
@@ -357,7 +360,10 @@ class MonthlyPlanForm(forms.Form):
 
             # フォームに含まれている場合のみ更新（含まれていない場合は既存値を保持）
             if field_name in self.cleaned_data:
-                value = self.cleaned_data.get(field_name, 0) or 0
+                value = self.cleaned_data.get(field_name)
+                # Noneや空文字列の場合のみ0にする（0自体は有効な値として扱う）
+                if value is None or value == '':
+                    value = 0
                 plan.set_item(field_name, value)
 
             # 繰上げ返済フラグを保存
