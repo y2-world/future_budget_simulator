@@ -16,13 +16,20 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
         info: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
     };
 
+    // URLが指定されている場合はHTMLリンクを作成
+    let displayMessage = message;
+    if (targetUrl) {
+        displayMessage = `<a href="${targetUrl}" style="color: white; text-decoration: none; display: block;">${message}</a>`;
+    }
+
     const toastConfig = {
-        text: message,
+        text: displayMessage,
         duration: duration,
         close: true,
         gravity: "top",
         position: "center",
         stopOnFocus: true,
+        escapeMarkup: false,  // HTMLを有効化
         className: "modern-toast",
         style: {
             background: backgrounds[type] || backgrounds.info,
@@ -33,13 +40,6 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
             boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1)",
         }
     };
-
-    // URLが指定されている場合はリンクとして設定
-    if (targetUrl) {
-        toastConfig.destination = targetUrl;
-        toastConfig.newWindow = false;  // 同じウィンドウで開く
-        toastConfig.style.cursor = 'pointer';
-    }
 
     Toastify(toastConfig).showToast();
 };
