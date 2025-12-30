@@ -350,7 +350,7 @@
 
 <!-- 月次計画編集モーダル -->
 <div id="planModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-2 sm:p-4" onclick="closePlanModal()">
-    <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-lg sm:rounded-2xl transform transition-all my-2 sm:my-4 max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+    <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-lg sm:rounded-2xl transform transition-all my-2 sm:my-4 max-h-[85vh] overflow-y-auto overflow-x-hidden" onclick="event.stopPropagation()">
         <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-lg sm:rounded-t-2xl px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center sticky top-0 z-10">
             <h3 id="planModalTitle" class="text-base sm:text-lg font-bold text-white">月次計画の編集</h3>
             <button type="button" onclick="closePlanModal()" class="text-white hover:text-gray-200 transition">
@@ -390,7 +390,7 @@
 
 <!-- クレカ見積もり編集モーダル -->
 <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
-    <div class="relative w-full max-w-lg bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[85vh] overflow-y-auto">
+    <div class="relative w-full max-w-lg bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[85vh] overflow-y-auto overflow-x-hidden">
         <!-- ヘッダー -->
         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-2xl px-4 py-3 flex justify-between items-center">
             <h3 class="text-lg font-bold text-white">見積り編集</h3>
