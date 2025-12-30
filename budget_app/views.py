@@ -1085,7 +1085,7 @@ def credit_estimate_list(request):
             'label': card_label,
             'total': 0,
             'entries': [],
-            'year_month': display_month,  # 表示月（ボーナス払いは支払月、通常払いは利用月）
+            'year_month': display_month,  # 表示月（支払月＝billing_month）
             'is_bonus_section': est.is_bonus_payment,  # ボーナス払いセクションかどうか
         })
         card_group['total'] += est.amount
@@ -1635,17 +1635,9 @@ def credit_estimate_list(request):
                 card_label = card_data['label']
 
                 # 反映先の年月を計算
-                # ボーナス払いの場合はyear_monthが既に支払月なのでそのまま使用
-                # 通常払いの場合はoffset_monthsを使って支払月を計算
-                if is_bonus:
-                    target_year_month = year_month
-                else:
-                    # offset_monthsを使って支払月を計算
-                    from datetime import datetime
-                    from dateutil.relativedelta import relativedelta
-                    usage_date = datetime.strptime(year_month, '%Y-%m')
-                    payment_date = usage_date + relativedelta(months=card_item.offset_months)
-                    target_year_month = payment_date.strftime('%Y-%m')
+                # クレカ見積もりページでは、通常払いもボーナス払いも
+                # 既に支払月（billing_month）で表示されているため、そのまま使用
+                target_year_month = year_month
 
                 # 月次計画を取得または作成
                 plan, _ = MonthlyPlan.objects.get_or_create(year_month=target_year_month)
