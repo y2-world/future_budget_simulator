@@ -1202,7 +1202,7 @@ def credit_estimate_list(request):
                 print(f"DEBUG: Skipping default.id={default.id}, year_month={year_month}, actual_card_type={actual_card_type} (not in candidate_usage_cards)")
                 continue
             else:
-                print(f"DEBUG: Adding default.id={default.id}, year_month={year_month}, actual_card_type={actual_card_type}, description={default.description}")
+                print(f"DEBUG: Adding default.id={default.id}, year_month={year_month}, actual_card_type={actual_card_type}, label={default.label}")
 
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
