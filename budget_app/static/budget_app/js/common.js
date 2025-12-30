@@ -96,13 +96,9 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
 
             // 成功時の処理
             if (showSuccessToast) {
-                // target_urlがある場合は遷移先URLを設定し、メッセージに案内を追加
+                // target_urlがある場合は遷移先URLを設定
                 const targetUrl = data.target_url || null;
                 let message = data.message || '処理が完了しました。';
-                // メッセージにクリック案内を追加（showToast内でリンク化される）
-                if (targetUrl) {
-                    message += ' （クリックで確認）';
-                }
                 window.showToast(message, 'success', toastDuration, targetUrl);
             }
 
