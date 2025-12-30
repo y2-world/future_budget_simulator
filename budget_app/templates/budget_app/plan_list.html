@@ -235,7 +235,7 @@
                         {% else %}
                         <span class="text-sm text-gray-600 w-24 flex-shrink-0"></span>
                         {% endif %}
-                        <span class="font-medium truncate" style="flex: 0 1 35%;">{{ item.name }}</span>
+                        <span class="font-medium truncate" style="flex: 0 1 25%;">{{ item.name }}</span>
                         <span class="{% if item.is_income %}text-green-600{% else %}text-red-600{% endif %} font-semibold whitespace-nowrap ml-4 flex-shrink-0" {% if item.is_excluded %}style="text-decoration: line-through; color: #9ca3af;"{% endif %}>
                             {% if item.is_income %}+{% endif %}{{ item.amount|yen }}
                         </span>
