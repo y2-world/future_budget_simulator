@@ -2343,10 +2343,53 @@ def past_transactions_list(request):
     current_date = datetime.now().date()
     current_year_month = datetime.now().strftime('%Y-%m')
 
-    # 過去のMonthlyPlanを取得（当月は含まない、年月で降順ソート）
-    past_plans = MonthlyPlan.objects.filter(
+    # 過去のMonthlyPlanを取得（当月より前、年月で降順ソート）
+    past_plans_qs = MonthlyPlan.objects.filter(
         year_month__lt=current_year_month
     ).order_by('-year_month')
+
+    # 当月のプランで今日以降の明細がないものも含める
+    current_month_plan = MonthlyPlan.objects.filter(year_month=current_year_month).first()
+    past_plans = list(past_plans_qs)
+
+    if current_month_plan:
+        # 当月のタイムラインを計算して、今日以降の明細があるかチェック
+        from .models import MonthlyPlanDefault
+
+        # タイムラインを生成（plan_listと同じロジック）
+        timeline = []
+        default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+
+        for item in default_items:
+            if not item.should_display_for_month(current_month_plan.year_month):
+                continue
+
+            value = current_month_plan.get_item(item.key)
+            if value and value != 0:
+                # 引き落とし日/振込日を計算
+                year, month = map(int, current_month_plan.year_month.split('-'))
+
+                if item.is_withdrawal_end_of_month:
+                    day = calendar.monthrange(year, month)[1]
+                else:
+                    day = item.withdrawal_day or 1
+                    day = min(day, calendar.monthrange(year, month)[1])
+
+                from datetime import date as dt_date
+                item_date = dt_date(year, month, day)
+
+                timeline.append({
+                    'date': item_date,
+                    'amount': value,
+                })
+
+        # 今日以降の明細があるかチェック
+        today = current_date
+        future_items = [item for item in timeline if item.get('date') and item['date'] >= today and item.get('amount', 0) != 0]
+
+        # 今日以降の明細がない場合、過去の明細に含める
+        if not future_items:
+            past_plans.insert(0, current_month_plan)  # 先頭に追加（降順なので）
 
     # 過去のクレカ見積りを取得
     # 締め日が過ぎたものを表示するため、未来の引き落とし月も含めて取得
