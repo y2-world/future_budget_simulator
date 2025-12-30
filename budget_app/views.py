@@ -470,7 +470,8 @@ def plan_create(request):
             plan = form.save()
 
             # マネーアシスト借入がある場合、翌月末に自動で返済を登録
-            if plan.loan_borrowing > 0:
+            loan_borrowing = plan.get_item('item_21')
+            if loan_borrowing > 0:
                 current_date = datetime.strptime(plan.year_month, '%Y-%m')
                 # 翌月の1日を計算（月末の28日後 + 数日）
                 next_month = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
@@ -489,7 +490,8 @@ def plan_create(request):
                 )
 
                 # 翌月の返済額に借入額を加算
-                next_plan.loan += plan.loan_borrowing
+                loan_value = next_plan.get_item('item_20')
+                next_plan.set_item('item_20', loan_value + loan_borrowing)
                 next_plan.save()
 
             # 成功メッセージを年月付きで作成
@@ -735,7 +737,7 @@ def plan_edit(request, pk):
 
     if request.method == 'POST':
         # 編集前の借入額を保存
-        old_loan_borrowing = plan.loan_borrowing
+        old_loan_borrowing = plan.get_item('item_21')
 
         # デバッグ: POSTデータを確認
         logger.info(f"POST data: bonus_gross_salary={request.POST.get('bonus_gross_salary')}, bonus_deductions={request.POST.get('bonus_deductions')}")
@@ -777,7 +779,7 @@ def plan_edit(request, pk):
 
         # AJAX編集の場合は常にMonthlyPlanFormを使用（画面内編集）
         # 給与一覧からの編集の場合はPastSalaryFormを使用
-        # 通常のフォーム送信（過去月）の場合はPastMonthlyPlanFormを使用
+        # その他は全てMonthlyPlanFormを使用（動的フィールド対応）
         if is_ajax:
             form = MonthlyPlanForm(post_data, instance=plan)
             logger.info("Using MonthlyPlanForm (AJAX)")
@@ -785,10 +787,6 @@ def plan_edit(request, pk):
             from .forms import PastSalaryForm
             form = PastSalaryForm(post_data, instance=plan)
             logger.info("Using PastSalaryForm (salary only)")
-        elif is_past_month:
-            from .forms import PastMonthlyPlanForm
-            form = PastMonthlyPlanForm(post_data, instance=plan)
-            logger.info("Using PastMonthlyPlanForm (past month)")
         else:
             form = MonthlyPlanForm(post_data, instance=plan)
             logger.info("Using MonthlyPlanForm (default)")
@@ -796,7 +794,8 @@ def plan_edit(request, pk):
             plan = form.save()
 
             # マネーアシスト借入額が変更された場合、翌月の返済額を更新
-            if plan.loan_borrowing != old_loan_borrowing:
+            new_loan_borrowing = plan.get_item('item_21')
+            if new_loan_borrowing != old_loan_borrowing:
                 current_date = datetime.strptime(plan.year_month, '%Y-%m')
                 next_month = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
                 next_month_str = next_month.strftime('%Y-%m')
@@ -814,7 +813,8 @@ def plan_edit(request, pk):
                 )
 
                 # 翌月の返済額を調整（古い借入額を引いて、新しい借入額を加算）
-                next_plan.loan = next_plan.loan - old_loan_borrowing + plan.loan_borrowing
+                loan_value = next_plan.get_item('item_20')
+                next_plan.set_item('item_20', loan_value - old_loan_borrowing + new_loan_borrowing)
                 next_plan.save()
 
             display_month = format_year_month_display(plan.year_month)
@@ -846,13 +846,10 @@ def plan_edit(request, pk):
         is_from_salary_list = 'salaries' in referer
 
         # 給与一覧からの編集の場合はPastSalaryFormを使用
-        # 過去月の場合はPastMonthlyPlanFormを使用
+        # その他は全てMonthlyPlanFormを使用（動的フィールド対応）
         if is_from_salary_list:
             from .forms import PastSalaryForm
             form = PastSalaryForm(instance=plan)
-        elif is_past_month:
-            from .forms import PastMonthlyPlanForm
-            form = PastMonthlyPlanForm(instance=plan)
         else:
             form = MonthlyPlanForm(instance=plan)
 

@@ -75,44 +75,14 @@ class MonthlyPlan(models.Model):
         help_text="クレカ項目の繰上げ返済フラグ 例: {'view_card': True, 'rakuten_card': False}"
     )
 
-    # 既存フィールド（後方互換性のため残す、段階的に非推奨化）
-    # 収入
-    salary = models.IntegerField(default=0, verbose_name="給与")
-    bonus = models.IntegerField(default=0, verbose_name="ボーナス")
-
-    # 給与明細の詳細
+    # 給与明細の詳細（itemsとは別に管理）
     gross_salary = models.IntegerField(default=0, verbose_name="総支給額")
     deductions = models.IntegerField(default=0, verbose_name="控除額")
     transportation = models.IntegerField(default=0, verbose_name="交通費")
 
-    # ボーナス明細の詳細
+    # ボーナス明細の詳細（itemsとは別に管理）
     bonus_gross_salary = models.IntegerField(default=0, verbose_name="ボーナス総支給額")
     bonus_deductions = models.IntegerField(default=0, verbose_name="ボーナス控除額")
-
-    # 支出
-    food = models.IntegerField(default=0, verbose_name="食費")
-    rent = models.IntegerField(default=0, verbose_name="家賃")
-    lake = models.IntegerField(default=0, verbose_name="レイク返済")
-    view_card = models.IntegerField(default=0, verbose_name="VIEWカード")
-    view_card_bonus = models.IntegerField(default=0, verbose_name="ボーナス払い")
-    rakuten_card = models.IntegerField(default=0, verbose_name="楽天カード")
-    paypay_card = models.IntegerField(default=0, verbose_name="PayPayカード")
-    vermillion_card = models.IntegerField(default=0, verbose_name="VERMILLION CARD")
-    amazon_card = models.IntegerField(default=0, verbose_name="Amazonカード")
-    olive_card = models.IntegerField(default=0, verbose_name="Olive")
-    savings = models.IntegerField(default=0, verbose_name="定期預金")
-    loan = models.IntegerField(default=0, verbose_name="マネーアシスト返済")
-    loan_borrowing = models.IntegerField(default=0, verbose_name="マネーアシスト借入")
-    other = models.IntegerField(default=7700, verbose_name="ジム")
-
-    # クレカ項目の繰上げ返済フラグ（チェックすると請求金額を引かない）
-    exclude_view_card = models.BooleanField(default=False, verbose_name="VIEWカード繰上げ返済")
-    exclude_view_card_bonus = models.BooleanField(default=False, verbose_name="VIEWボーナス払い繰上げ返済")
-    exclude_rakuten_card = models.BooleanField(default=False, verbose_name="楽天カード繰上げ返済")
-    exclude_paypay_card = models.BooleanField(default=False, verbose_name="PayPayカード繰上げ返済")
-    exclude_vermillion_card = models.BooleanField(default=False, verbose_name="VERMILLION繰上げ返済")
-    exclude_amazon_card = models.BooleanField(default=False, verbose_name="Amazonカード繰上げ返済")
-    exclude_olive_card = models.BooleanField(default=False, verbose_name="Olive繰上げ返済")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新日時")
@@ -157,49 +127,31 @@ class MonthlyPlan(models.Model):
 
     def get_item(self, field_name):
         """
-        項目の金額を取得（items JSONFieldから、フォールバックとして既存フィールドから）
+        項目の金額を取得（items JSONFieldから）
         """
-        # まずitemsから取得
-        if field_name in self.items:
-            return self.items[field_name]
-        # フォールバック: 既存フィールドから取得
-        return getattr(self, field_name, 0)
+        if not isinstance(self.items, dict):
+            return 0
+        return self.items.get(field_name, 0)
 
     def set_item(self, field_name, value):
         """
-        項目の金額を設定（items JSONFieldと既存フィールドの両方に設定）
+        項目の金額を設定（items JSONFieldに設定）
         """
-        # itemsに設定
         if not isinstance(self.items, dict):
             self.items = {}
         self.items[field_name] = value
-        # 既存フィールドにも設定（後方互換性のため）
-        # loan_borrowingなど、モデルに直接定義されているフィールドも確実に更新
-        try:
-            setattr(self, field_name, value)
-        except AttributeError:
-            # フィールドが存在しない場合は無視（itemsのみに保存）
-            pass
 
     def get_exclusion(self, field_name):
         """繰上げ返済フラグを取得"""
-        # まずexclusionsから取得
-        if field_name in self.exclusions:
-            return self.exclusions[field_name]
-        # フォールバック: 既存フィールドから取得
-        exclude_field = f'exclude_{field_name}'
-        return getattr(self, exclude_field, False)
+        if not isinstance(self.exclusions, dict):
+            return False
+        return self.exclusions.get(field_name, False)
 
     def set_exclusion(self, field_name, value):
         """繰上げ返済フラグを設定"""
-        # exclusionsに設定
         if not isinstance(self.exclusions, dict):
             self.exclusions = {}
         self.exclusions[field_name] = value
-        # 既存フィールドにも設定（後方互換性のため）
-        exclude_field = f'exclude_{field_name}'
-        if hasattr(self, exclude_field):
-            setattr(self, exclude_field, value)
 
     def get_total_income(self):
         """月次総収入を計算"""
@@ -250,7 +202,7 @@ class MonthlyPlan(models.Model):
     
     def get_total_borrowing(self):
         """月次総借入を計算"""
-        return self.get_item('loan_borrowing')
+        return self.get_item('item_21')  # マネーアシスト借入
 
     def get_net_income(self):
         """月次収支を計算"""

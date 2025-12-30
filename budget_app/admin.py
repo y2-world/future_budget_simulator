@@ -31,7 +31,7 @@ class AccountBalanceAdmin(admin.ModelAdmin):
 @admin.register(MonthlyPlan)
 class MonthlyPlanAdmin(admin.ModelAdmin):
     list_display = [
-        'year_month', 'salary', 'bonus',
+        'year_month',
         'get_total_income', 'get_total_expenses', 'get_net_income',
         'updated_at'
     ]
@@ -43,29 +43,14 @@ class MonthlyPlanAdmin(admin.ModelAdmin):
         ('基本情報', {
             'fields': ('year_month',)
         }),
-        ('収入', {
-            'fields': ('salary', 'bonus')
+        ('給与明細', {
+            'fields': ('gross_salary', 'deductions', 'transportation')
         }),
-        ('固定費', {
-            'fields': ('rent',)
+        ('ボーナス明細', {
+            'fields': ('bonus_gross_salary', 'bonus_deductions')
         }),
-        ('日常費', {
-            'fields': ('food', 'other')
-        }),
-        ('ローン・返済', {
-            'fields': ('lake', 'loan')
-        }),
-        ('クレジットカード', {
-            'fields': (
-                'view_card', 'view_card_bonus',
-                'rakuten_card',
-                'paypay_card',
-                'vermillion_card',
-                'amazon_card'
-            )
-        }),
-        ('貯蓄', {
-            'fields': ('savings',)
+        ('動的項目', {
+            'fields': ('items', 'exclusions')
         }),
     )
 

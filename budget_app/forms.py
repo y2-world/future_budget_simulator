@@ -992,13 +992,8 @@ class PastMonthlyPlanForm(forms.ModelForm):
         model = MonthlyPlan
         fields = [
             'year_month',
-            'salary', 'bonus',
             'gross_salary', 'deductions', 'transportation',
             'bonus_gross_salary', 'bonus_deductions',
-            'food', 'rent', 'lake',
-            'view_card', 'view_card_bonus', 'rakuten_card',
-            'paypay_card', 'vermillion_card', 'amazon_card',
-            'olive_card', 'loan_borrowing', 'other',
         ]
 
         widgets = {
@@ -1195,7 +1190,6 @@ class PastSalaryForm(forms.ModelForm):
         model = MonthlyPlan
         fields = [
             'year_month',
-            'salary', 'bonus',
             'gross_salary', 'deductions', 'transportation',
             'bonus_gross_salary', 'bonus_deductions',
         ]
@@ -1206,8 +1200,6 @@ class PastSalaryForm(forms.ModelForm):
 
         labels = {
             'year_month': '年月（YYYY-MM）',
-            'salary': '給与',
-            'bonus': 'ボーナス',
             'gross_salary': '総支給額',
             'deductions': '控除額',
             'transportation': '交通費',
@@ -1256,17 +1248,6 @@ class PastSalaryForm(forms.ModelForm):
                 self.fields['year'].initial = selected_year
                 self.fields['month'].initial = selected_month
 
-        # 編集時: legacyフィールドの初期値をitemsから取得するように上書き
-        if self.instance and self.instance.pk:
-            legacy_to_item_mapping = {
-                'salary': 'item_7',
-            }
-
-            for legacy_field, item_key in legacy_to_item_mapping.items():
-                if legacy_field in self.fields and isinstance(self.instance.items, dict):
-                    # itemsに値がある場合はその値を使用、ない場合は0
-                    self.fields[legacy_field].initial = self.instance.items.get(item_key, 0)
-
         # すべての数値入力フィールドに共通のクラスを適用
         for field_name in self.fields:
             if field_name not in ['year_month', 'year', 'month']:
@@ -1304,7 +1285,7 @@ class PastSalaryForm(forms.ModelForm):
 
         # 数値フィールドの空白を0に変換（データベースのNOT NULL制約対策）
         numeric_fields = [
-            'salary', 'bonus', 'gross_salary', 'deductions', 'transportation',
+            'gross_salary', 'deductions', 'transportation',
             'bonus_gross_salary', 'bonus_deductions'
         ]
         for field_name in numeric_fields:
@@ -1314,28 +1295,3 @@ class PastSalaryForm(forms.ModelForm):
                     cleaned_data[field_name] = 0
 
         return cleaned_data
-
-    def save(self, commit=True):
-        """
-        保存時にlegacyフィールドの値をitemsにも同期（給与情報）
-        """
-        instance = super().save(commit=False)
-
-        # legacy フィールドから items へ同期するマッピング（給与情報のみ）
-        legacy_to_item_mapping = {
-            'salary': 'item_7',  # 給与
-        }
-
-        # legacyフィールドの値をitemsに同期
-        if not isinstance(instance.items, dict):
-            instance.items = {}
-
-        for legacy_field, item_key in legacy_to_item_mapping.items():
-            if hasattr(instance, legacy_field):
-                value = getattr(instance, legacy_field, 0)
-                instance.items[item_key] = value
-
-        if commit:
-            instance.save()
-
-        return instance
