@@ -376,11 +376,11 @@
 </script>
 
 <!-- 給与登録モーダル -->
-<div id="salaryModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
-    <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
+<div id="salaryModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-2 sm:p-4">
+    <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-lg sm:rounded-2xl transform transition-all my-2 sm:my-4 max-h-[98vh] sm:max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
         <!-- ヘッダー -->
-        <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-2xl px-4 py-3 flex justify-between items-center sticky top-0 z-10">
-            <h3 class="text-lg font-bold text-white">過去の給与登録</h3>
+        <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-lg sm:rounded-t-2xl px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center sticky top-0 z-10">
+            <h3 class="text-base sm:text-lg font-bold text-white">過去の給与登録</h3>
             <button type="button" onclick="closeSalaryModal()" class="text-white hover:text-gray-200 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -389,21 +389,21 @@
         </div>
 
         <!-- ボディ -->
-        <form id="salaryForm" method="post" action="{% url 'budget_app:salary_create' %}" class="p-4 space-y-4">
+        <form id="salaryForm" method="post" action="{% url 'budget_app:salary_create' %}" class="p-3 sm:p-4 space-y-3 sm:space-y-4">
             {% csrf_token %}
             <input type="hidden" name="past_mode" value="true">
 
             <!-- 年月 -->
-            <div id="yearMonthSelectsContainer" class="grid grid-cols-2 gap-3" style="display: none;">
+            <div id="yearMonthSelectsContainer" class="grid grid-cols-2 gap-2 sm:gap-3" style="display: none;">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">年</label>
-                    <select id="salaryYearSelect" name="year" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">年</label>
+                    <select id="salaryYearSelect" name="year" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
                         <!-- JavaScriptで動的に生成 -->
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">月</label>
-                    <select id="salaryMonthSelect" name="month" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">月</label>
+                    <select id="salaryMonthSelect" name="month" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
                         <!-- JavaScriptで動的に生成 -->
                     </select>
                 </div>
@@ -415,11 +415,11 @@
             </div>
 
             <!-- ボタン -->
-            <div class="flex gap-2 pt-3">
-                <button type="button" onclick="closeSalaryModal()" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition text-sm">
+            <div class="flex gap-2 pt-2 sm:pt-3">
+                <button type="button" onclick="closeSalaryModal()" class="flex-1 px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition text-sm">
                     キャンセル
                 </button>
-                <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 font-medium transition shadow-md text-sm">
+                <button type="submit" class="flex-1 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 font-medium transition shadow-md text-sm">
                     保存
                 </button>
             </div>
@@ -693,11 +693,11 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
 
     // 給与明細セクション
     const incomeSection = document.createElement('div');
-    incomeSection.className = 'bg-green-50 p-4 rounded-lg';
-    incomeSection.innerHTML = '<h4 class="font-semibold text-sm text-green-800 mb-3">💰 給与明細</h4>';
+    incomeSection.className = 'bg-green-50 p-3 sm:p-4 rounded-lg';
+    incomeSection.innerHTML = '<h4 class="font-semibold text-sm text-green-800 mb-2 sm:mb-3">💰 給与明細</h4>';
 
     const incomeGrid = document.createElement('div');
-    incomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+    incomeGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3';
 
     // 給与明細フィールド
     const salaryFields = [
@@ -709,8 +709,8 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
     salaryFields.forEach(field => {
         const div = document.createElement('div');
         div.innerHTML = `
-            <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
-            <input type="number" name="${field.name}" value="${field.value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
+            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
+            <input type="number" name="${field.name}" value="${field.value}" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm">
         `;
         incomeGrid.appendChild(div);
     });
@@ -734,11 +734,11 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
         // ボーナス明細セクション
         const bonusSection = document.createElement('div');
         bonusSection.id = 'bonusSection';
-        bonusSection.className = 'bg-emerald-50 p-4 rounded-lg mt-4 hidden';
-        bonusSection.innerHTML = '<h4 class="font-semibold text-sm text-emerald-800 mb-3">🎁 ボーナス明細</h4>';
+        bonusSection.className = 'bg-emerald-50 p-3 sm:p-4 rounded-lg mt-3 sm:mt-4 hidden';
+        bonusSection.innerHTML = '<h4 class="font-semibold text-sm text-emerald-800 mb-2 sm:mb-3">🎁 ボーナス明細</h4>';
 
         const bonusGrid = document.createElement('div');
-        bonusGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+        bonusGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3';
 
         // ボーナス明細フィールド
         const bonusFields = [
@@ -749,8 +749,8 @@ function openEditSalaryModal(planId, yearMonth, grossSalary, deductions, transpo
         bonusFields.forEach(field => {
             const div = document.createElement('div');
             div.innerHTML = `
-                <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
-                <input type="number" name="${field.name}" value="${field.value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-sm">
+                <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
+                <input type="number" name="${field.name}" value="${field.value}" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-sm">
             `;
             bonusGrid.appendChild(div);
         });
@@ -818,11 +818,11 @@ function openEditBonusModal(planId, yearMonth, bonusGrossSalary, bonusDeductions
 
     // ボーナスセクション
     const bonusSection = document.createElement('div');
-    bonusSection.className = 'bg-emerald-50 p-4 rounded-lg';
-    bonusSection.innerHTML = '<h4 class="font-semibold text-sm text-emerald-800 mb-3">🎁 ボーナス明細</h4>';
+    bonusSection.className = 'bg-emerald-50 p-3 sm:p-4 rounded-lg';
+    bonusSection.innerHTML = '<h4 class="font-semibold text-sm text-emerald-800 mb-2 sm:mb-3">🎁 ボーナス明細</h4>';
 
     const bonusGrid = document.createElement('div');
-    bonusGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+    bonusGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3';
 
     const bonusFields = [
         {name: 'bonus_gross_salary', label: 'ボーナス総支給額', value: bonusGrossSalary},
@@ -832,8 +832,8 @@ function openEditBonusModal(planId, yearMonth, bonusGrossSalary, bonusDeductions
     bonusFields.forEach(field => {
         const div = document.createElement('div');
         div.innerHTML = `
-            <label class="block text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
-            <input type="number" name="${field.name}" value="${field.value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-sm">
+            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">${field.label}（円）</label>
+            <input type="number" name="${field.name}" value="${field.value}" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-sm">
         `;
         bonusGrid.appendChild(div);
     });
