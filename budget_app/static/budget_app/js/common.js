@@ -16,20 +16,13 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
         info: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
     };
 
-    // URLが指定されている場合はHTMLリンクを作成
-    let displayMessage = message;
-    if (targetUrl) {
-        displayMessage = `<a href="${targetUrl}" style="color: white; text-decoration: none; display: block;">${message}</a>`;
-    }
-
     const toastConfig = {
-        text: displayMessage,
+        text: message,
         duration: duration,
         close: true,
         gravity: "top",
         position: "center",
         stopOnFocus: true,
-        escapeMarkup: false,  // HTMLを有効化
         className: "modern-toast",
         style: {
             background: backgrounds[type] || backgrounds.info,
@@ -41,7 +34,30 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
         }
     };
 
-    Toastify(toastConfig).showToast();
+    const toast = Toastify(toastConfig);
+
+    // URLが指定されている場合、表示後にリンク要素に変換
+    if (targetUrl) {
+        toastConfig.callback = function() {
+            const toastElement = toast.toastElement;
+            if (toastElement) {
+                // トースト全体をaタグでラップ
+                const link = document.createElement('a');
+                link.href = targetUrl;
+                link.style.cssText = 'color: white; text-decoration: underline; display: block;';
+
+                // テキストノードを移動
+                while (toastElement.firstChild && toastElement.firstChild !== toastElement.querySelector('.toast-close')) {
+                    link.appendChild(toastElement.firstChild);
+                }
+
+                // リンクを先頭に挿入
+                toastElement.insertBefore(link, toastElement.firstChild);
+            }
+        };
+    }
+
+    toast.showToast();
 };
 
 /**
@@ -97,6 +113,7 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
                 // target_urlがある場合は遷移先URLを設定し、メッセージに案内を追加
                 const targetUrl = data.target_url || null;
                 let message = data.message || '処理が完了しました。';
+                // メッセージにクリック案内を追加（showToast内でリンク化される）
                 if (targetUrl) {
                     message += ' （クリックで確認）';
                 }
