@@ -128,7 +128,7 @@
 
 <!-- 編集モーダル（モダンデザイン） -->
 <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
-    <div class="relative w-full max-w-xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 flex flex-col max-h-[85vh] overflow-hidden">
+    <div class="relative w-full max-w-xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 flex flex-col max-h-[85vh] overflow-x-hidden overflow-y-auto">
         <!-- ヘッダー -->
         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-2xl px-4 py-3 flex justify-between items-center flex-shrink-0">
             <h3 class="text-lg font-bold text-white">見積り編集</h3>
@@ -140,7 +140,7 @@
         </div>
 
         <!-- ボディ -->
-        <form id="editForm" method="post" class="p-4 pb-6 space-y-4 overflow-y-auto">
+        <form id="editForm" method="post" class="p-4 pb-6 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="year_month" id="edit_year_month_hidden">
             <input type="hidden" name="card_type" id="edit_card_type_hidden" disabled>
@@ -290,7 +290,7 @@
 
 <!-- デフォルト項目編集モーダル（モダンデザイン） -->
 <div id="defaultEditModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
-    <div class="relative w-full max-w-xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 flex flex-col max-h-[85vh] overflow-hidden">
+    <div class="relative w-full max-w-xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 flex flex-col max-h-[85vh] overflow-x-hidden overflow-y-auto">
         <!-- ヘッダー -->
         <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-t-2xl px-4 py-3 flex justify-between items-center flex-shrink-0">
             <h3 class="text-lg font-bold text-white">定期項目編集</h3>
@@ -302,7 +302,7 @@
         </div>
 
         <!-- ボディ -->
-        <form id="defaultEditForm" method="post" action="{% url 'budget_app:credit_estimates' %}" class="p-4 pb-6 space-y-4 overflow-y-auto">
+        <form id="defaultEditForm" method="post" action="{% url 'budget_app:credit_estimates' %}" class="p-4 pb-6 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="action" value="edit_default">
             <input type="hidden" name="id" id="default_edit_id">
