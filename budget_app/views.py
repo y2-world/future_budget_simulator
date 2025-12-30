@@ -297,9 +297,23 @@ def plan_list(request):
                     if previous_plan:
                         borrowing_amount = previous_plan.get_item('item_15')
                         if borrowing_amount > 0:
-                            # 借入日は通常25日（給与日）
-                            prev_month = previous_date.month
-                            display_name = f"{item.title} ({prev_month}/25借入分)"
+                            # item_15（借入）の依存元キーを動的に取得
+                            # depends_on_keyがitem_14を参照している項目を探す
+                            borrowing_item = None
+                            for default_item in default_items:
+                                if default_item.depends_on_key == key and default_item.key != key:
+                                    borrowing_item = default_item
+                                    break
+
+                            # 見つからない場合はitem_15を直接検索（後方互換性）
+                            if not borrowing_item:
+                                borrowing_item = MonthlyPlanDefault.objects.filter(key='item_15').first()
+
+                            if borrowing_item:
+                                # 借入日を計算
+                                borrowing_day = get_day_for_field(borrowing_item.key, previous_date.year, previous_date.month)
+                                prev_month = previous_date.month
+                                display_name = f"{item.title} ({prev_month}/{borrowing_day}借入分)"
                 except Exception:
                     pass
 
