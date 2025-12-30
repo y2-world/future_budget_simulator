@@ -931,27 +931,19 @@ def credit_estimate_list(request):
     credit_defaults = list(CreditDefault.objects.filter(is_active=True))
 
     # サマリー（年月 -> カード -> {total, entries}）
-    # card_id -> タイトル のマッピングを MonthlyPlanDefault から取得
+    # card_id -> タイトル、支払日、オフセット月 のマッピングを MonthlyPlanDefault から取得
     from .models import MonthlyPlanDefault
     card_labels = {}
     card_due_days = {}
+    card_offset_months = {}
 
     for item in MonthlyPlanDefault.objects.filter(is_active=True, card_id__isnull=False):
         if item.card_id:
             card_labels[item.card_id] = item.title
             if item.withdrawal_day:
                 card_due_days[item.card_id] = item.withdrawal_day
-
-    # 後方互換性のため、古いcard_type形式も保持（移行期間用）
-    legacy_card_labels = dict(CreditEstimate.CARD_TYPES)
-    legacy_card_due_days = {
-        'view': 4,
-        'rakuten': 27,
-        'paypay': 27,
-        'vermillion': 4,
-        'amazon': 26,
-        'olive': 26,
-    }
+            # offset_monthsを記録（0=同月、1=翌月、2=翌々月）
+            card_offset_months[item.card_id] = item.offset_months if item.offset_months else 0
 
     # カード名に支払日を追加する関数
     def get_card_label_with_due_day(card_type, is_bonus=False, year_month=None):
@@ -960,30 +952,25 @@ def credit_estimate_list(request):
 
         base_label = card_labels.get(card_type, card_type)
         due_day = card_due_days.get(card_type, '')
+        offset_months = card_offset_months.get(card_type, 0)
 
         if due_day and year_month:
             # 年月から年と月を取得
             year, month = map(int, year_month.split('-'))
 
-            # ボーナス払いの場合はその月の支払い、通常払いはカード種別に応じて計算
+            # ボーナス払いの場合はオフセット0、通常払いはoffset_monthsを使用
             if is_bonus:
                 # ボーナス払いはその月に支払い
-                payment_year = year
-                payment_month = month
-            elif card_type in ['view', 'vermillion']:
-                # VIEWとVERMILLIONは翌々月払い
-                payment_month = month + 2
-                payment_year = year
-                if payment_month > 12:
-                    payment_month = payment_month - 12
-                    payment_year += 1
+                months_to_add = 0
             else:
-                # その他のカード（rakuten, paypay, amazon, olive）は翌月払い
-                payment_month = month + 1
-                payment_year = year
-                if payment_month > 12:
-                    payment_month = payment_month - 12
-                    payment_year += 1
+                # MonthlyPlanDefaultのoffset_monthsを使用
+                months_to_add = offset_months
+
+            payment_month = month + months_to_add
+            payment_year = year
+            while payment_month > 12:
+                payment_month -= 12
+                payment_year += 1
 
             # 支払月の最終日を取得
             last_day = calendar.monthrange(payment_year, payment_month)[1]
@@ -993,14 +980,14 @@ def credit_estimate_list(request):
             # 営業日に調整（土日祝なら翌営業日）
             payment_date = adjust_to_next_business_day(date(payment_year, payment_month, actual_due_day))
 
-            label = f'{base_label} ({payment_date.month}/{payment_date.day})'
+            label = f'{base_label} ({payment_date.month}/{payment_date.day}支払)'
         elif due_day:
             label = f'{base_label} ({due_day}日)'
         else:
             label = base_label
 
         if is_bonus:
-            label = f'ボーナス払い {label}'
+            label = f'{base_label} (ボーナス払い)'
 
         return label
 
