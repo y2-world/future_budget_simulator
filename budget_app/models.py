@@ -174,8 +174,12 @@ class MonthlyPlan(models.Model):
             self.items = {}
         self.items[field_name] = value
         # 既存フィールドにも設定（後方互換性のため）
-        if hasattr(self, field_name):
+        # loan_borrowingなど、モデルに直接定義されているフィールドも確実に更新
+        try:
             setattr(self, field_name, value)
+        except AttributeError:
+            # フィールドが存在しない場合は無視（itemsのみに保存）
+            pass
 
     def get_exclusion(self, field_name):
         """繰上げ返済フラグを取得"""
