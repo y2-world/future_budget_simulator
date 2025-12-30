@@ -16,8 +16,17 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
         info: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
     };
 
+    // URLが指定されている場合は、カスタムDOM要素（リンク）を作成
+    let toastContent;
+    if (targetUrl) {
+        const link = document.createElement('a');
+        link.href = targetUrl;
+        link.textContent = message;
+        link.style.cssText = 'color: white; text-decoration: underline; display: block;';
+        toastContent = link;
+    }
+
     const toastConfig = {
-        text: message,
         duration: duration,
         close: true,
         gravity: "top",
@@ -34,13 +43,11 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
         }
     };
 
-    // URLが指定されている場合はクリック時に遷移
-    if (targetUrl) {
-        toastConfig.onClick = function() {
-            window.location.href = targetUrl;
-        };
-        toastConfig.style.cursor = 'pointer';
-        toastConfig.style.textDecoration = 'underline';
+    // nodeまたはtextを設定
+    if (toastContent) {
+        toastConfig.node = toastContent;
+    } else {
+        toastConfig.text = message;
     }
 
     Toastify(toastConfig).showToast();
