@@ -683,7 +683,7 @@ def plan_data(request, pk):
     plan = get_object_or_404(MonthlyPlan, pk=pk)
     from .models import MonthlyPlanDefault
 
-    # 基本データを取得
+    # 基本データを取得（給与関連は既存フィールドから）
     data = {
         'salary': plan.salary or 0,
         'gross_salary': plan.gross_salary or 0,
@@ -692,17 +692,17 @@ def plan_data(request, pk):
         'bonus': plan.bonus or 0,
         'bonus_gross_salary': plan.bonus_gross_salary or 0,
         'bonus_deductions': plan.bonus_deductions or 0,
-        'item_9': plan.item_9 or 0,
-        'item_10': plan.item_10 or 0,
-        'item_11': plan.item_11 or 0,
-        'item_12': plan.item_12 or 0,
-        'item_13': plan.item_13 or 0,
-        'item_14': plan.item_14 or 0,
-        'item_15': plan.item_15 or 0,
-        'item_16': plan.item_16 or 0,
-        'item_17': plan.item_17 or 0,
-        'item_18': plan.item_18 or 0,
-        'item_20': plan.item_20 or 0,
+        'item_9': plan.get_item('item_9') or 0,
+        'item_10': plan.get_item('item_10') or 0,
+        'item_11': plan.get_item('item_11') or 0,
+        'item_12': plan.get_item('item_12') or 0,
+        'item_13': plan.get_item('item_13') or 0,
+        'item_14': plan.get_item('item_14') or 0,
+        'item_15': plan.get_item('item_15') or 0,
+        'item_16': plan.get_item('item_16') or 0,
+        'item_17': plan.get_item('item_17') or 0,
+        'item_18': plan.get_item('item_18') or 0,
+        'item_20': plan.get_item('item_20') or 0,
     }
 
     # 動的項目を追加
@@ -712,7 +712,7 @@ def plan_data(request, pk):
 
     for item in default_items:
         if item.key and item.key not in hardcoded_fields:
-            value = getattr(plan, item.key, 0) or 0
+            value = plan.get_item(item.key) or 0
             if value:
                 dynamic_items.append({
                     'key': item.key,
