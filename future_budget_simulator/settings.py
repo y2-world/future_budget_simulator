@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-3=pz*p7ct1dk)ffc+nc3#y6&pa(tn^iy_-rpby!m!cyzk=la!e
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['future-budget-simulator-b9ef5003e4b5.herokuapp.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['future-budget-simulator.com', 'www.future-budget-simulator.com', 'future-budget-simulator-b9ef5003e4b5.herokuapp.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
