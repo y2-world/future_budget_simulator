@@ -40,7 +40,6 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
             window.location.href = targetUrl;
         };
         toastConfig.style.cursor = 'pointer';
-        toastConfig.style.textDecoration = 'underline';
     }
 
     Toastify(toastConfig).showToast();
