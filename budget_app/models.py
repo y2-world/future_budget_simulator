@@ -256,6 +256,7 @@ class MonthlyPlan(models.Model):
 class CreditEstimate(models.Model):
     """クレカ請求額の見積り（未来・現時点）"""
 
+    # デフォルトのカード種別（後方互換性のため）
     CARD_TYPES = [
         ('view', 'VIEWカード'),
         ('rakuten', '楽天カード'),
@@ -265,9 +266,26 @@ class CreditEstimate(models.Model):
         ('olive', 'Olive'),
     ]
 
+    @classmethod
+    def get_card_choices(cls):
+        """MonthlyPlanDefaultから動的にカード選択肢を生成"""
+        from budget_app.models import MonthlyPlanDefault
+
+        # MonthlyPlanDefaultからカードIDと名称を取得
+        card_choices = []
+
+        for item in MonthlyPlanDefault.objects.filter(
+            is_active=True,
+            card_id__isnull=False
+        ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order'):
+            card_choices.append((item.card_id, item.title))
+
+        # DBにデータがない場合はデフォルトを返す（後方互換性）
+        return card_choices if card_choices else cls.CARD_TYPES
+
     year_month = models.CharField(max_length=7, verbose_name="利用月（YYYY-MM）")
     billing_month = models.CharField(max_length=7, verbose_name="引き落とし月（YYYY-MM）", null=True, blank=True)
-    card_type = models.CharField(max_length=10, choices=CARD_TYPES, verbose_name="カード種別")
+    card_type = models.CharField(max_length=50, verbose_name="カード")
     description = models.CharField(max_length=100, blank=True, verbose_name="メモ")
     amount = models.IntegerField(verbose_name="見積額（円）")
     due_date = models.DateField(
@@ -530,6 +548,19 @@ class MonthlyPlanDefault(models.Model):
         verbose_name="表示月オフセット",
         help_text="depends_on_keyで指定された項目から何ヶ月後に表示するか（例：1=翌月、0=同月）"
     )
+    card_id = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        unique=True,
+        verbose_name="カードID",
+        help_text="クレジットカード項目の一意識別子（自動生成: card_1, card_2, ...）"
+    )
+    is_bonus_payment = models.BooleanField(
+        default=False,
+        verbose_name="ボーナス払い",
+        help_text="ボーナス払い用の項目かどうか"
+    )
 
     class Meta:
         verbose_name = "月次計画デフォルト項目"
@@ -572,7 +603,7 @@ class MonthlyPlanDefault(models.Model):
             return False
 
     def save(self, *args, **kwargs):
-        """保存時にkeyをIDベースで設定"""
+        """保存時にkeyとcard_idをIDベースで設定"""
         # 新規作成の場合、まず保存してIDを取得
         is_new = not self.pk
         if is_new:
@@ -581,13 +612,24 @@ class MonthlyPlanDefault(models.Model):
             super().save(*args, **kwargs)
             # IDが確定したので、IDベースのkeyに更新
             self.key = f'item_{self.pk}'
+
+            # クレジットカード項目の場合、card_idも自動生成
+            updates = {'key': self.key}
+            if self.is_credit_card() and not self.card_id:
+                updates['card_id'] = f'card_{self.pk}'
+
             # update()を使ってsave()の無限ループを回避
-            type(self).objects.filter(pk=self.pk).update(key=self.key)
+            type(self).objects.filter(pk=self.pk).update(**updates)
         else:
             # 既存レコードの場合
             if not self.key or not self.key.startswith('item_'):
                 # keyが空、または古い形式の場合、IDベースに更新
                 self.key = f'item_{self.pk}'
+
+            # クレジットカード項目でcard_idが未設定の場合、自動生成
+            if self.is_credit_card() and not self.card_id:
+                self.card_id = f'card_{self.pk}'
+
             super().save(*args, **kwargs)
 
     @staticmethod

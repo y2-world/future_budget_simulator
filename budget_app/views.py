@@ -931,10 +931,20 @@ def credit_estimate_list(request):
     credit_defaults = list(CreditDefault.objects.filter(is_active=True))
 
     # サマリー（年月 -> カード -> {total, entries}）
-    card_labels = dict(CreditEstimate.CARD_TYPES)
+    # card_id -> タイトル のマッピングを MonthlyPlanDefault から取得
+    from .models import MonthlyPlanDefault
+    card_labels = {}
+    card_due_days = {}
 
-    # カードタイプと支払日のマッピング
-    card_due_days = {
+    for item in MonthlyPlanDefault.objects.filter(is_active=True, card_id__isnull=False):
+        if item.card_id:
+            card_labels[item.card_id] = item.title
+            if item.withdrawal_day:
+                card_due_days[item.card_id] = item.withdrawal_day
+
+    # 後方互換性のため、古いcard_type形式も保持（移行期間用）
+    legacy_card_labels = dict(CreditEstimate.CARD_TYPES)
+    legacy_card_due_days = {
         'view': 4,
         'rakuten': 27,
         'paypay': 27,
@@ -1064,21 +1074,24 @@ def credit_estimate_list(request):
         if est.is_bonus_payment:
             card_key = f'{est.card_type}_bonus'
             # ボーナス払いの場合もカード名 + 支払日を表示
-            due_day = card_due_days.get(est.card_type, '')
+            due_day = card_due_days.get(est.card_type) or legacy_card_due_days.get(est.card_type, '')
             if due_day and display_month:
                 billing_year, billing_month = map(int, display_month.split('-'))
-                card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)（ボーナス払い）"
+                label = card_labels.get(est.card_type) or legacy_card_labels.get(est.card_type, est.card_type)
+                card_label = f"{label} ({billing_month}/{due_day}支払)（ボーナス払い）"
             else:
-                card_label = card_labels.get(est.card_type, est.card_type) + '（ボーナス払い）'
+                label = card_labels.get(est.card_type) or legacy_card_labels.get(est.card_type, est.card_type)
+                card_label = label + '（ボーナス払い）'
         else:
             card_key = est.card_type
             # 通常払いの場合、カード名 + 支払日を表示
-            due_day = card_due_days.get(est.card_type, '')
+            due_day = card_due_days.get(est.card_type) or legacy_card_due_days.get(est.card_type, '')
             if due_day and display_month:
                 billing_year, billing_month = map(int, display_month.split('-'))
-                card_label = f"{card_labels.get(est.card_type, est.card_type)} ({billing_month}/{due_day}支払)"
+                label = card_labels.get(est.card_type) or legacy_card_labels.get(est.card_type, est.card_type)
+                card_label = f"{label} ({billing_month}/{due_day}支払)"
             else:
-                card_label = card_labels.get(est.card_type, est.card_type)
+                card_label = card_labels.get(est.card_type) or legacy_card_labels.get(est.card_type, est.card_type)
 
         card_group = month_group.setdefault(card_key, {
             'label': card_label,
@@ -1604,57 +1617,47 @@ def credit_estimate_list(request):
 
         elif action == 'reflect_card':
             year_month = request.POST.get('year_month')
-            card_type = request.POST.get('card_type')
+            card_id = request.POST.get('card_type')  # 実際には card_id
             is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
-            # card_typeから実際のカード種別とボーナス払いフラグを取得
-            is_bonus = card_type.endswith('_bonus')
+            # card_idからボーナス払いフラグを判定
+            is_bonus = card_id.endswith('_bonus')
             if is_bonus:
-                actual_card_type = card_type.replace('_bonus', '')
+                actual_card_id = card_id.replace('_bonus', '')
             else:
-                actual_card_type = card_type
+                actual_card_id = card_id
 
-            # サマリーからカードデータを取得
-            if year_month in summary and card_type in summary[year_month]:
-                card_data = summary[year_month][card_type]
+            # card_idからMonthlyPlanDefaultのkeyを取得
+            from .models import MonthlyPlanDefault
+            try:
+                card_item = MonthlyPlanDefault.objects.get(
+                    card_id=actual_card_id,
+                    is_bonus_payment=is_bonus,
+                    is_active=True
+                )
+                monthly_plan_key = card_item.key
+            except MonthlyPlanDefault.DoesNotExist:
+                error_message = f'カードID {actual_card_id} に対応する月次計画項目が見つかりません。'
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': error_message}, status=400)
+                else:
+                    messages.error(request, error_message)
+                    return redirect('budget_app:credit_estimates')
+
+            # サマリーからカードデータを取得（キーはcard_idのまま）
+            if year_month in summary and card_id in summary[year_month]:
+                card_data = summary[year_month][card_id]
                 total_amount = card_data['total']
                 card_label = card_data['label']
 
                 # 反映先の年月を計算
-                # year_monthパラメータは、通常払いの場合は既に引き落とし月(billing_month)、
-                # ボーナス払いの場合は支払月なので、そのまま使用
                 target_year_month = year_month
 
                 # 月次計画を取得または作成
-                plan, _ = MonthlyPlan.objects.get_or_create(
-                    year_month=target_year_month,
-                    defaults={
-                        'salary': 0,
-                        'bonus': 0,
-                        'food': 0,
-                        'rent': 0,
-                        'lake': 0,
-                        'view_card': 0,
-                        'view_card_bonus': 0,
-                        'rakuten_card': 0,
-                        'paypay_card': 0,
-                        'vermillion_card': 0,
-                        'amazon_card': 0,
-                        'olive_card': 0,
-                        'loan': 0,
-                        'loan_borrowing': 0,
-                        'other': 0,
-                    }
-                )
-
-                # 通常払いまたはボーナス払いを反映
-                if is_bonus:
-                    field_name = f'{actual_card_type}_card_bonus'
-                else:
-                    field_name = f'{actual_card_type}_card'
+                plan, _ = MonthlyPlan.objects.get_or_create(year_month=target_year_month)
 
                 # set_itemメソッドを使用（items JSONFieldに保存）
-                plan.set_item(field_name, total_amount)
+                plan.set_item(monthly_plan_key, total_amount)
                 plan.save()
 
                 success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
@@ -1662,7 +1665,8 @@ def credit_estimate_list(request):
                 if is_ajax:
                     return JsonResponse({
                         'status': 'success',
-                        'message': success_message
+                        'message': success_message,
+                        'target_year_month': target_year_month
                     })
                 else:
                     messages.success(request, success_message)

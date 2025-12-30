@@ -471,6 +471,10 @@ class CreditEstimateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # カード選択肢を動的に生成
+        from .models import CreditEstimate
+        self.fields['card_type'].widget.choices = CreditEstimate.get_card_choices()
+
         self.fields['year_month'].required = False
         self.fields['year'].widget.attrs.update({'data-year-select': 'true'})
         self.fields['month'].widget.attrs.update({'data-month-select': 'true'})
@@ -836,9 +840,16 @@ class CreditDefaultForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # 新規作成時のみカード種別のデフォルト値をVIEWカードに設定
-        if not self.instance.pk:
-            self.fields['card_type'].initial = 'view'
+
+        # カード選択肢を動的に生成
+        from .models import CreditEstimate
+        card_choices = CreditEstimate.get_card_choices()
+        self.fields['card_type'].widget.choices = card_choices
+
+        # 新規作成時のみカード種別のデフォルト値を設定（最初のカード）
+        if not self.instance.pk and card_choices:
+            self.fields['card_type'].initial = card_choices[0][0]
+
         # 既存インスタンスの場合、金額にカンマを追加して表示
         if self.instance.pk and self.instance.amount:
             self.fields['amount'].initial = f"{self.instance.amount:,}"
