@@ -1635,7 +1635,17 @@ def credit_estimate_list(request):
                 card_label = card_data['label']
 
                 # 反映先の年月を計算
-                target_year_month = year_month
+                # ボーナス払いの場合はyear_monthが既に支払月なのでそのまま使用
+                # 通常払いの場合はoffset_monthsを使って支払月を計算
+                if is_bonus:
+                    target_year_month = year_month
+                else:
+                    # offset_monthsを使って支払月を計算
+                    from datetime import datetime
+                    from dateutil.relativedelta import relativedelta
+                    usage_date = datetime.strptime(year_month, '%Y-%m')
+                    payment_date = usage_date + relativedelta(months=card_item.offset_months)
+                    target_year_month = payment_date.strftime('%Y-%m')
 
                 # 月次計画を取得または作成
                 plan, _ = MonthlyPlan.objects.get_or_create(year_month=target_year_month)
