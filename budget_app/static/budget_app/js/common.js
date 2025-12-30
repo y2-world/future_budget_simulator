@@ -34,30 +34,16 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
         }
     };
 
-    const toast = Toastify(toastConfig);
-
-    // URLが指定されている場合、表示後にリンク要素に変換
+    // URLが指定されている場合はクリック時に遷移
     if (targetUrl) {
-        toastConfig.callback = function() {
-            const toastElement = toast.toastElement;
-            if (toastElement) {
-                // トースト全体をaタグでラップ
-                const link = document.createElement('a');
-                link.href = targetUrl;
-                link.style.cssText = 'color: white; text-decoration: underline; display: block;';
-
-                // テキストノードを移動
-                while (toastElement.firstChild && toastElement.firstChild !== toastElement.querySelector('.toast-close')) {
-                    link.appendChild(toastElement.firstChild);
-                }
-
-                // リンクを先頭に挿入
-                toastElement.insertBefore(link, toastElement.firstChild);
-            }
+        toastConfig.onClick = function() {
+            window.location.href = targetUrl;
         };
+        toastConfig.style.cursor = 'pointer';
+        toastConfig.style.textDecoration = 'underline';
     }
 
-    toast.showToast();
+    Toastify(toastConfig).showToast();
 };
 
 /**
