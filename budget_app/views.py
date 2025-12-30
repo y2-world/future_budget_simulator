@@ -1718,25 +1718,16 @@ def credit_estimate_list(request):
                                 target_year_month = f"{payment_year}-{payment_month:02d}"                            
 
                         # 月次計画を取得または作成
+                        # MonthlyPlanDefaultからデフォルト値を取得
+                        default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                        items_defaults = {}
+                        for item in default_items:
+                            if item.key:
+                                items_defaults[item.key] = item.amount or 0
+
                         plan, _ = MonthlyPlan.objects.get_or_create(
                             year_month=target_year_month,
-                            defaults={
-                                'salary': 0,
-                                'bonus': 0,
-                                'food': 0,
-                                'rent': 0,
-                                'lake': 0,
-                                'view_card': 0,
-                                'view_card_bonus': 0,
-                                'rakuten_card': 0,
-                                'paypay_card': 0,
-                                'vermillion_card': 0,
-                                'amazon_card': 0,
-                                'olive_card': 0,
-                                'loan': 0,
-                                'loan_borrowing': 0,
-                                'other': 0,
-                            }
+                            defaults={'items': items_defaults}
                         )
 
                         # 通常払いまたはボーナス払いを反映
