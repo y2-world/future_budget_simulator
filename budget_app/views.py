@@ -357,6 +357,7 @@ def plan_list(request):
 
     # 今日以降の明細がある月のみ表示（現在月の場合）
     filtered_plans = []
+    archived_current_month_plans = []  # 今日以降の明細がない現在月のプラン
     for plan in plans:
         if plan.year_month == current_year_month:
             # 現在月の場合、今日以降の明細があるかチェック（金額が0でないもののみ）
@@ -365,11 +366,15 @@ def plan_list(request):
 
             if has_future_items:
                 filtered_plans.append(plan)
+            else:
+                # 今日以降の明細がない現在月は過去の明細として扱う
+                archived_current_month_plans.append(plan)
         else:
             # 未来月は全て表示
             filtered_plans.append(plan)
 
     plans = filtered_plans
+    past_plans = archived_current_month_plans  # 過去の明細に追加
 
     # MonthlyPlanDefaultのデータを取得
     default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
