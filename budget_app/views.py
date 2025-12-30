@@ -84,19 +84,6 @@ def format_year_month_display(year_month: str) -> str:
     return f'{year}年{month}月'
 
 
-def index(request):
-    """トップページ"""
-    config = SimulationConfig.objects.filter(is_active=True).first()
-    plans = MonthlyPlan.objects.all().order_by('year_month')[:6]
-    has_plans = MonthlyPlan.objects.exists()
-
-    context = {
-        'config': config,
-        'plans': plans,
-        'has_plans': has_plans,
-    }
-    return render(request, 'budget_app/index.html', context)
-
 
 def config_view(request):
     """設定"""
