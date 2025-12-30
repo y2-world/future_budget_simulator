@@ -1132,13 +1132,6 @@ def credit_estimate_list(request):
     # 利用月のリストを取得してソート（重複削除）
     candidate_usage_months = sorted(list(set(key[0] for key in candidate_usage_cards.keys())))
 
-    # デバッグログ
-    print(f"DEBUG: current_year_month = {current_year_month}")
-    print(f"DEBUG: card_offset_months = {card_offset_months}")
-    print(f"DEBUG: existing_billing_months = {existing_billing_months}")
-    print(f"DEBUG: candidate_usage_cards = {candidate_usage_cards}")
-    print(f"DEBUG: candidate_usage_months = {candidate_usage_months}")
-
     # 各年月の各カードに定期デフォルトを追加
     for year_month in candidate_usage_months:
         # 年月から月を取得（奇数月判定用）
@@ -1199,10 +1192,7 @@ def credit_estimate_list(request):
 
             # このカード×利用月の組み合わせが候補に含まれているかチェック
             if (year_month, actual_card_type) not in candidate_usage_cards:
-                print(f"DEBUG: Skipping default.id={default.id}, year_month={year_month}, actual_card_type={actual_card_type} (not in candidate_usage_cards)")
                 continue
-            else:
-                print(f"DEBUG: Adding default.id={default.id}, year_month={year_month}, actual_card_type={actual_card_type}, label={default.label}")
 
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
