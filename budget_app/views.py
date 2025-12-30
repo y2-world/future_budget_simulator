@@ -1009,7 +1009,7 @@ def credit_estimate_list(request):
                 if est.billing_month:
                     billing_year, billing_month = map(int, est.billing_month.split('-'))
                     # 引き落とし月から利用月を逆算
-                    if est.card_type in ['view', 'vermillion']:
+                    if est.card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                         # 翌々月払いなので、引き落とし月の2ヶ月前が利用月
                         usage_month = billing_month - 2
                         usage_year = billing_year
@@ -1026,7 +1026,7 @@ def credit_estimate_list(request):
                     year = usage_year
                     month = usage_month
 
-            if est.card_type in ['view', 'vermillion']:
+            if est.card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                 # VIEW/VERMILLIONカードは5日締め（翌月5日）
                 closing_month = month + 1
                 closing_year = year
@@ -1059,24 +1059,24 @@ def credit_estimate_list(request):
         if est.is_bonus_payment:
             card_key = f'{est.card_type}_bonus'
             # ボーナス払いの場合もカード名 + 支払日を表示
-            due_day = card_due_days.get(est.card_type) or legacy_card_due_days.get(est.card_type, '')
+            due_day = card_due_days.get(est.card_type, '')
             if due_day and display_month:
                 billing_year, billing_month = map(int, display_month.split('-'))
-                label = card_labels.get(est.card_type) or legacy_card_labels.get(est.card_type, est.card_type)
+                label = card_labels.get(est.card_type, est.card_type)
                 card_label = f"{label} ({billing_month}/{due_day}支払)（ボーナス払い）"
             else:
-                label = card_labels.get(est.card_type) or legacy_card_labels.get(est.card_type, est.card_type)
+                label = card_labels.get(est.card_type, est.card_type)
                 card_label = label + '（ボーナス払い）'
         else:
             card_key = est.card_type
             # 通常払いの場合、カード名 + 支払日を表示
-            due_day = card_due_days.get(est.card_type) or legacy_card_due_days.get(est.card_type, '')
+            due_day = card_due_days.get(est.card_type, '')
             if due_day and display_month:
                 billing_year, billing_month = map(int, display_month.split('-'))
-                label = card_labels.get(est.card_type) or legacy_card_labels.get(est.card_type, est.card_type)
+                label = card_labels.get(est.card_type, est.card_type)
                 card_label = f"{label} ({billing_month}/{due_day}支払)"
             else:
-                card_label = card_labels.get(est.card_type) or legacy_card_labels.get(est.card_type, est.card_type)
+                card_label = card_labels.get(est.card_type, est.card_type)
 
         card_group = month_group.setdefault(card_key, {
             'label': card_label,
@@ -1275,7 +1275,7 @@ def credit_estimate_list(request):
                 # 1回目の締め日チェック
                 # 1回目の利用月year_monthの締め日が過ぎていなければ表示
                 first_payment_closed = False
-                if actual_card_type in ['view', 'vermillion']:
+                if actual_card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                     first_payment_closed = view_closed
                 else:
                     first_payment_closed = other_closed
@@ -1297,7 +1297,7 @@ def credit_estimate_list(request):
                 next_billing_year, next_billing_month_num = map(int, next_billing_month.split('-'))
 
                 # 引き落とし月から利用月を逆算
-                if actual_card_type in ['view', 'vermillion']:
+                if actual_card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                     # 翌々月払いなので、引き落とし月の2ヶ月前が利用月
                     second_usage_month = next_billing_month_num - 2
                     second_usage_year = next_billing_year
@@ -1313,7 +1313,7 @@ def credit_estimate_list(request):
                         second_usage_year -= 1
 
                 # 2回目の利用月の締め日を計算
-                if actual_card_type in ['view', 'vermillion']:
+                if actual_card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                     second_closing_month = second_usage_month + 1
                     second_closing_year = second_usage_year
                     if second_closing_month > 12:
@@ -1353,7 +1353,7 @@ def credit_estimate_list(request):
                 # 通常の1回払い
                 # 締め日チェック
                 payment_closed = False
-                if actual_card_type in ['view', 'vermillion']:
+                if actual_card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                     payment_closed = view_closed
                 else:
                     payment_closed = other_closed
@@ -1480,13 +1480,13 @@ def credit_estimate_list(request):
         # VIEWカードとVERMILLIONカード(同じ締め日)の特別処理
         if current_day <= 5 and ym_date_part == view_display_month:
             # 5日までは、先月のVIEW/VERMILLIONカードを当月として扱う
-            has_view_or_vermillion = any(card_type in ['view', 'view_bonus', 'vermillion', 'vermillion_bonus'] for card_type in cards.keys())
+            has_view_or_vermillion = any(card_type in ['item_6', 'item_6_bonus', 'item_10', 'item_10_bonus', 'view', 'view_bonus', 'vermillion', 'vermillion_bonus'] for card_type in cards.keys())
             if has_view_or_vermillion:
                 # VIEW/VERMILLIONカードのみを当月に移動
                 view_cards = OrderedDict()
                 other_cards = OrderedDict()
                 for card_type, card_data in cards.items():
-                    if card_type in ['view', 'view_bonus', 'vermillion', 'vermillion_bonus']:
+                    if card_type in ['item_6', 'item_6_bonus', 'item_10', 'item_10_bonus', 'view', 'view_bonus', 'vermillion', 'vermillion_bonus']:
                         view_cards[card_type] = card_data
                     else:
                         other_cards[card_type] = card_data
@@ -1708,7 +1708,7 @@ def credit_estimate_list(request):
                             # 通常払いの場合、カード種別に応じて支払い月を計算
                             use_year, use_month = map(int, current_date.strftime('%Y-%m').split('-'))
                             
-                            if card_type in ['view', 'vermillion']:
+                            if card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                                 # 翌々月払い
                                 payment_month = use_month + 2
                                 payment_year = use_year
@@ -1716,7 +1716,7 @@ def credit_estimate_list(request):
                                     payment_month -= 12
                                     payment_year += 1
                                 target_year_month = f"{payment_year}-{payment_month:02d}"
-                            elif card_type in ['rakuten', 'paypay', 'amazon', 'olive']:
+                            elif card_type in ['item_8', 'item_9', 'item_11', 'item_12', 'rakuten', 'paypay', 'amazon', 'olive']:
                                 # 翌月払い
                                 payment_month = use_month + 1
                                 payment_year = use_year
@@ -1968,6 +1968,13 @@ def credit_default_list(request):
             if form.is_valid():
                 instance = form.save()
                 if is_ajax:
+                    # Get card type display name from MonthlyPlanDefault
+                    card_type_display = instance.card_type
+                    if instance.card_type:
+                        card_item = MonthlyPlanDefault.objects.filter(key=instance.card_type).first()
+                        if card_item:
+                            card_type_display = card_item.title
+
                     return JsonResponse({
                         'status': 'success',
                         'message': f'{instance.label} を更新しました。',
@@ -1975,7 +1982,7 @@ def credit_default_list(request):
                             'id': instance.id,
                             'label': instance.label,
                             'card_type': instance.card_type,
-                            'card_type_display': instance.get_card_type_display(),
+                            'card_type_display': card_type_display,
                             'amount': instance.amount,
                         }
                     })
@@ -2380,7 +2387,7 @@ def past_transactions_list(request):
                 # 締め日チェック
                 year, month = map(int, est.year_month.split('-'))
 
-                if est.card_type in ['view', 'vermillion']:
+                if est.card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                     # VIEW/VERMILLIONカードは5日締め（翌月5日）
                     closing_month = month + 1
                     closing_year = year
@@ -2514,7 +2521,7 @@ def past_transactions_list(request):
             year, month = map(int, estimate.year_month.split('-'))
             import calendar
 
-            if estimate.card_type in ['view', 'vermillion']:
+            if estimate.card_type in ['item_6', 'item_10', 'view', 'vermillion']:
                 # VIEW/VERMILLIONカードは5日締め（翌月5日）
                 closing_month = month + 1
                 closing_year = year
@@ -2561,9 +2568,16 @@ def past_transactions_list(request):
 
         # その月の中でカード別にグループ化
         # カード名に支払日を追加
-        card_type_display = estimate.get_card_type_display()
+        # Get card type display name from MonthlyPlanDefault
+        card_type_display = estimate.card_type
+        card_due_day_value = None
+        if estimate.card_type:
+            card_item = MonthlyPlanDefault.objects.filter(key=estimate.card_type).first()
+            if card_item:
+                card_type_display = card_item.title
+                card_due_day_value = card_item.withdrawal_day
 
-        # カードタイプと支払日のマッピング
+        # カードタイプと支払日のマッピング（後方互換性のため残す）
         card_due_days = {
             'view': 4,
             'rakuten': 27,
@@ -2574,7 +2588,8 @@ def past_transactions_list(request):
         }
 
         # 支払日を追加したカード名を生成
-        due_day = card_due_days.get(estimate.card_type, '')
+        # Use card_due_day_value from MonthlyPlanDefault if available, otherwise fall back to legacy mapping
+        due_day = card_due_day_value if card_due_day_value else card_due_days.get(estimate.card_type, '')
         if due_day and billing_month:
             billing_year, billing_month_num = map(int, billing_month.split('-'))
             import calendar

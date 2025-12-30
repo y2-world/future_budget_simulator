@@ -288,6 +288,15 @@ class CreditEstimate(models.Model):
         card_label = dict(self.CARD_TYPES).get(self.card_type, self.card_type)
         return f"{self.year_month} {card_label}: ¥{self.amount:,}"
 
+    def get_card_type_display(self):
+        """カード種別の表示名を取得（MonthlyPlanDefaultから）"""
+        if self.card_type:
+            card_item = MonthlyPlanDefault.objects.filter(card_id=self.card_type).first()
+            if card_item:
+                return card_item.title
+        # フォールバック：MonthlyPlanDefaultに見つからない場合は、レガシーCARD_TYPESから取得
+        return dict(self.CARD_TYPES).get(self.card_type, self.card_type)
+
 
 class TransactionEvent(models.Model):
     """支払いイベント（計算結果）"""
