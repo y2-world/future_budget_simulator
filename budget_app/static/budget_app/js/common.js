@@ -69,7 +69,8 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
         showErrorToast = true,
         reloadOnSuccess = true,
         reloadDelay = 1500,
-        closeModal = null  // モーダルを閉じる関数
+        closeModal = null,  // モーダルを閉じる関数
+        toastDuration = 5000  // トースト表示時間（ミリ秒）
     } = options;
 
     try {
@@ -100,7 +101,7 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
                 if (targetUrl) {
                     message += ' （クリックで確認）';
                 }
-                window.showToast(message, 'success', 5000, targetUrl);
+                window.showToast(message, 'success', toastDuration, targetUrl);
             }
 
             if (onSuccess) {
