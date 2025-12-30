@@ -1106,7 +1106,8 @@ def credit_estimate_list(request):
 
     # 定期デフォルトを追加する利用月を決定
     # 既存の引き落とし月から逆算して、対応する利用月を計算
-    candidate_usage_months = set()
+    # {(usage_month, card_id): billing_month} の辞書として保存
+    candidate_usage_cards = {}
     current_year_month = f"{today.year}-{today.month:02d}"
 
     for billing_month in existing_billing_months:
@@ -1126,10 +1127,10 @@ def credit_estimate_list(request):
             usage_month = f"{usage_year}-{usage_month_num:02d}"
             # 現在の月以降のみ追加
             if usage_month >= current_year_month:
-                candidate_usage_months.add(usage_month)
+                candidate_usage_cards[(usage_month, card_id)] = billing_month
 
-    # セットをリストに変換してソート
-    candidate_usage_months = sorted(list(candidate_usage_months))
+    # 利用月のリストを取得してソート（重複削除）
+    candidate_usage_months = sorted(list(set(key[0] for key in candidate_usage_cards.keys())))
 
     # 各年月の各カードに定期デフォルトを追加
     for year_month in candidate_usage_months:
@@ -1188,6 +1189,10 @@ def credit_estimate_list(request):
 
             # 実際に使用するカード種別を決定（上書きがあればそれを使用）
             actual_card_type = override_data.get('card_type') if override_data and override_data.get('card_type') else default.card_type
+
+            # このカード×利用月の組み合わせが候補に含まれているかチェック
+            if (year_month, actual_card_type) not in candidate_usage_cards:
+                continue
 
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
