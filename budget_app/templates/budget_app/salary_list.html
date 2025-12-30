@@ -485,8 +485,8 @@ function initializeSalaryForm() {
         let hasUnregisteredPastMonth = false;
         for (let month = 1; month <= 12; month++) {
             const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
-            // 過去の月（今月より前）かつ未登録の月があるか
-            if (year < currentYear || (year === currentYear && month < currentMonth)) {
+            // 過去の月（今月を含む）かつ未登録の月があるか
+            if (year < currentYear || (year === currentYear && month <= currentMonth)) {
                 if (!registeredMonths.includes(yearMonth)) {
                     hasUnregisteredPastMonth = true;
                     break;
@@ -622,8 +622,8 @@ function updateSalaryMonthOptions() {
     for (let month = 1; month <= 12; month++) {
         const yearMonth = `${selectedYear}-${String(month).padStart(2, '0')}`;
 
-        // 過去の月（今月より前）かつ未登録の月のみ表示
-        if (selectedYear < currentYear || (selectedYear === currentYear && month < currentMonth)) {
+        // 過去の月（今月を含む）かつ未登録の月のみ表示
+        if (selectedYear < currentYear || (selectedYear === currentYear && month <= currentMonth)) {
             if (!registeredMonths.includes(yearMonth)) {
                 const option = document.createElement('option');
                 option.value = String(month).padStart(2, '0');
