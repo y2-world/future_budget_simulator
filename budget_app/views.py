@@ -1678,8 +1678,8 @@ def credit_estimate_list(request):
                 success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
 
                 if is_ajax:
-                    # 月次計画ページへのURLを生成
-                    target_url = reverse('budget_app:index') + f'?year_month={target_year_month}'
+                    # 月次計画ページへのURLを生成（アンカー付き）
+                    target_url = reverse('budget_app:index') + f'#plan-{plan.pk}'
                     return JsonResponse({
                         'status': 'success',
                         'message': success_message,

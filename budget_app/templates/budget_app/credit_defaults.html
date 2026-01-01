@@ -3,67 +3,18 @@
 
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-5xl mx-auto">
-    <h2 class="text-2xl md:text-3xl font-bold mb-6 text-gray-800">クレジットカード定期項目（デフォルト値）</h2>
-
-    <!-- 新規追加フォーム -->
-    <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 mb-8">
-        <button type="button" onclick="toggleDefaultCreateForm()" class="w-full flex justify-between items-center text-xl font-bold text-gray-800 cursor-pointer">
-            <span class="flex items-center">
-                <span class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">+</span>
-                定期項目の新規追加
-            </span>
-            <svg id="toggleDefaultIcon" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-800">クレジットカード定期項目（デフォルト値）</h2>
+        <button onclick="openCreateModal()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+            新規追加
         </button>
-
-        <div id="defaultCreateFormSection" class="hidden mt-4">
-        <form method="post" class="space-y-4" action="{% url 'budget_app:credit_defaults' %}">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="create">
-
-            <div>
-                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.label.label }}</label>
-                {{ form.label }}
-            </div>
-
-            <div>
-                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.card_type.label }}</label>
-                {{ form.card_type }}
-            </div>
-
-            <div>
-                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.amount.label }}</label>
-                {{ form.amount }}
-            </div>
-
-            <div class="flex items-center p-3 bg-white rounded-lg">
-                {{ form.apply_odd_months_only }}
-                <label class="ml-2 text-gray-700 text-sm">{{ form.apply_odd_months_only.label }}</label>
-            </div>
-
-            <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white p-3 rounded-lg hover:from-green-600 hover:to-green-700 font-bold shadow-md transition transform hover:scale-[1.02]">
-                追加
-            </button>
-        </form>
-        </div>
     </div>
-
-    <script>
-        function toggleDefaultCreateForm() {
-            const formSection = document.getElementById('defaultCreateFormSection');
-            const toggleIcon = document.getElementById('toggleDefaultIcon');
-
-            formSection.classList.toggle('hidden');
-            toggleIcon.classList.toggle('rotate-180');
-        }
-    </script>
 
     <h3 class="text-xl font-bold mb-4 text-gray-800">登録済み定期項目（デフォルト値）</h3>
 
     <!-- デスクトップ表示：テーブル -->
-    <div class="hidden md:block overflow-x-auto">
-        <table class="min-w-full text-sm">
+    <div class="hidden md:block">
+        <table class="w-full text-sm">
             <thead>
                 <tr class="bg-gray-100 text-gray-600 uppercase text-xs leading-normal">
                     <th class="px-3 py-2 text-left">項目名</th>
@@ -122,6 +73,58 @@
             </div>
         </div>
         {% endfor %}
+    </div>
+</div>
+
+<!-- 新規作成モーダル -->
+<div id="createModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+    <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[85vh] overflow-y-auto overflow-x-hidden">
+        <!-- ヘッダー -->
+        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-t-2xl px-4 py-3 flex justify-between items-center sticky top-0 z-10">
+            <h3 class="text-lg font-bold text-white">定期項目新規追加</h3>
+            <button type="button" onclick="closeCreateModal()" class="text-white hover:text-gray-200 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- ボディ -->
+        <form id="createForm" method="post" action="{% url 'budget_app:credit_defaults' %}" class="p-4 pb-6 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create">
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.label.label }}</label>
+                {{ form.label }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.card_type.label }}</label>
+                {{ form.card_type }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.amount.label }}</label>
+                {{ form.amount }}
+            </div>
+
+            <div>
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                    {{ form.apply_odd_months_only }}
+                    <span class="ml-2 text-sm font-medium text-gray-700">{{ form.apply_odd_months_only.label }}</span>
+                </label>
+            </div>
+
+            <div class="flex gap-2 pt-3">
+                <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition text-sm">
+                    キャンセル
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 font-medium transition shadow-md text-sm">
+                    追加
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -251,6 +254,15 @@
 </div>
 
 <script>
+// 新規作成モーダル制御関数
+function openCreateModal() {
+    document.getElementById('createModal').classList.remove('hidden');
+}
+
+function closeCreateModal() {
+    document.getElementById('createModal').classList.add('hidden');
+}
+
 function openDefaultEditModal(id, label, amount, cardType, applyOddMonthsOnly) {
     const modal = document.getElementById('defaultEditModal');
 
@@ -298,7 +310,8 @@ function formatNumberWithCommas(value) {
 
 // 背景クリックでモーダルを閉じる
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('defaultEditModal');
+    const createModal = document.getElementById('createModal');
+    const editModal = document.getElementById('defaultEditModal');
 
     // カード種別ラジオボタンのクリックイベント
     document.querySelectorAll('#defaultEditModal .card-type-label').forEach(label => {
@@ -361,8 +374,15 @@ document.addEventListener('DOMContentLoaded', () => {
         window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
 
-    if (modal) {
-        modal.addEventListener('click', function(e) {
+    // 背景クリックでモーダルを閉じる
+    if (createModal) {
+        createModal.addEventListener('click', function(e) {
+            if (e.target === this) closeCreateModal();
+        });
+    }
+
+    if (editModal) {
+        editModal.addEventListener('click', function(e) {
             if (e.target === this) closeDefaultEditModal();
         });
     }
@@ -381,14 +401,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
 
         await window.sendAjaxRequest(actionUrl, formData, {
-            closeModal: form.id === 'defaultEditForm' ? closeDefaultEditModal : null,
+            closeModal: form.id === 'createForm' ? closeCreateModal : (form.id === 'defaultEditForm' ? closeDefaultEditModal : null),
             reloadDelay: 800
         });
     };
 
     // イベントリスナーを設定
-    const createForm = document.querySelector('form[action="{% url 'budget_app:credit_defaults' %}"]');
-    if (createForm && createForm.querySelector('input[name="action"][value="create"]')) {
+    const createForm = document.getElementById('createForm');
+    if (createForm) {
         createForm.addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.currentTarget); });
     }
     document.getElementById('defaultEditForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.currentTarget); });

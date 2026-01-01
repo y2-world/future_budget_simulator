@@ -3,76 +3,11 @@
 
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-5xl mx-auto">
-    <h2 class="text-2xl md:text-3xl font-bold mb-6 text-gray-800">月次計画デフォルト項目</h2>
-
-    <!-- 新規追加フォーム -->
-    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-sm p-6 mb-8">
-        <button type="button" onclick="toggleDefaultCreateForm()" class="w-full flex justify-between items-center text-xl font-bold text-gray-800 cursor-pointer">
-            <span class="flex items-center">
-                <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-2 text-sm">+</span>
-                新規追加
-            </span>
-            <svg id="toggleDefaultIcon" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-800">月次計画デフォルト項目</h2>
+        <button onclick="openCreateModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+            新規追加
         </button>
-
-        <div id="defaultCreateFormSection" class="hidden mt-4">
-        <form method="post" class="space-y-4" action="{% url 'budget_app:monthly_plan_defaults' %}">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="create">
-
-            <div>
-                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.title.label }}</label>
-                {{ form.title }}
-            </div>
-
-            <div>
-                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.amount.label }}</label>
-                {{ form.amount }}
-            </div>
-
-            <div>
-                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.payment_type.label }}</label>
-                {{ form.payment_type }}
-                <p class="text-xs text-gray-500 mt-1">振込（給与など）または引き落とし（家賃など）</p>
-            </div>
-
-            <div>
-                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.withdrawal_day.label }}</label>
-                {{ form.withdrawal_day }}
-                <p class="text-xs text-gray-500 mt-1">引き落とし日または振込日を設定する場合は1-31の数値を入力</p>
-            </div>
-
-            <div class="flex items-center p-3 bg-white rounded-lg">
-                {{ form.is_withdrawal_end_of_month }}
-                <label class="ml-2 text-gray-700 text-sm">{{ form.is_withdrawal_end_of_month.label }}</label>
-                <p class="text-xs text-gray-500 ml-2">（チェックすると引き落とし日/振込日が月末になります）</p>
-            </div>
-
-            <div class="flex items-center p-3 bg-white rounded-lg">
-                {{ form.consider_holidays }}
-                <label class="ml-2 text-gray-700 text-sm">{{ form.consider_holidays.label }}</label>
-                <p class="text-xs text-gray-500 ml-2">（振込:休日なら前営業日（金曜）、引落:休日なら翌営業日）</p>
-            </div>
-
-            <div>
-                <label class="block text-gray-700 font-semibold mb-2 text-sm">{{ form.closing_day.label }}</label>
-                {{ form.closing_day }}
-                <p class="text-xs text-gray-500 mt-1">クレジットカードの場合のみ設定</p>
-            </div>
-
-            <div class="flex items-center p-3 bg-white rounded-lg">
-                {{ form.is_end_of_month }}
-                <label class="ml-2 text-gray-700 text-sm">{{ form.is_end_of_month.label }}</label>
-                <p class="text-xs text-gray-500 ml-2">（チェックすると締め日が月末になります）</p>
-            </div>
-
-            <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 rounded-lg hover:from-blue-600 hover:to-blue-700 font-bold shadow-md transition transform hover:scale-[1.02]">
-                追加
-            </button>
-        </form>
-        </div>
     </div>
 
     <!-- ボーナス払いの注意書き -->
@@ -84,16 +19,6 @@
             <span class="ml-4">・6/6〜7/5、11/6〜12/5はボーナス払い不可</span>
         </p>
     </div>
-
-    <script>
-        function toggleDefaultCreateForm() {
-            const formSection = document.getElementById('defaultCreateFormSection');
-            const toggleIcon = document.getElementById('toggleDefaultIcon');
-
-            formSection.classList.toggle('hidden');
-            toggleIcon.classList.toggle('rotate-180');
-        }
-    </script>
 
     <!-- デフォルト金額が登録されている項目 -->
     <h3 class="hidden md:block text-xl font-bold mb-4 text-gray-800">金額設定済み</h3>
@@ -325,6 +250,88 @@
     {% endif %}
 </div>
 
+<!-- 新規作成モーダル -->
+<div id="createModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+    <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[85vh] overflow-y-auto overflow-x-hidden">
+        <!-- ヘッダー -->
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-2xl px-4 py-3 flex justify-between items-center sticky top-0 z-10">
+            <h3 class="text-lg font-bold text-white">月次計画デフォルト新規追加</h3>
+            <button type="button" onclick="closeCreateModal()" class="text-white hover:text-gray-200 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- ボディ -->
+        <form id="createForm" method="post" action="{% url 'budget_app:monthly_plan_defaults' %}" class="p-4 pb-6 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create">
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.title.label }}</label>
+                {{ form.title }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.amount.label }}</label>
+                {{ form.amount }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.payment_type.label }}</label>
+                {{ form.payment_type }}
+                <p class="text-xs text-gray-500 mt-1">振込（給与など）または引き落とし（家賃など）</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.withdrawal_day.label }}</label>
+                {{ form.withdrawal_day }}
+                <p class="text-xs text-gray-500 mt-1">引き落とし日または振込日を設定する場合は1-31の数値を入力</p>
+            </div>
+
+            <div>
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                    {{ form.is_withdrawal_end_of_month }}
+                    <span class="ml-2 text-sm font-medium text-gray-700">{{ form.is_withdrawal_end_of_month.label }}</span>
+                </label>
+                <p class="text-xs text-gray-500 mt-1">チェックすると引き落とし日/振込日が月末になります</p>
+            </div>
+
+            <div>
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                    {{ form.consider_holidays }}
+                    <span class="ml-2 text-sm font-medium text-gray-700">{{ form.consider_holidays.label }}</span>
+                </label>
+                <p class="text-xs text-gray-500 mt-1">振込:休日なら前営業日（金曜）、引落:休日なら翌営業日</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.closing_day.label }}</label>
+                {{ form.closing_day }}
+                <p class="text-xs text-gray-500 mt-1">クレジットカードの場合のみ設定</p>
+            </div>
+
+            <div>
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+                    {{ form.is_end_of_month }}
+                    <span class="ml-2 text-sm font-medium text-gray-700">{{ form.is_end_of_month.label }}</span>
+                </label>
+                <p class="text-xs text-gray-500 mt-1">チェックすると締め日が月末になります</p>
+            </div>
+
+            <div class="flex gap-2 pt-3">
+                <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition text-sm">
+                    キャンセル
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 font-medium transition shadow-md text-sm">
+                    追加
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- デフォルト項目編集モーダル -->
 <div id="defaultEditModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
     <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[85vh] overflow-y-auto overflow-x-hidden">
@@ -421,6 +428,38 @@
 </div>
 
 <script>
+// 新規作成モーダル制御関数
+function openCreateModal() {
+    const modal = document.getElementById('createModal');
+    modal.classList.remove('hidden');
+
+    // フォームをリセット
+    const form = document.getElementById('createForm');
+    if (form) {
+        form.reset();
+    }
+
+    // チェックボックスの状態に応じて入力フィールドを有効化
+    const createIsWithdrawalEndOfMonthCheckbox = document.getElementById('id_is_withdrawal_end_of_month');
+    const createWithdrawalDayInput = document.getElementById('id_withdrawal_day');
+    const createIsEndOfMonthCheckbox = document.getElementById('id_is_end_of_month');
+    const createClosingDayInput = document.getElementById('id_closing_day');
+
+    if (createIsWithdrawalEndOfMonthCheckbox && createWithdrawalDayInput) {
+        createWithdrawalDayInput.disabled = false;
+        createWithdrawalDayInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+    }
+
+    if (createIsEndOfMonthCheckbox && createClosingDayInput) {
+        createClosingDayInput.disabled = false;
+        createClosingDayInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+    }
+}
+
+function closeCreateModal() {
+    document.getElementById('createModal').classList.add('hidden');
+}
+
 function openDefaultEditModal(id, title, amount, paymentType, withdrawalDay, isWithdrawalEndOfMonth, considerHolidays, closingDay, isEndOfMonth) {
     const modal = document.getElementById('defaultEditModal');
 
@@ -479,8 +518,16 @@ function toggleClosingDayInput() {
     }
 }
 
+// カンマ区切りフォーマット関数
+function formatNumberWithCommas(value) {
+    return value.replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 // DOMContentLoadedでイベントリスナーを設定
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
+    const createModal = document.getElementById('createModal');
+    const editModal = document.getElementById('defaultEditModal');
+
     // 編集モーダルの引き落とし日チェックボックス
     const editIsWithdrawalEndOfMonthCheckbox = document.getElementById('default_edit_is_withdrawal_end_of_month');
     if (editIsWithdrawalEndOfMonthCheckbox) {
@@ -526,16 +573,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
-
-// カンマ区切りフォーマット関数
-function formatNumberWithCommas(value) {
-    return value.replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-// 背景クリックでモーダルを閉じる
-document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('defaultEditModal');
 
     // 金額入力フィールドにカンマ区切りを適用
     document.querySelectorAll('.amount-input').forEach(input => {
@@ -560,8 +597,15 @@ document.addEventListener('DOMContentLoaded', () => {
         window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
 
-    if (modal) {
-        modal.addEventListener('click', function(e) {
+    // 背景クリックでモーダルを閉じる
+    if (createModal) {
+        createModal.addEventListener('click', function(e) {
+            if (e.target === this) closeCreateModal();
+        });
+    }
+
+    if (editModal) {
+        editModal.addEventListener('click', function(e) {
             if (e.target === this) closeDefaultEditModal();
         });
     }
@@ -579,14 +623,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
 
         await window.sendAjaxRequest(actionUrl, formData, {
-            closeModal: form.id === 'defaultEditForm' ? closeDefaultEditModal : null,
+            closeModal: form.id === 'createForm' ? closeCreateModal : (form.id === 'defaultEditForm' ? closeDefaultEditModal : null),
             reloadDelay: 800
         });
     };
 
     // イベントリスナーを設定
-    const createForm = document.querySelector('form[action="{% url 'budget_app:monthly_plan_defaults' %}"]');
-    if (createForm && createForm.querySelector('input[name="action"][value="create"]')) {
+    const createForm = document.getElementById('createForm');
+    if (createForm) {
         createForm.addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.currentTarget); });
     }
     document.getElementById('defaultEditForm').addEventListener('submit', e => { e.preventDefault(); handleFormSubmit(e.currentTarget); });
