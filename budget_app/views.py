@@ -2596,9 +2596,12 @@ def past_transactions_list(request):
                     # 振込（給与など）: 休日なら前営業日
                     item_date = adjust_to_previous_business_day(item_date)
                 else:
-                    # 引き落とし: 休日なら翌営業日
-                    item_date = adjust_to_next_business_day(item_date)
-
+                    if item.title == '食費':
+                        # 引き落とし: 休日なら前営業日
+                        item_date = adjust_to_previous_business_day(item_date)
+                    else:
+                        # 引き落とし: 休日なら翌営業日
+                        item_date = adjust_to_next_business_day(item_date)
             # 収入か支出かを判定
             transaction_type = 'income' if item.payment_type == 'deposit' else 'expense'
 
