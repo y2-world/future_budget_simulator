@@ -409,10 +409,14 @@ class MonthlyPlanForm(forms.Form):
         # フォームに存在するフィールドのみ処理
         numeric_fields = [
             'salary', 'bonus', 'gross_salary', 'deductions', 'transportation',
-            'bonus_gross_salary', 'bonus_deductions', 'food', 'rent', 'lake',
-            'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
-            'vermillion_card', 'amazon_card', 'olive_card', 'loan_borrowing', 'other'
+            'bonus_gross_salary', 'bonus_deductions'
         ]
+
+        # MonthlyPlanDefaultから動的にフィールドを追加
+        from .models import MonthlyPlanDefault
+        for default_item in MonthlyPlanDefault.objects.filter(is_active=True):
+            numeric_fields.append(default_item.key)
+
         for field_name in numeric_fields:
             # フォームに存在し、かつ空の場合のみ0に変換
             if field_name in self.fields and field_name in cleaned_data:
@@ -1009,19 +1013,12 @@ class PastMonthlyPlanForm(forms.ModelForm):
             'transportation': '交通費',
             'bonus_gross_salary': 'ボーナス総支給額',
             'bonus_deductions': 'ボーナス控除額',
-            'food': '食費',
-            'rent': '家賃',
-            'lake': 'レイク',
-            'view_card': 'VIEWカード',
-            'view_card_bonus': 'VIEWカード【ボーナス払い】',
-            'rakuten_card': '楽天カード',
-            'paypay_card': 'PayPayカード',
-            'vermillion_card': 'VERMILLION CARD',
-            'amazon_card': 'Amazonカード',
-            'olive_card': 'Olive',
-            'loan_borrowing': 'マネーアシスト（借入）',
-            'other': 'ジム',
         }
+
+        # MonthlyPlanDefaultから動的にラベルを追加
+        from .models import MonthlyPlanDefault
+        for default_item in MonthlyPlanDefault.objects.filter(is_active=True).order_by('order'):
+            labels[default_item.key] = default_item.title
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1095,10 +1092,14 @@ class PastMonthlyPlanForm(forms.ModelForm):
         # 数値フィールドの空白を0に変換（データベースのNOT NULL制約対策）
         numeric_fields = [
             'salary', 'bonus', 'gross_salary', 'deductions', 'transportation',
-            'bonus_gross_salary', 'bonus_deductions', 'food', 'rent', 'lake',
-            'view_card', 'view_card_bonus', 'rakuten_card', 'paypay_card',
-            'vermillion_card', 'amazon_card', 'olive_card', 'loan_borrowing', 'other'
+            'bonus_gross_salary', 'bonus_deductions'
         ]
+
+        # MonthlyPlanDefaultから動的にフィールドを追加
+        from .models import MonthlyPlanDefault
+        for default_item in MonthlyPlanDefault.objects.filter(is_active=True):
+            numeric_fields.append(default_item.key)
+
         for field_name in numeric_fields:
             if field_name in self.fields and field_name in cleaned_data:
                 value = cleaned_data[field_name]
