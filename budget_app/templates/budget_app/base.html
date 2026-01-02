@@ -40,7 +40,14 @@
 
         /* アンカーリンク用のスクロールマージン（ヘッダー分のオフセット） */
         [id] {
-            scroll-margin-top: calc(4rem + 20px); /* ヘッダー高さ + 余白 */
+            scroll-margin-top: calc(5rem + 20px); /* モバイル: ヘッダー高さ + 余白 */
+        }
+
+        /* デスクトップ用 (1024px以上) */
+        @media (min-width: 1024px) {
+            [id] {
+                scroll-margin-top: calc(4rem + 20px); /* デスクトップ: ヘッダー高さ + 余白 */
+            }
         }
     </style>
 </head>
@@ -56,7 +63,7 @@
                 </h1>
 
                 <!-- デスクトップメニュー -->
-                <div class="hidden md:flex space-x-6">
+                <div class="hidden lg:flex space-x-4">
                     <a href="{% url 'budget_app:index' %}" class="hover:bg-white/10 px-3 py-2 rounded-lg transition">月次計画</a>
                     <a href="{% url 'budget_app:past_transactions' %}" class="hover:bg-white/10 px-3 py-2 rounded-lg transition">過去の明細</a>
                     <a href="{% url 'budget_app:credit_estimates' %}" class="hover:bg-white/10 px-3 py-2 rounded-lg transition">クレカ見積</a>
@@ -66,7 +73,7 @@
                 </div>
 
                 <!-- モバイルメニューボタン -->
-                <button id="mobile-menu-button" class="md:hidden p-2 rounded-lg hover:bg-white/10 transition">
+                <button id="mobile-menu-button" class="lg:hidden p-2 rounded-lg hover:bg-white/10 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
@@ -74,7 +81,7 @@
             </div>
 
             <!-- モバイルメニュー -->
-            <div id="mobile-menu" class="hidden md:hidden mt-4 pb-2 space-y-2">
+            <div id="mobile-menu" class="hidden lg:hidden mt-4 pb-2 space-y-2">
                 <a href="{% url 'budget_app:index' %}" class="block hover:bg-white/10 px-4 py-2 rounded-lg transition">月次計画</a>
                 <a href="{% url 'budget_app:past_transactions' %}" class="block hover:bg-white/10 px-4 py-2 rounded-lg transition">過去の明細</a>
                 <a href="{% url 'budget_app:credit_estimates' %}" class="block hover:bg-white/10 px-4 py-2 rounded-lg transition">クレカ見積</a>
