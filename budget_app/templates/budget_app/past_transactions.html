@@ -436,8 +436,8 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">カード種別</label>
                 <div class="grid grid-cols-2 gap-2">
-                    <label class="relative cursor-pointer card-type-label" data-value="view">
-                        <input type="radio" name="card_type" value="view" class="hidden card-type-radio">
+                    <label class="relative cursor-pointer card-type-label" data-value="item_6">
+                        <input type="radio" name="card_type" value="item_6" class="hidden card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
@@ -447,8 +447,8 @@
                             </div>
                         </div>
                     </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="rakuten">
-                        <input type="radio" name="card_type" value="rakuten" class="hidden card-type-radio">
+                    <label class="relative cursor-pointer card-type-label" data-value="item_8">
+                        <input type="radio" name="card_type" value="item_8" class="hidden card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
@@ -458,8 +458,8 @@
                             </div>
                         </div>
                     </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="paypay">
-                        <input type="radio" name="card_type" value="paypay" class="hidden card-type-radio">
+                    <label class="relative cursor-pointer card-type-label" data-value="item_9">
+                        <input type="radio" name="card_type" value="item_9" class="hidden card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
@@ -469,8 +469,8 @@
                             </div>
                         </div>
                     </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="vermillion">
-                        <input type="radio" name="card_type" value="vermillion" class="hidden card-type-radio">
+                    <label class="relative cursor-pointer card-type-label" data-value="item_10">
+                        <input type="radio" name="card_type" value="item_10" class="hidden card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
@@ -480,19 +480,8 @@
                             </div>
                         </div>
                     </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="amazon">
-                        <input type="radio" name="card_type" value="amazon" class="hidden card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-blue-600 hidden radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">Amazonカード</span>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="olive">
-                        <input type="radio" name="card_type" value="olive" class="hidden card-type-radio">
+                    <label class="relative cursor-pointer card-type-label" data-value="item_12">
+                        <input type="radio" name="card_type" value="item_12" class="hidden card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
@@ -714,7 +703,7 @@ function togglePaymentOptions() {
 
     // 選択されているカード種別を取得
     const selectedRadio = document.querySelector('#editModal .card-type-radio:checked');
-    const isViewCard = selectedRadio && selectedRadio.value === 'view';
+    const isViewCard = selectedRadio && selectedRadio.value === 'item_6';
 
     // 分割払いはVIEWカードの場合のみ表示
     if (editSplitWrapper) {

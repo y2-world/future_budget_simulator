@@ -227,14 +227,14 @@ class CreditEstimate(models.Model):
         """MonthlyPlanDefaultから動的にカード選択肢を生成"""
         from budget_app.models import MonthlyPlanDefault
 
-        # MonthlyPlanDefaultからカードIDと名称を取得
+        # MonthlyPlanDefaultからカードkeyと名称を取得
         card_choices = []
 
         for item in MonthlyPlanDefault.objects.filter(
             is_active=True,
             card_id__isnull=False
         ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order'):
-            card_choices.append((item.card_id, item.title))
+            card_choices.append((item.key, item.title))  # card_idではなくkeyを使用
 
         # DBにデータがない場合はデフォルトを返す（後方互換性）
         return card_choices if card_choices else cls.CARD_TYPES
@@ -403,7 +403,7 @@ class CreditDefault(models.Model):
 
     key = models.CharField(max_length=50, unique=True, verbose_name="キー")
     label = models.CharField(max_length=100, verbose_name="項目名")
-    card_type = models.CharField(max_length=10, choices=CARD_TYPES, verbose_name="カード種別")
+    card_type = models.CharField(max_length=50, verbose_name="カード種別")  # choicesはフォームで動的に設定
     amount = models.IntegerField(default=0, verbose_name="金額（円）")
     is_active = models.BooleanField(default=True, verbose_name="有効")
     apply_odd_months_only = models.BooleanField(default=False, verbose_name="奇数月のみ適用")
@@ -415,6 +415,16 @@ class CreditDefault(models.Model):
 
     def __str__(self):
         return f"{self.label}: ¥{self.amount:,}"
+
+    def get_card_type_display(self):
+        """カード種別の表示名を取得"""
+        if self.card_type:
+            # MonthlyPlanDefaultからカード名を取得
+            card_item = MonthlyPlanDefault.objects.filter(key=self.card_type).first()
+            if card_item:
+                return card_item.title
+        # デフォルトのchoicesから取得を試みる
+        return dict(self.CARD_TYPES).get(self.card_type, self.card_type)
 
 
 class DefaultChargeOverride(models.Model):

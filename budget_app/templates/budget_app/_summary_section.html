@@ -4,28 +4,6 @@
     <div class="space-y-6">
         {% for ym, cards in summary_data.items %}
             <div class="border rounded">
-            {% comment %}
-            ymが"2026-01_bonus"のような形式の場合、"_bonus"を除いた年月を取得
-            また、ボーナス払いセクションかどうかを判定
-            {% endcomment %}
-            {% if '_bonus' in ym %}
-                {% with real_ym=ym|slice:":-6" %}
-                <div class="bg-gray-100 px-4 py-2 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-200 transition" data-toggle-estimate="{{ ym }}">
-                    <div class="flex items-center gap-2">
-                        <svg id="collapse-icon-{{ ym }}" class="w-5 h-5 transition-transform rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                        <span>{{ real_ym|format_year_month }}（ボーナス払い）</span>
-                    </div>
-                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline" onclick="event.stopPropagation()">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="reflect">
-                        <input type="hidden" name="year_month" value="{{ real_ym }}">
-                        <input type="hidden" name="reflect_type" value="bonus">
-                    </form>
-                </div>
-                {% endwith %}
-            {% else %}
             <div class="bg-gray-100 px-4 py-2 font-semibold flex justify-between items-center cursor-pointer hover:bg-gray-200 transition" data-toggle-estimate="{{ ym }}">
                 <div class="flex items-center gap-2">
                     <svg id="collapse-icon-{{ ym }}" class="w-5 h-5 transition-transform rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,7 +18,6 @@
                     <input type="hidden" name="reflect_type" value="normal">
                 </form>
             </div>
-            {% endif %}
             <!-- デスクトップ表示：テーブル -->
             <div id="estimate-content-{{ ym }}" class="hidden md:block p-4 overflow-x-auto">
                 <table class="min-w-full text-sm">

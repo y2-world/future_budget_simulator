@@ -12,6 +12,14 @@ class BasicAuthMiddleware:
         if not getattr(settings, 'BASIC_AUTH_ENABLED', False):
             return self.get_response(request)
 
+        # 静的ファイルとメディアファイルは認証をスキップ
+        if request.path.startswith('/static/') or request.path.startswith('/media/'):
+            return self.get_response(request)
+
+        # セッションに認証済みフラグがあればスキップ
+        if request.session.get('basic_auth_verified', False):
+            return self.get_response(request)
+
         # 認証ヘッダーを確認
         if 'HTTP_AUTHORIZATION' in request.META:
             auth = request.META['HTTP_AUTHORIZATION'].split()
@@ -20,6 +28,8 @@ class BasicAuthMiddleware:
                     username, password = base64.b64decode(auth[1]).decode('utf-8').split(':', 1)
                     if (username == settings.BASIC_AUTH_USERNAME and
                         password == settings.BASIC_AUTH_PASSWORD):
+                        # 認証成功をセッションに保存
+                        request.session['basic_auth_verified'] = True
                         return self.get_response(request)
                 except Exception:
                     pass

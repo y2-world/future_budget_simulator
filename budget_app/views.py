@@ -279,8 +279,8 @@ def plan_list(request):
             # 繰上げ返済フラグを取得（クレカ項目のみ）
             is_excluded = plan.get_exclusion(key) if item.is_credit_card() else False
 
-            # VIEWカードかどうかを判定（後方互換性のため）
-            is_view_card = 'view' in key.lower() and item.is_credit_card()
+            # VIEWカードかどうかを判定（item_6がVIEWカード）
+            is_view_card = (key == 'item_6') and item.is_credit_card()
 
             # item_14（マネーアシスト返済）の場合、借入月情報を追加
             display_name = item.title
@@ -1017,7 +1017,7 @@ def credit_estimate_list(request):
             label = base_label
 
         if is_bonus:
-            label = f'{base_label} (ボーナス払い)'
+            label = f'{base_label}【ボーナス払い】'
 
         return label
 
@@ -1040,34 +1040,33 @@ def credit_estimate_list(request):
                 # billing_monthが設定されている場合はそれを使用
                 if est.billing_month:
                     billing_year, billing_month = map(int, est.billing_month.split('-'))
-                    # 引き落とし月から利用月を逆算
-                    if est.card_type in ['item_6', 'item_10', 'view', 'vermillion']:
-                        # 翌々月払いなので、引き落とし月の2ヶ月前が利用月
-                        usage_month = billing_month - 2
-                        usage_year = billing_year
-                        if usage_month < 1:
-                            usage_month += 12
-                            usage_year -= 1
-                    else:
-                        # 翌月払いなので、引き落とし月の1ヶ月前が利用月
-                        usage_month = billing_month - 1
-                        usage_year = billing_year
-                        if usage_month < 1:
-                            usage_month += 12
-                            usage_year -= 1
+                    # 引き落とし月から利用月を逆算（offset_monthsを使用）
+                    offset = card_offset_months.get(est.card_type, 1)
+                    usage_month = billing_month - offset
+                    usage_year = billing_year
+                    while usage_month < 1:
+                        usage_month += 12
+                        usage_year -= 1
                     year = usage_year
                     month = usage_month
 
-            if est.card_type in ['item_6', 'item_10', 'view', 'vermillion']:
-                # VIEW/VERMILLIONカードは5日締め（翌月5日）
-                closing_month = month + 1
-                closing_year = year
-                if closing_month > 12:
-                    closing_month = 1
-                    closing_year += 1
-                closing_date = date(closing_year, closing_month, 5)
+            # MonthlyPlanDefaultから締め日を取得
+            card_default = MonthlyPlanDefault.objects.filter(key=est.card_type, is_active=True).first()
+            if card_default:
+                if card_default.is_end_of_month or not card_default.closing_day:
+                    # 月末締め
+                    last_day = calendar.monthrange(year, month)[1]
+                    closing_date = date(year, month, last_day)
+                else:
+                    # 指定日締め（翌月の締め日）
+                    closing_month = month + 1
+                    closing_year = year
+                    if closing_month > 12:
+                        closing_month = 1
+                        closing_year += 1
+                    closing_date = date(closing_year, closing_month, card_default.closing_day)
             else:
-                # その他のカード（楽天、PayPay、Amazon、Olive）は月末締め
+                # デフォルト: 月末締め
                 last_day = calendar.monthrange(year, month)[1]
                 closing_date = date(year, month, last_day)
 
@@ -1079,30 +1078,31 @@ def credit_estimate_list(request):
             if today.date() >= est.due_date:
                 continue
 
-        # ボーナス払いは支払月でグルーピング、通常払いは引き落とし月でグルーピング
+        # ボーナス払いも通常払いも引き落とし月でグルーピング
         if est.is_bonus_payment and est.due_date:
-            display_month = est.due_date.strftime('%Y-%m')
+            display_month = est.due_date.strftime('%Y-%m')  # ボーナス払いも支払月で同じセクションに
         else:
             # billing_monthがある場合はそれを使用、なければyear_monthを使用（下位互換性）
             display_month = est.billing_month if est.billing_month else est.year_month
 
         month_group = summary.setdefault(display_month, OrderedDict())
 
+        # カードキーとラベルを設定
+        card_key = est.card_type
+        due_day = card_due_days.get(est.card_type, '')
+
         if est.is_bonus_payment:
-            card_key = f'{est.card_type}_bonus'
-            # ボーナス払いの場合もカード名 + 支払日を表示
-            due_day = card_due_days.get(est.card_type, '')
-            if due_day and display_month:
-                billing_year, billing_month = map(int, display_month.split('-'))
+            # ボーナス払いの場合、カード名 + 支払日 + 【ボーナス払い】を表示
+            if due_day and est.due_date:
+                billing_year = est.due_date.year
+                billing_month = est.due_date.month
                 label = card_labels.get(est.card_type, est.card_type)
-                card_label = f"{label} ({billing_month}/{due_day}支払)（ボーナス払い）"
+                card_label = f"{label} ({billing_month}/{due_day}支払)【ボーナス払い】"
             else:
                 label = card_labels.get(est.card_type, est.card_type)
-                card_label = label + '（ボーナス払い）'
+                card_label = label + '【ボーナス払い】'
         else:
-            card_key = est.card_type
             # 通常払いの場合、カード名 + 支払日を表示
-            due_day = card_due_days.get(est.card_type, '')
             if due_day and display_month:
                 billing_year, billing_month = map(int, display_month.split('-'))
                 label = card_labels.get(est.card_type, est.card_type)
@@ -1115,7 +1115,7 @@ def credit_estimate_list(request):
             'total': 0,
             'entries': [],
             'year_month': display_month,  # 表示月（支払月＝billing_month）
-            'is_bonus_section': est.is_bonus_payment,  # ボーナス払いセクションかどうか
+            'is_bonus_section': est.is_bonus_payment,  # ボーナス払いかどうか
         })
         card_group['total'] += est.amount
         # 通常のCreditEstimateオブジェクトにis_defaultフラグを追加
@@ -1141,10 +1141,6 @@ def credit_estimate_list(request):
     current_year_month = f"{today.year}-{today.month:02d}"
 
     for billing_month in existing_billing_months:
-        # ボーナス払いのキー（"YYYY-MM_bonus"形式）はスキップ
-        if '_bonus' in billing_month:
-            continue
-
         billing_year, billing_month_num = map(int, billing_month.split('-'))
 
         # 各カードのoffset_monthsを使って利用月を計算
@@ -1307,9 +1303,12 @@ def credit_estimate_list(request):
                 # 1回目の締め日チェック
                 # 1回目の利用月year_monthの締め日が過ぎていなければ表示
                 first_payment_closed = False
-                if actual_card_type in ['item_6', 'item_10', 'view', 'vermillion']:
+                card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+                if card_info and card_info.closing_day and not card_info.is_end_of_month:
+                    # 指定日締めの場合（例: 5日締め）
                     first_payment_closed = view_closed
                 else:
+                    # 月末締めの場合
                     first_payment_closed = other_closed
 
                 # 1回目（利用月のbilling_monthに表示）
@@ -1328,31 +1327,30 @@ def credit_estimate_list(request):
                 # 2回目の引き落とし月から逆算した利用月の締め日をチェック
                 next_billing_year, next_billing_month_num = map(int, next_billing_month.split('-'))
 
-                # 引き落とし月から利用月を逆算
-                if actual_card_type in ['item_6', 'item_10', 'view', 'vermillion']:
-                    # 翌々月払いなので、引き落とし月の2ヶ月前が利用月
-                    second_usage_month = next_billing_month_num - 2
-                    second_usage_year = next_billing_year
-                    if second_usage_month < 1:
-                        second_usage_month += 12
-                        second_usage_year -= 1
-                else:
-                    # 翌月払いなので、引き落とし月の1ヶ月前が利用月
-                    second_usage_month = next_billing_month_num - 1
-                    second_usage_year = next_billing_year
-                    if second_usage_month < 1:
-                        second_usage_month += 12
-                        second_usage_year -= 1
+                # 引き落とし月から利用月を逆算（offset_monthsを使用）
+                offset = card_offset_months.get(actual_card_type, 1)
+                second_usage_month = next_billing_month_num - offset
+                second_usage_year = next_billing_year
+                while second_usage_month < 1:
+                    second_usage_month += 12
+                    second_usage_year -= 1
 
                 # 2回目の利用月の締め日を計算
-                if actual_card_type in ['item_6', 'item_10', 'view', 'vermillion']:
-                    second_closing_month = second_usage_month + 1
-                    second_closing_year = second_usage_year
-                    if second_closing_month > 12:
-                        second_closing_month = 1
-                        second_closing_year += 1
-                    second_closing_date = date(second_closing_year, second_closing_month, 5)
+                if card_info:
+                    if card_info.is_end_of_month or not card_info.closing_day:
+                        # 月末締め
+                        second_last_day = calendar.monthrange(second_usage_year, second_usage_month)[1]
+                        second_closing_date = date(second_usage_year, second_usage_month, second_last_day)
+                    else:
+                        # 指定日締め（翌月の締め日）
+                        second_closing_month = second_usage_month + 1
+                        second_closing_year = second_usage_year
+                        if second_closing_month > 12:
+                            second_closing_month = 1
+                            second_closing_year += 1
+                        second_closing_date = date(second_closing_year, second_closing_month, card_info.closing_day)
                 else:
+                    # デフォルト: 月末締め
                     second_last_day = calendar.monthrange(second_usage_year, second_usage_month)[1]
                     second_closing_date = date(second_usage_year, second_usage_month, second_last_day)
 
@@ -1385,9 +1383,13 @@ def credit_estimate_list(request):
                 # 通常の1回払い
                 # 締め日チェック
                 payment_closed = False
-                if actual_card_type in ['item_6', 'item_10', 'view', 'vermillion']:
+                # カード情報を取得
+                card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+                if card_info and card_info.closing_day and not card_info.is_end_of_month:
+                    # 指定日締めの場合
                     payment_closed = view_closed
                 else:
+                    # 月末締めの場合
                     payment_closed = other_closed
 
                 # 締め日が過ぎていなければ表示
@@ -1413,15 +1415,13 @@ def credit_estimate_list(request):
     for year_month, month_group in summary.items():
         def get_card_sort_key(item):
             card_key, card_data = item
-            # カード種別を取得（_bonusサフィックスを除去）
-            base_card_type = card_key.replace('_bonus', '')
 
             # 支払日をbilling_monthとカード種別から計算
             # 注意: due_dateは通常払いの場合は利用日、ボーナス払いの場合は支払日を意味するため、
             #       ソートには使えない。billing_monthとcard_typeから支払日を計算する。
             from datetime import date
             import calendar
-            due_day = card_due_days.get(base_card_type)
+            due_day = card_due_days.get(card_key)
             if due_day:
                 billing_year, billing_month = map(int, year_month.split('-'))
                 # 月の最終日を取得
@@ -1436,7 +1436,7 @@ def credit_estimate_list(request):
                 payment_date = date(billing_year, billing_month, 1)
 
             # ボーナス払いかどうかをセカンダリキーにする（同じ日付なら通常払いを先に）
-            is_bonus = '_bonus' in card_key
+            is_bonus = card_data.get('is_bonus_section', False)
             return (payment_date, is_bonus)
 
         sorted_cards = OrderedDict(sorted(
@@ -1509,16 +1509,23 @@ def credit_estimate_list(request):
                     past_summary[ym] = cards
             continue
 
-        # VIEWカードとVERMILLIONカード(同じ締め日)の特別処理
+        # 締め日が5日のカードの特別処理
+        # MonthlyPlanDefaultから締め日が5日のカードを取得
+        cards_with_5th_closing = set()
+        for item in MonthlyPlanDefault.objects.filter(is_active=True, closing_day=5):
+            if item.key:
+                cards_with_5th_closing.add(item.key)
+                cards_with_5th_closing.add(f"{item.key}_bonus")
+
         if current_day <= 5 and ym_date_part == view_display_month:
-            # 5日までは、先月のVIEW/VERMILLIONカードを当月として扱う
-            has_view_or_vermillion = any(card_type in ['item_6', 'item_6_bonus', 'item_10', 'item_10_bonus', 'view', 'view_bonus', 'vermillion', 'vermillion_bonus'] for card_type in cards.keys())
-            if has_view_or_vermillion:
-                # VIEW/VERMILLIONカードのみを当月に移動
+            # 5日までは、先月の締め日5日のカードを当月として扱う
+            has_special_closing = any(card_type in cards_with_5th_closing for card_type in cards.keys())
+            if has_special_closing:
+                # 締め日5日のカードのみを当月に移動
                 view_cards = OrderedDict()
                 other_cards = OrderedDict()
                 for card_type, card_data in cards.items():
-                    if card_type in ['item_6', 'item_6_bonus', 'item_10', 'item_10_bonus', 'view', 'view_bonus', 'vermillion', 'vermillion_bonus']:
+                    if card_type in cards_with_5th_closing:
                         view_cards[card_type] = card_data
                     else:
                         other_cards[card_type] = card_data
@@ -1633,6 +1640,8 @@ def credit_estimate_list(request):
             card_id = request.POST.get('card_type')  # 実際には card_id
             is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
+            print(f"DEBUG REFLECT: card_id received = {card_id}")  # デバッグ用
+
             # card_idからボーナス払いフラグを判定
             is_bonus = card_id.endswith('_bonus')
             if is_bonus:
@@ -1640,17 +1649,46 @@ def credit_estimate_list(request):
             else:
                 actual_card_id = card_id
 
+            print(f"DEBUG REFLECT: is_bonus = {is_bonus}, actual_card_id = {actual_card_id}")  # デバッグ用
+
             # card_idからMonthlyPlanDefaultのkeyを取得
+            # ボーナス払いの場合は is_bonus_payment=True の項目を検索（例: item_6 → item_7）
             from .models import MonthlyPlanDefault
             try:
-                card_item = MonthlyPlanDefault.objects.get(
-                    card_id=actual_card_id,
-                    is_bonus_payment=is_bonus,
-                    is_active=True
-                )
+                if is_bonus:
+                    # ボーナス払いの場合: 基本カードを取得し、それに対応するボーナス払い項目を検索
+                    # actual_card_idは基本カードのID（例: item_6）
+                    # まず基本カードの情報を取得
+                    base_card = MonthlyPlanDefault.objects.get(
+                        key=actual_card_id,
+                        is_active=True
+                    )
+
+                    # 基本カードと同じカード種類でボーナス払い項目を検索
+                    # card_idベースで検索（例: item_6の基本カードに対してitem_7のボーナス払い項目）
+                    # ただし、item_7のcard_idはitem_7なので、タイトルベースで検索する
+                    card_item = MonthlyPlanDefault.objects.filter(
+                        is_bonus_payment=True,
+                        is_active=True
+                    ).filter(
+                        title__icontains=base_card.title.replace('【ボーナス払い】', '').replace(' (ボーナス払い)', '').replace('(ボーナス払い)', '').strip()
+                    ).first()
+
+                    if not card_item:
+                        raise MonthlyPlanDefault.DoesNotExist()
+                else:
+                    # 通常払いの場合: actual_card_idをそのまま使用
+                    card_item = MonthlyPlanDefault.objects.get(
+                        key=actual_card_id,
+                        is_bonus_payment=False,
+                        is_active=True
+                    )
+
                 monthly_plan_key = card_item.key
+                print(f"DEBUG REFLECT: Found monthly_plan_key = {monthly_plan_key}")  # デバッグ用
             except MonthlyPlanDefault.DoesNotExist:
-                error_message = f'カードID {actual_card_id} に対応する月次計画項目が見つかりません。'
+                bonus_text = "ボーナス払い" if is_bonus else "通常払い"
+                error_message = f'カードID {actual_card_id} の{bonus_text}に対応する月次計画項目が見つかりません。'
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'message': error_message}, status=400)
                 else:
@@ -1739,17 +1777,20 @@ def credit_estimate_list(request):
                             # 通常払いの場合
                             # 通常払いの場合、カード種別に応じて支払い月を計算
                             use_year, use_month = map(int, current_date.strftime('%Y-%m').split('-'))
-                            
-                            if card_type in ['item_6', 'item_10', 'view', 'vermillion']:
-                                # 翌々月払い
-                                payment_month = use_month + 2
-                                payment_year = use_year
-                                if payment_month > 12:
-                                    payment_month -= 12
-                                    payment_year += 1
-                                target_year_month = f"{payment_year}-{payment_month:02d}"
-                            elif card_type in ['item_8', 'item_9', 'item_11', 'item_12', 'rakuten', 'paypay', 'amazon', 'olive']:
-                                # 翌月払い
+
+                            # MonthlyPlanDefaultからoffset_monthsを取得
+                            card_item = MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
+                            offset = card_item.offset_months if card_item and card_item.offset_months else 1
+
+                            payment_month = use_month + offset
+                            payment_year = use_year
+                            while payment_month > 12:
+                                payment_month -= 12
+                                payment_year += 1
+                            target_year_month = f"{payment_year}-{payment_month:02d}"
+
+                            # レガシー処理（互換性のため残しておく）
+                            if not card_item:
                                 payment_month = use_month + 1
                                 payment_year = use_year
                                 if payment_month > 12:
@@ -1987,7 +2028,9 @@ def credit_default_list(request):
         elif action == 'update':
             target_id = request.POST.get('id')
             instance = get_object_or_404(CreditDefault, pk=target_id)
+            print(f"DEBUG UPDATE: Received card_type = {request.POST.get('card_type')}")  # デバッグ用
             form = CreditDefaultForm(request.POST, instance=instance)
+            print(f"DEBUG UPDATE: Form card_type choices = {form.fields['card_type'].choices}")  # デバッグ用
             if form.is_valid():
                 instance = form.save()
                 if is_ajax:
@@ -2021,10 +2064,22 @@ def credit_default_list(request):
     form = CreditDefaultForm()
     forms_by_id = {d.id: CreditDefaultForm(instance=d, prefix=str(d.id)) for d in defaults}
 
+    # カード種別の選択肢を取得（MonthlyPlanDefaultから）
+    # card_idが設定されているものをクレジットカード項目とみなす
+    card_choices = MonthlyPlanDefault.objects.filter(
+        is_active=True,
+        card_id__isnull=False
+    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
+
+    print(f"DEBUG: card_choices count = {card_choices.count()}")  # デバッグ用
+    for choice in card_choices:
+        print(f"  - {choice['key']}: {choice['title']}")  # デバッグ用
+
     return render(request, 'budget_app/credit_defaults.html', {
         'defaults': defaults,
         'forms_by_id': forms_by_id,
         'form': form,  # 'create_form' から 'form' に変更
+        'card_choices': card_choices,
     })
 
 
@@ -2450,19 +2505,25 @@ def past_transactions_list(request):
         else:
             billing_month = est.billing_month if est.billing_month else est.year_month
             if billing_month and billing_month <= future_limit_year_month:
-                # 締め日チェック
+                # 締め日チェック（MonthlyPlanDefaultから取得）
                 year, month = map(int, est.year_month.split('-'))
 
-                if est.card_type in ['item_6', 'item_10', 'view', 'vermillion']:
-                    # VIEW/VERMILLIONカードは5日締め（翌月5日）
-                    closing_month = month + 1
-                    closing_year = year
-                    if closing_month > 12:
-                        closing_month = 1
-                        closing_year += 1
-                    closing_date = dt_date(closing_year, closing_month, 5)
+                card_plan = MonthlyPlanDefault.objects.filter(key=est.card_type, is_active=True).first()
+                if card_plan:
+                    if card_plan.is_end_of_month or not card_plan.closing_day:
+                        # 月末締め
+                        last_day = calendar.monthrange(year, month)[1]
+                        closing_date = dt_date(year, month, last_day)
+                    else:
+                        # 指定日締め（翌月の締め日）
+                        closing_month = month + 1
+                        closing_year = year
+                        if closing_month > 12:
+                            closing_month = 1
+                            closing_year += 1
+                        closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
                 else:
-                    # その他のカード（楽天、PayPay、Amazon、Olive）は月末締め
+                    # デフォルト: 月末締め
                     last_day = calendar.monthrange(year, month)[1]
                     closing_date = dt_date(year, month, last_day)
 
@@ -2587,16 +2648,18 @@ def past_transactions_list(request):
             year, month = map(int, estimate.year_month.split('-'))
             import calendar
 
-            if estimate.card_type in ['item_6', 'item_10', 'view', 'vermillion']:
-                # VIEW/VERMILLIONカードは5日締め（翌月5日）
+            # MonthlyPlanDefaultから締め日を取得
+            card_plan = MonthlyPlanDefault.objects.filter(key=estimate.card_type, is_active=True).first()
+            if card_plan and not card_plan.is_end_of_month and card_plan.closing_day:
+                # 指定日締め（翌月の締め日）
                 closing_month = month + 1
                 closing_year = year
                 if closing_month > 12:
                     closing_month = 1
                     closing_year += 1
-                closing_date = dt_date(closing_year, closing_month, 5)
+                closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
             else:
-                # その他のカード（楽天、PayPay、Amazon、Olive）は月末締め
+                # 月末締め
                 last_day = calendar.monthrange(year, month)[1]
                 closing_date = dt_date(year, month, last_day)
 
@@ -2670,7 +2733,7 @@ def past_transactions_list(request):
             card_name = card_type_display
 
         if estimate.is_bonus_payment:
-            card_name = f'{card_name}（ボーナス払い）'
+            card_name = f'{card_name}【ボーナス払い】'
 
         if card_name not in yearly_data[year]['credit_months'][billing_month]['cards']:
             yearly_data[year]['credit_months'][billing_month]['cards'][card_name] = {
