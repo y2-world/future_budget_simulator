@@ -37,6 +37,11 @@
             top: 50%;
             transform: translate(-50%, -50%);
         }
+
+        /* アンカーリンク用のスクロールマージン（ヘッダー分のオフセット） */
+        [id] {
+            scroll-margin-top: calc(4rem + 20px); /* ヘッダー高さ + 余白 */
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
@@ -138,11 +143,6 @@
             // sessionStorageからアンカーを取得（トーストクリック時に保存される）
             let scrollToAnchor = sessionStorage.getItem('scrollToAnchor');
 
-            // sessionStorageになければ、URLのハッシュをチェック
-            if (!scrollToAnchor && window.location.hash) {
-                scrollToAnchor = window.location.hash;
-            }
-
             if (scrollToAnchor) {
                 // sessionStorageをクリア
                 sessionStorage.removeItem('scrollToAnchor');
@@ -150,7 +150,7 @@
                 // 少し遅延させて要素が確実にレンダリングされるのを待つ
                 setTimeout(function() {
                     scrollToAnchorWithOffset(scrollToAnchor);
-                }, 100); // 100ms遅延
+                }, 100);
             }
         });
 
