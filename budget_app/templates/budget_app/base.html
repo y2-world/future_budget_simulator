@@ -112,6 +112,28 @@
         // ========================================
         // ページ読み込み時のアンカースクロール処理
         // ========================================
+
+        // アンカーへスクロールする共通関数
+        function scrollToAnchorWithOffset(anchorId) {
+            const targetElement = document.querySelector(anchorId);
+            if (targetElement) {
+                // ヘッダーの高さを取得
+                const header = document.querySelector('nav');
+                const headerHeight = header ? header.offsetHeight : 0;
+
+                // 要素の位置を取得してヘッダー分を引く
+                const elementPosition = targetElement.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20; // 20pxの余白を追加
+
+                // スムーズスクロール
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        // ページ読み込み時の処理
         window.addEventListener('load', function() {
             // sessionStorageからアンカーを取得（トーストクリック時に保存される）
             let scrollToAnchor = sessionStorage.getItem('scrollToAnchor');
@@ -127,23 +149,18 @@
 
                 // 少し遅延させて要素が確実にレンダリングされるのを待つ
                 setTimeout(function() {
-                    const targetElement = document.querySelector(scrollToAnchor);
-                    if (targetElement) {
-                        // ヘッダーの高さを取得
-                        const header = document.querySelector('nav');
-                        const headerHeight = header ? header.offsetHeight : 0;
-
-                        // 要素の位置を取得してヘッダー分を引く
-                        const elementPosition = targetElement.getBoundingClientRect().top;
-                        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20; // 20pxの余白を追加
-
-                        // スムーズスクロール
-                        window.scrollTo({
-                            top: offsetPosition,
-                            behavior: 'smooth'
-                        });
-                    }
+                    scrollToAnchorWithOffset(scrollToAnchor);
                 }, 100); // 100ms遅延
+            }
+        });
+
+        // URLのハッシュが変更された時の処理（同一ページ内でのアンカーリンク移動）
+        window.addEventListener('hashchange', function() {
+            if (window.location.hash) {
+                // ブラウザのデフォルトスクロールを防ぐため少し遅延
+                setTimeout(function() {
+                    scrollToAnchorWithOffset(window.location.hash);
+                }, 10);
             }
         });
     </script>
