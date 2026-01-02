@@ -37,6 +37,42 @@ window.showToast = function(message, type = 'info', duration = 4000, targetUrl =
     // URLが指定されている場合はクリック時に遷移
     if (targetUrl) {
         toastConfig.onClick = function() {
+            // URLにアンカー（#）が含まれているかチェック
+            const hashIndex = targetUrl.indexOf('#');
+
+            if (hashIndex !== -1) {
+                // アンカーが含まれている場合
+                const anchorId = targetUrl.substring(hashIndex); // #以降を取得（例: #plan-123）
+                const baseUrl = targetUrl.substring(0, hashIndex); // #より前のURL部分
+                const currentPath = window.location.pathname;
+
+                // 同じページ内のアンカーリンクの場合、スムーズスクロールを実行
+                if (!baseUrl || baseUrl === currentPath || baseUrl === window.location.href.split('#')[0]) {
+                    const targetElement = document.querySelector(anchorId);
+
+                    if (targetElement) {
+                        // ヘッダーの高さを取得
+                        const header = document.querySelector('nav');
+                        const headerHeight = header ? header.offsetHeight : 0;
+
+                        // 要素の位置を取得してヘッダー分を引く
+                        const elementPosition = targetElement.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20; // 20pxの余白を追加
+
+                        // スムーズスクロール
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                        return;
+                    }
+                } else {
+                    // 別ページへの遷移の場合、遷移後にスクロール位置を調整するためにアンカーIDをsessionStorageに保存
+                    sessionStorage.setItem('scrollToAnchor', anchorId);
+                }
+            }
+
+            // 通常の遷移
             window.location.href = targetUrl;
         };
         toastConfig.style.cursor = 'pointer';

@@ -108,6 +108,37 @@
             const menu = document.getElementById('mobile-menu');
             menu.classList.toggle('hidden');
         });
+
+        // ========================================
+        // ページ読み込み時のアンカースクロール処理
+        // ========================================
+        window.addEventListener('load', function() {
+            const scrollToAnchor = sessionStorage.getItem('scrollToAnchor');
+            if (scrollToAnchor) {
+                // sessionStorageをクリア
+                sessionStorage.removeItem('scrollToAnchor');
+
+                // 少し遅延させて要素が確実にレンダリングされるのを待つ
+                setTimeout(function() {
+                    const targetElement = document.querySelector(scrollToAnchor);
+                    if (targetElement) {
+                        // ヘッダーの高さを取得
+                        const header = document.querySelector('nav');
+                        const headerHeight = header ? header.offsetHeight : 0;
+
+                        // 要素の位置を取得してヘッダー分を引く
+                        const elementPosition = targetElement.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20; // 20pxの余白を追加
+
+                        // スムーズスクロール
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 100); // 100ms遅延
+            }
+        });
     </script>
 </body>
 </html>
