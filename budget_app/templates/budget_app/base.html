@@ -113,7 +113,14 @@
         // ページ読み込み時のアンカースクロール処理
         // ========================================
         window.addEventListener('load', function() {
-            const scrollToAnchor = sessionStorage.getItem('scrollToAnchor');
+            // sessionStorageからアンカーを取得（トーストクリック時に保存される）
+            let scrollToAnchor = sessionStorage.getItem('scrollToAnchor');
+
+            // sessionStorageになければ、URLのハッシュをチェック
+            if (!scrollToAnchor && window.location.hash) {
+                scrollToAnchor = window.location.hash;
+            }
+
             if (scrollToAnchor) {
                 // sessionStorageをクリア
                 sessionStorage.removeItem('scrollToAnchor');
