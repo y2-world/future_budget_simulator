@@ -168,7 +168,7 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
                         'rent': '家賃',
                         'lake': 'レイク返済',
                         'view_card': 'VIEWカード',
-                        'view_card_bonus': 'VIEWボーナス払い',
+                        'view_card_bonus': 'VIEWカード【ボーナス払い】',
                         'rakuten_card': '楽天カード',
                         'paypay_card': 'PayPayカード',
                         'vermillion_card': 'VERMILLION CARD',

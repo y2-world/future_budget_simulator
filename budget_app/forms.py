@@ -532,7 +532,7 @@ class CreditEstimateForm(forms.ModelForm):
 
         # カード種別のデフォルトをVIEWカードに設定
         if not self.instance.pk:
-            self.fields['card_type'].initial = 'view'
+            self.fields['card_type'].initial = 'item_6'
 
     def clean(self):
         cleaned_data = super().clean()
@@ -551,7 +551,7 @@ class CreditEstimateForm(forms.ModelForm):
             raise forms.ValidationError('分割払いとボーナス払いは同時に選択できません。')
 
         # 分割払いまたはボーナス払いの場合、VIEWカードのみ使用可能
-        if (is_split_payment or is_bonus_payment) and card_type != 'view':
+        if (is_split_payment or is_bonus_payment) and card_type != 'item_6':
             raise forms.ValidationError('分割払いとボーナス払いはVIEWカードでのみ利用できます。')
 
         # ボーナス払いの場合、購入日が有効な期間かチェック
@@ -597,22 +597,21 @@ class CreditEstimateForm(forms.ModelForm):
         def calculate_billing_month(usage_month, card_type, split_part=None):
             """利用月から引き落とし月を計算
 
-            カードごとの締め日・支払日:
-            - VIEWカード: 月末締め、翌々月4日払い (2ヶ月後)
-            - VERMILLION: 月末締め、翌々月4日払い (2ヶ月後)
-            - 楽天カード: 月末締め、翌月27日払い (1ヶ月後)
-            - PayPayカード: 月末締め、翌月27日払い (1ヶ月後)
-            - Amazonカード: 月末締め、翌月26日払い (1ヶ月後)
-            - Olive: 月末締め、翌月26日払い (1ヶ月後)
+            MonthlyPlanDefaultから締め日と引き落とし日を取得して計算
             """
+            from .models import MonthlyPlanDefault
+            from calendar import monthrange
+
             usage_date = datetime.strptime(usage_month, '%Y-%m')
 
-            # カードごとの基本引き落とし期間
-            if card_type in ['view', 'vermillion']:
-                # 翌々月払い
-                months_offset = 2
+            # MonthlyPlanDefaultからカード情報を取得
+            card_default = MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
+
+            if card_default:
+                # offset_monthsを使用（MonthlyPlanDefaultに保存されている引き落とし月のオフセット）
+                months_offset = card_default.offset_months if card_default.offset_months else 1
             else:
-                # 翌月払い（楽天、PayPay、Amazon、Olive）
+                # デフォルト値（情報がない場合は翌月）
                 months_offset = 1
 
             # 分割2回目の場合はさらに+1ヶ月
@@ -858,7 +857,8 @@ class CreditDefaultForm(forms.ModelForm):
         # カード選択肢を動的に生成
         from .models import CreditEstimate
         card_choices = CreditEstimate.get_card_choices()
-        self.fields['card_type'].widget.choices = card_choices
+        self.fields['card_type'].choices = card_choices  # フィールドのchoicesを設定（バリデーション用）
+        self.fields['card_type'].widget.choices = card_choices  # ウィジェットのchoicesも設定
 
         # 新規作成時のみカード種別のデフォルト値を設定（最初のカード）
         if not self.instance.pk and card_choices:
@@ -1013,7 +1013,7 @@ class PastMonthlyPlanForm(forms.ModelForm):
             'rent': '家賃',
             'lake': 'レイク',
             'view_card': 'VIEWカード',
-            'view_card_bonus': 'VIEWカード（ボーナス）',
+            'view_card_bonus': 'VIEWカード【ボーナス払い】',
             'rakuten_card': '楽天カード',
             'paypay_card': 'PayPayカード',
             'vermillion_card': 'VERMILLION CARD',
