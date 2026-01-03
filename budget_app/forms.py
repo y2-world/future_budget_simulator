@@ -1015,11 +1015,6 @@ class PastMonthlyPlanForm(forms.ModelForm):
             'bonus_deductions': 'ボーナス控除額',
         }
 
-        # MonthlyPlanDefaultから動的にラベルを追加
-        from .models import MonthlyPlanDefault
-        for default_item in MonthlyPlanDefault.objects.filter(is_active=True).order_by('order'):
-            labels[default_item.key] = default_item.title
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

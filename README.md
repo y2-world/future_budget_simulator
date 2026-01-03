@@ -97,10 +97,68 @@
 
 ## セットアップ
 
-### 前提条件
+### 方法1: Docker（推奨）
+
+#### 前提条件
+- Docker Desktop がインストールされていること
+
+#### 起動手順
+
+1. リポジトリのクローン
+```bash
+git clone <repository-url>
+cd future_budget_simulator
+```
+
+2. Dockerコンテナのビルドと起動
+```bash
+docker compose up -d
+```
+
+3. ブラウザでアクセス
+```
+http://localhost:8000/
+```
+
+#### Docker関連コマンド
+
+コンテナの停止:
+```bash
+docker compose down
+```
+
+ログの確認:
+```bash
+docker compose logs web
+docker compose logs db
+```
+
+コンテナの再起動:
+```bash
+docker compose restart
+```
+
+データベースのシェルに接続:
+```bash
+docker compose exec db psql -U postgres -d budget_simulator
+```
+
+Djangoのシェルに接続:
+```bash
+docker compose exec web python manage.py shell
+```
+
+マイグレーションの実行:
+```bash
+docker compose exec web python manage.py migrate
+```
+
+### 方法2: ローカル環境（Python venv）
+
+#### 前提条件
 - Python 3.13以上がインストールされていること
 
-### インストール手順
+#### インストール手順
 
 1. リポジトリのクローン
 ```bash
