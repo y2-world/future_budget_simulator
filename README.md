@@ -120,6 +120,18 @@ docker compose up -d
 http://localhost:8000/
 ```
 
+4. データベース管理ツール（Adminer）にアクセス（オプション）
+```
+http://localhost:8080/
+
+ログイン情報:
+- システム: PostgreSQL
+- サーバ: db
+- ユーザ名: postgres
+- パスワード: postgres
+- データベース: budget_simulator
+```
+
 #### Docker関連コマンド
 
 コンテナの停止:
