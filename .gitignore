@@ -29,3 +29,12 @@ venv.bak/
 # OS
 .DS_Store
 Thumbs.db
+
+# Database backups and exports
+*.dump
+*.sql
+*_data.json
+*_data_clean.json
+heroku_data*.json
+datadump.json
+latest.dump
