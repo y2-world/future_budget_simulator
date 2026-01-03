@@ -2443,8 +2443,6 @@ def past_transactions_list(request):
 
     if current_month_plan:
         # 当月のタイムラインを計算して、今日以降の明細があるかチェック
-        from .models import MonthlyPlanDefault
-
         # タイムラインを生成（plan_listと同じロジック）
         timeline = []
         default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
