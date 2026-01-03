@@ -132,6 +132,13 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# セッション設定
+SESSION_COOKIE_AGE = 86400 * 30  # 30日間有効
+SESSION_SAVE_EVERY_REQUEST = False  # リクエストごとにセッションを保存しない（パフォーマンス向上）
+SESSION_COOKIE_SECURE = not DEBUG  # HTTPS環境でのみSecure Cookie
+SESSION_COOKIE_HTTPONLY = True  # JavaScriptからのアクセスを防ぐ
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF攻撃を防ぐ
+
 # Basic認証設定
 BASIC_AUTH_ENABLED = os.environ.get('BASIC_AUTH_ENABLED', 'False') == 'True'
 BASIC_AUTH_USERNAME = os.environ.get('BASIC_AUTH_USERNAME', 'admin')
