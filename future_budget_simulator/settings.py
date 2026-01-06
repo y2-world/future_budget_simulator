@@ -134,7 +134,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # セッション設定
 SESSION_COOKIE_AGE = 86400 * 30  # 30日間有効
-SESSION_SAVE_EVERY_REQUEST = False  # リクエストごとにセッションを保存しない（パフォーマンス向上）
+SESSION_SAVE_EVERY_REQUEST = True  # セッションの変更を確実に保存
 SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False') == 'True'  # 環境変数で制御（本番環境のみTrue）
 SESSION_COOKIE_HTTPONLY = True  # JavaScriptからのアクセスを防ぐ
 SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF攻撃を防ぐ

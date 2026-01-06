@@ -30,10 +30,7 @@ class BasicAuthMiddleware:
                         password == settings.BASIC_AUTH_PASSWORD):
                         # 認証成功をセッションに保存
                         request.session['basic_auth_verified'] = True
-                        request.session.modified = True  # セッションの保存を強制
-                        response = self.get_response(request)
-                        request.session.save()  # セッションを明示的に保存
-                        return response
+                        return self.get_response(request)
                 except Exception:
                     pass
 
