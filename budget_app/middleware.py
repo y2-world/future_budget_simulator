@@ -31,7 +31,9 @@ class BasicAuthMiddleware:
                         # 認証成功をセッションに保存
                         request.session['basic_auth_verified'] = True
                         request.session.modified = True  # セッションの保存を強制
-                        return self.get_response(request)
+                        response = self.get_response(request)
+                        request.session.save()  # セッションを明示的に保存
+                        return response
                 except Exception:
                     pass
 
