@@ -1694,45 +1694,74 @@ def credit_estimate_list(request):
                     messages.error(request, error_message)
                     return redirect('budget_app:credit_estimates')
 
-            # サマリーからカードデータを取得（キーはcard_idのまま）
-            if year_month in summary and card_id in summary[year_month]:
-                card_data = summary[year_month][card_id]
-                total_amount = card_data['total']
-                card_label = card_data['label']
+            # データベースから直接合計額を計算
+            # 過去取引ページからの反映に対応（締め日後に追加された明細も含む）
+            # year_monthは引き落とし月（billing_month）を指す
+            from django.db.models import Sum
 
-                # 反映先の年月を計算
-                # クレカ見積もりページでは、通常払いもボーナス払いも
-                # 既に支払月（billing_month）で表示されているため、そのまま使用
-                target_year_month = year_month
+            # 該当するCreditEstimateを検索
+            estimates_query = CreditEstimate.objects.filter(
+                card_type=actual_card_id,
+                is_bonus_payment=is_bonus
+            )
 
-                # 月次計画を取得または作成
-                plan, _ = MonthlyPlan.objects.get_or_create(year_month=target_year_month)
-
-                # set_itemメソッドを使用（items JSONFieldに保存）
-                plan.set_item(monthly_plan_key, total_amount)
-                plan.save()
-
-                success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
-
-                if is_ajax:
-                    # 月次計画ページへのURLを生成（アンカー付き）
-                    target_url = reverse('budget_app:index') + f'#plan-{plan.pk}'
-                    return JsonResponse({
-                        'status': 'success',
-                        'message': success_message,
-                        'target_year_month': target_year_month,
-                        'target_url': target_url
-                    })
-                else:
-                    messages.success(request, success_message)
+            # ボーナス払いの場合は支払月（due_date）でフィルタ
+            if is_bonus:
+                estimates_query = estimates_query.filter(
+                    due_date__year=int(year_month.split('-')[0]),
+                    due_date__month=int(year_month.split('-')[1])
+                )
             else:
+                # 通常払いの場合はbilling_monthでフィルタ
+                estimates_query = estimates_query.filter(billing_month=year_month)
+
+            # 合計額を計算
+            result = estimates_query.aggregate(total=Sum('amount'))
+            total_amount = result['total'] or 0
+
+            if total_amount == 0:
                 error_message = 'カードデータが見つかりません。'
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'message': error_message}, status=400)
                 else:
                     messages.error(request, error_message)
+                    return redirect('budget_app:credit_estimates')
 
-            return redirect('budget_app:credit_estimates')
+            # カードラベルを取得
+            card_item_for_label = MonthlyPlanDefault.objects.filter(key=actual_card_id).first()
+            if card_item_for_label:
+                card_label = card_item_for_label.title
+                if is_bonus:
+                    card_label += '【ボーナス払い】'
+            else:
+                card_label = actual_card_id
+
+            # 反映先の年月を計算
+            # クレカ見積もりページでは、通常払いもボーナス払いも
+            # 既に支払月（billing_month）で表示されているため、そのまま使用
+            target_year_month = year_month
+
+            # 月次計画を取得または作成
+            plan, _ = MonthlyPlan.objects.get_or_create(year_month=target_year_month)
+
+            # set_itemメソッドを使用（items JSONFieldに保存）
+            plan.set_item(monthly_plan_key, total_amount)
+            plan.save()
+
+            success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
+
+            if is_ajax:
+                # 月次計画ページへのURLを生成（アンカー付き）
+                target_url = reverse('budget_app:index') + f'#plan-{plan.pk}'
+                return JsonResponse({
+                    'status': 'success',
+                    'message': success_message,
+                    'target_year_month': target_year_month,
+                    'target_url': target_url
+                })
+            else:
+                messages.success(request, success_message)
+                return redirect('budget_app:credit_estimates')
 
         elif action == 'reflect':
             year_month = request.POST.get('year_month')
