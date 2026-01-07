@@ -132,7 +132,7 @@
                                                                 <div class="font-semibold text-purple-700">{{ card.card_name }}</div>
                                                                 <div class="flex items-center gap-2">
                                                                     <span class="text-red-600 font-medium text-sm">{{ card.total_amount|yen }}</span>
-                                                                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline">
+                                                                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline reflect-card-form">
                                                                         {% csrf_token %}
                                                                         <input type="hidden" name="action" value="reflect_card">
                                                                         <input type="hidden" name="year_month" value="{{ month_data.year_month }}">
@@ -298,7 +298,7 @@
                                                         <div class="font-semibold text-purple-700 text-xs">{{ card.card_name }}</div>
                                                         <div class="flex items-center gap-2">
                                                             <span class="text-red-600 font-medium text-xs">{{ card.total_amount|yen }}</span>
-                                                            <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline">
+                                                            <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline reflect-card-form">
                                                                 {% csrf_token %}
                                                                 <input type="hidden" name="action" value="reflect_card">
                                                                 <input type="hidden" name="year_month" value="{{ month_data.year_month }}">
@@ -912,10 +912,23 @@ if (planForm) {
     });
 }
 
+// --- 反映ボタンの非同期処理 ---
+document.querySelectorAll('.reflect-card-form').forEach(reflectForm => {
+    reflectForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!confirm('このカードの合計額を月次計画に反映しますか？')) return;
+
+        await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(reflectForm), {
+            toastDuration: 10000,  // 10秒表示
+            reloadOnSuccess: false  // リロードせず、トーストクリックで遷移
+        });
+    });
+});
+
 // Djangoのmessagesフレームワークからのメッセージをトーストで表示
 document.addEventListener('DOMContentLoaded', function() {
     {% for message in messages %}
-        showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+        window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
 });
 </script>

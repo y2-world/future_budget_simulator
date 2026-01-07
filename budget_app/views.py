@@ -2738,7 +2738,9 @@ def past_transactions_list(request):
         if card_name not in yearly_data[year]['credit_months'][billing_month]['cards']:
             yearly_data[year]['credit_months'][billing_month]['cards'][card_name] = {
                 'card_name': card_name,
-                'estimates': []
+                'card_type': f"{estimate.card_type}{'_bonus' if estimate.is_bonus_payment else ''}",
+                'estimates': [],
+                'total_amount': 0
             }
 
         yearly_data[year]['credit_months'][billing_month]['cards'][card_name]['estimates'].append({
@@ -2747,6 +2749,7 @@ def past_transactions_list(request):
             'memo': estimate.description,
             'estimate': estimate
         })
+        yearly_data[year]['credit_months'][billing_month]['cards'][card_name]['total_amount'] += estimate.amount
         yearly_data[year]['credit_months'][billing_month]['total_amount'] += estimate.amount
         yearly_data[year]['total_credit'] += estimate.amount
 
