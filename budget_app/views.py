@@ -1145,6 +1145,13 @@ def credit_estimate_list(request):
         if has_normal_payment:
             existing_billing_months.add(billing_month)
 
+    # 過去3ヶ月分を自動的に追加（定期デフォルト表示のため）
+    from dateutil.relativedelta import relativedelta
+    for i in range(1, 4):  # 1, 2, 3ヶ月前
+        past_date = today - relativedelta(months=i)
+        past_month_str = past_date.strftime('%Y-%m')
+        existing_billing_months.add(past_month_str)
+
     # 定期デフォルトを追加する利用月を決定
     # 既存の引き落とし月から逆算して、対応する利用月を計算
     # {(usage_month, card_id): billing_month} の辞書として保存
