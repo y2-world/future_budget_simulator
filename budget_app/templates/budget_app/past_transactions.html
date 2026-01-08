@@ -169,7 +169,7 @@
                                                                                 <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
                                                                                 <div class="flex gap-1">
                                                                                     <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
-                                                                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？');">
+                                                                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
                                                                                         {% csrf_token %}
                                                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                                                                     </form>
@@ -335,7 +335,7 @@
                                                                 </div>
                                                                 <div class="flex gap-2 justify-end">
                                                                     <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
-                                                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline" onsubmit="return confirm('本当に削除しますか？');">
+                                                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
                                                                         {% csrf_token %}
                                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                                                     </form>
@@ -810,8 +810,8 @@ function showToast(message, type = 'success') {
 
 // 編集フォームの送信処理（AJAX）
 const editForm = document.getElementById('editForm');
-editForm.addEventListener('submit', function(e) {
-    e.preventDefault(); // デフォルトのフォーム送信を防ぐ
+editForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
 
     const formData = new FormData(editForm);
 
@@ -824,41 +824,8 @@ editForm.addEventListener('submit', function(e) {
         }
     }
 
-    // AJAXで送信
-    fetch(editForm.action, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showToast(data.message);
-            closeEditModal();
-            // ページをリロード
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
-        } else {
-            // バリデーションエラーを表示
-            if (data.errors) {
-                let errorMessages = [];
-                for (let field in data.errors) {
-                    if (data.errors[field]) {
-                        errorMessages.push(data.errors[field].join(' '));
-                    }
-                }
-                showToast(errorMessages.join('\n') || '更新に失敗しました。', 'error');
-            } else {
-                showToast('更新に失敗しました。入力内容を確認してください。', 'error');
-            }
-        }
-    })
-    .catch(error => {
-        showToast('エラーが発生しました。', 'error');
-        console.error('Error:', error);
+    await window.sendAjaxRequest(editForm.action, formData, {
+        closeModal: closeEditModal
     });
 });
 
@@ -922,6 +889,20 @@ document.querySelectorAll('.reflect-card-form').forEach(reflectForm => {
             toastDuration: 10000,  // 10秒表示
             reloadOnSuccess: false  // リロードせず、トーストクリックで遷移
         });
+    });
+});
+
+// 削除フォームの非同期処理
+document.querySelectorAll('.delete-estimate-form').forEach(deleteForm => {
+    deleteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!confirm('本当に削除しますか？')) return;
+
+        const formData = new FormData();
+        formData.append('delete_type', 'single');
+
+        await window.sendAjaxRequest(deleteForm.action, formData);
     });
 });
 
