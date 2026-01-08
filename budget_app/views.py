@@ -1883,15 +1883,55 @@ def credit_estimate_list(request):
                 else:
                     target_month = instance.year_month
 
+                # 締め日チェック：過去の見積もりか現在/未来の見積もりかを判定
+                from datetime import date as dt_date
+                import calendar
+                current_date = timezone.now().date()
+                is_past_estimate = False
+
+                if not instance.is_bonus_payment:
+                    # 通常払いの場合、締め日が過ぎたかチェック
+                    year, month = map(int, instance.year_month.split('-'))
+                    card_plan = MonthlyPlanDefault.objects.filter(key=instance.card_type, is_active=True).first()
+
+                    if card_plan and not card_plan.is_end_of_month and card_plan.closing_day:
+                        # 指定日締め（翌月の締め日）
+                        closing_month = month + 1
+                        closing_year = year
+                        if closing_month > 12:
+                            closing_month = 1
+                            closing_year += 1
+                        closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
+                    else:
+                        # 月末締め
+                        last_day = calendar.monthrange(year, month)[1]
+                        closing_date = dt_date(year, month, last_day)
+
+                    # 締め日の翌日以降なら過去の見積もり
+                    if current_date > closing_date:
+                        is_past_estimate = True
+                elif instance.is_bonus_payment and instance.due_date:
+                    # ボーナス払いの場合、支払日が過ぎたかチェック
+                    if current_date >= instance.due_date:
+                        is_past_estimate = True
+
+                # 過去の見積もりなら past_transactions ページへ、そうでなければ credit_estimates ページへ
+                if is_past_estimate:
+                    target_page = 'budget_app:past_transactions_list'
+                    anchor = f'#estimate-content-{target_month}'
+                else:
+                    target_page = 'budget_app:credit_estimates'
+                    anchor = f'#estimate-content-{target_month}'
+
                 if is_ajax:
-                    target_url = reverse('budget_app:credit_estimates') + f'#estimate-content-{target_month}'
+                    target_url = reverse(target_page) + anchor
                     return JsonResponse({
                         'status': 'success',
                         'message': 'クレカ見積りを追加しました。',
                         'target_url': target_url
                     })
                 messages.success(request, 'クレカ見積りを追加しました。')
-                return HttpResponseRedirect(reverse('budget_app:credit_estimates') + f'#estimate-content-{target_month}')
+                return HttpResponseRedirect(reverse(target_page) + anchor)
             else:
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
