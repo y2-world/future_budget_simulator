@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='creditestimate',
             name='purchase_date',
-            field=models.DateField(blank=True, help_text='ボーナス払いの場合、購入日を入力', null=True, verbose_name='購入日'),
+            field=models.DateField(blank=True, help_text='ボーナス払いの場合、利用日を入力', null=True, verbose_name='利用日'),
         ),
     ]

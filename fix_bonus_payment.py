@@ -23,7 +23,7 @@ def fix_invalid_bonus_payments():
     for i, bp in enumerate(bonus_payments[:10]):
         print(f'{i+1}. ID: {bp.pk}')
         print(f'   内容: {bp.description}')
-        print(f'   購入日: {bp.purchase_date}')
+        print(f'   利用日: {bp.purchase_date}')
         print(f'   支払日: {bp.due_date}')
         print(f'   year_month: {bp.year_month}')
         print(f'   billing_month: {bp.billing_month}')
@@ -59,7 +59,7 @@ def fix_invalid_bonus_payments():
                         bp.billing_month = new_due_date.strftime('%Y-%m')
                         bp.save()
                         fixed_count += 1
-                        print(f'   ✅ 修正完了: 購入日 {new_purchase_date}, 支払日 {new_due_date}')
+                        print(f'   ✅ 修正完了: 利用日 {new_purchase_date}, 支払日 {new_due_date}')
                     else:
                         print(f'   ❌ エラー: 支払日が計算できませんでした')
                 else:

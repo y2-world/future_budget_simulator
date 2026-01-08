@@ -899,7 +899,7 @@ function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, pu
     document.getElementById('edit_description').value = description || '';
     document.getElementById('edit_amount').value = amount || '';
 
-    // ボーナス払いの場合は購入日（利用日）を表示、それ以外は支払日を表示
+    // ボーナス払いの場合は利用日（利用日）を表示、それ以外は支払日を表示
     if (isBonusPayment && purchaseDate) {
         document.getElementById('edit_due_date').value = purchaseDate;
     } else {
@@ -1030,7 +1030,7 @@ editForm.addEventListener('submit', function(e) {
 
     const formData = new FormData(editForm);
 
-    // ボーナス払いの場合、due_date（利用日）をpurchase_date（購入日）としても送信
+    // ボーナス払いの場合、due_date（利用日）をpurchase_date（利用日）としても送信
     const isBonusPayment = formData.get('is_bonus_payment');
     if (isBonusPayment) {
         const dueDate = formData.get('due_date');

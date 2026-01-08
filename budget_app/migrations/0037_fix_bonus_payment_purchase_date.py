@@ -6,7 +6,7 @@ from django.db import migrations
 def fix_bonus_payment_purchase_date(apps, schema_editor):
     """
     purchase_dateがNullのボーナス払いを修正
-    due_dateを購入日として扱い、実際の支払日を再計算
+    due_dateを利用日として扱い、実際の支払日を再計算
     """
     CreditEstimate = apps.get_model('budget_app', 'CreditEstimate')
 
@@ -18,7 +18,7 @@ def fix_bonus_payment_purchase_date(apps, schema_editor):
 
     for estimate in broken_bonus_payments:
         if estimate.due_date:
-            # 現在のdue_dateを購入日として扱う
+            # 現在のdue_dateを利用日として扱う
             estimate.purchase_date = estimate.due_date
             estimate.year_month = estimate.due_date.strftime('%Y-%m')
 

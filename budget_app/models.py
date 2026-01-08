@@ -253,8 +253,8 @@ class CreditEstimate(models.Model):
     purchase_date = models.DateField(
         null=True,
         blank=True,
-        verbose_name="購入日",
-        help_text="ボーナス払いの場合、購入日を入力"
+        verbose_name="利用日",
+        help_text="ボーナス払いの場合、利用日を入力"
     )
     is_split_payment = models.BooleanField(
         default=False,

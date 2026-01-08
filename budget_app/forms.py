@@ -5,7 +5,7 @@ from .models import SimulationConfig, MonthlyPlan, CreditEstimate, CreditDefault
 
 
 def get_bonus_month_from_date(purchase_date) -> str:
-    """購入日からボーナス払い請求月を計算
+    """利用日からボーナス払い請求月を計算
     対象期間:
     - 12/6〜6/5の購入 → 8/4請求（同年または翌年の8月）
     - 7/6〜11/5の購入 → 1/4請求（翌年の1月）
@@ -67,7 +67,7 @@ def get_bonus_month_from_date(purchase_date) -> str:
 
 
 def get_bonus_due_date_from_purchase(purchase_date):
-    """購入日からボーナス払いの支払日（due_date）を計算
+    """利用日からボーナス払いの支払日（due_date）を計算
     - 12/6〜6/5の購入 → 8/4支払い
     - 7/6〜11/5の購入 → 1/4支払い
     """
@@ -461,7 +461,7 @@ class CreditEstimateForm(forms.ModelForm):
             'card_type': 'カード種別',
             'description': 'メモ（任意）',
             'amount': '見積額（円）',
-            'purchase_date': '購入日',
+            'purchase_date': '利用日',
             'is_split_payment': '分割2回払い',
             'is_bonus_payment': 'ボーナス払い',
         }
@@ -487,7 +487,7 @@ class CreditEstimateForm(forms.ModelForm):
         # カード種別のデフォルトをVIEWカードに設定
         if not self.instance.pk:
             self.fields['card_type'].initial = 'item_6'
-            # 新規作成時は購入日のデフォルトを本日に設定
+            # 新規作成時は利用日のデフォルトを本日に設定
             from datetime import date
             self.fields['purchase_date'].initial = date.today()
 
@@ -506,7 +506,7 @@ class CreditEstimateForm(forms.ModelForm):
         if (is_split_payment or is_bonus_payment) and card_type != 'item_6':
             raise forms.ValidationError('分割払いとボーナス払いはVIEWカードでのみ利用できます。')
 
-        # ボーナス払いの場合、購入日が有効な期間かチェック
+        # ボーナス払いの場合、利用日が有効な期間かチェック
         due_date = cleaned_data.get('due_date')
         purchase_date = cleaned_data.get('purchase_date')
 
@@ -535,7 +535,7 @@ class CreditEstimateForm(forms.ModelForm):
                     self.add_error(error_field, 'ボーナス払いの対象外期間です。対象期間: 12/6〜6/5 (8/4支払) または 6/6〜11/5 (1/4支払)')
             else:
                 # ボーナス払いなのに日付が設定されていない場合
-                self.add_error('purchase_date', 'ボーナス払いの場合は購入日を入力してください。')
+                self.add_error('purchase_date', 'ボーナス払いの場合は利用日を入力してください。')
 
         return cleaned_data
 
@@ -547,7 +547,7 @@ class CreditEstimateForm(forms.ModelForm):
 
         # purchase_dateからyear_monthとbilling_monthを計算
         if instance.purchase_date:
-            # year_monthは購入日の年月
+            # year_monthは利用日の年月
             instance.year_month = instance.purchase_date.strftime('%Y-%m')
 
             # billing_monthを計算
@@ -566,7 +566,7 @@ class CreditEstimateForm(forms.ModelForm):
 
                 offset_months = card_default.offset_months if card_default.offset_months else 1
 
-                # 締め日がある場合のみ、購入日と比較
+                # 締め日がある場合のみ、利用日と比較
                 if closing_day and instance.purchase_date.day > closing_day:
                     months_offset = offset_months + 1
                 else:
@@ -621,11 +621,11 @@ class CreditEstimateForm(forms.ModelForm):
         # ボーナス払いの場合、年月を調整
         if instance.is_bonus_payment:
             # UIでは「利用日」フィールドがdue_dateとして送信される
-            # ボーナス払いの場合、これを購入日(purchase_date)として扱い、
+            # ボーナス払いの場合、これを利用日(purchase_date)として扱い、
             # 実際の支払日(due_date)を計算する必要がある
 
             # UIから受け取ったdue_dateを利用日(purchase_date)として扱う
-            # ボーナス払いの場合、フォームのdue_dateフィールドは実際には購入日（利用日）
+            # ボーナス払いの場合、フォームのdue_dateフィールドは実際には利用日（利用日）
             if instance.due_date:
                 instance.purchase_date = instance.due_date
 
