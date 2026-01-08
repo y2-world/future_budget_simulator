@@ -532,12 +532,21 @@ def plan_create(request):
                 success_message = f'{year_month_display}の月次計画を登録しました。'
 
             if is_ajax:
-                return JsonResponse({'status': 'success', 'message': success_message})
+                response_data = {
+                    'status': 'success',
+                    'message': success_message,
+                }
+                # 作成した月にリダイレクト（過去月以外）
+                if not is_past_month:
+                    target_url = reverse('budget_app:index') + f'#plan-{plan.year_month}'
+                    response_data['target_url'] = target_url
+                return JsonResponse(response_data)
             messages.success(request, success_message)
             # 過去月の場合は給与一覧にリダイレクト
             if is_past_month:
                 return redirect('budget_app:salary_list')
-            return redirect('budget_app:plan_list')
+            # 通常は作成した月にリダイレクト
+            return redirect(reverse('budget_app:index') + f'#plan-{plan.year_month}')
         else:
             if is_ajax:
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
@@ -846,7 +855,15 @@ def plan_edit(request, pk):
 
             display_month = format_year_month_display(plan.year_month)
             if is_ajax:
-                return JsonResponse({'status': 'success', 'message': f'{display_month} の計画を更新しました。'})
+                response_data = {
+                    'status': 'success',
+                    'message': f'{display_month} の計画を更新しました。',
+                }
+                # 更新した月にリダイレクト（過去月以外）
+                if not is_past_month:
+                    target_url = reverse('budget_app:index') + f'#plan-{plan.year_month}'
+                    response_data['target_url'] = target_url
+                return JsonResponse(response_data)
             messages.success(request, f'{display_month} の計画を更新しました。')
             # リファラーをチェックして適切なページにリダイレクト
             referer = request.META.get('HTTP_REFERER', '')
@@ -856,7 +873,8 @@ def plan_edit(request, pk):
                 return redirect('budget_app:salary_list')
             elif is_past_month:
                 return redirect('budget_app:salary_list')
-            return redirect('budget_app:plan_list')
+            # 通常は更新した月にリダイレクト
+            return redirect(reverse('budget_app:index') + f'#plan-{plan.year_month}')
         else:
             # フォームエラーをログに出力
             logger.error(f"Plan edit form validation failed. Errors: {form.errors}")
