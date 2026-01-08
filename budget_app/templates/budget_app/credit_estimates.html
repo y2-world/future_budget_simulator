@@ -52,18 +52,6 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="create_estimate">
 
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.year.label }}</label>
-                    {{ form.year }}
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.month.label }}</label>
-                    {{ form.month }}
-                </div>
-                {{ form.year_month }}
-            </div>
-
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.card_type.label }}</label>
                 <select name="card_type" id="create_card_type" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
@@ -86,8 +74,8 @@
             </div>
 
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.due_date.label }}</label>
-                {{ form.due_date }}
+                <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.purchase_date.label }}</label>
+                {{ form.purchase_date }}
             </div>
 
             <div class="grid grid-cols-2 gap-2">
@@ -129,28 +117,7 @@
         <!-- ボディ -->
         <form id="editForm" method="post" class="p-4 pb-6 space-y-4">
             {% csrf_token %}
-            <input type="hidden" name="year_month" id="edit_year_month_hidden">
             <input type="hidden" name="card_type" id="edit_card_type_hidden" disabled>
-
-            <!-- 年月 -->
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">利用年</label>
-                    <select name="year" id="edit_year" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
-                        {% for value, label in form.year.field.choices %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">利用月</label>
-                    <select name="month" id="edit_month" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
-                        {% for value, label in form.month.field.choices %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
 
             <!-- カード種別（カード形式） -->
             <div>
@@ -233,10 +200,10 @@
                 <input type="number" name="amount" id="edit_amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" min="0" placeholder="30000">
             </div>
 
-            <!-- 利用日 -->
+            <!-- 購入日 -->
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">利用日</label>
-                <input type="date" name="due_date" id="edit_due_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">購入日</label>
+                <input type="date" name="purchase_date" id="edit_purchase_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" required>
             </div>
 
             <!-- チェックボックス -->
@@ -403,12 +370,6 @@
 
         form.action = `/credit-estimates/${pk}/edit/`;
 
-        // 年月を分割して設定
-        const [year, month] = yearMonth.split('-');
-        document.getElementById('edit_year').value = year;
-        document.getElementById('edit_month').value = month;
-        document.getElementById('edit_year_month_hidden').value = yearMonth;
-
         // カード種別を設定（ラジオボタン形式）
         const cardTypeHidden = document.getElementById('edit_card_type_hidden');
 
@@ -458,11 +419,11 @@
         document.getElementById('edit_description').value = description;
         document.getElementById('edit_amount').value = amount;
 
-        // ボーナス払いの場合は購入日（利用日）を表示、それ以外は支払日を表示
-        if (isBonusPayment && purchaseDate) {
-            document.getElementById('edit_due_date').value = purchaseDate;
-        } else {
-            document.getElementById('edit_due_date').value = dueDate;
+        // 購入日を設定（購入日がある場合はそれを使用、なければdueDate）
+        if (purchaseDate) {
+            document.getElementById('edit_purchase_date').value = purchaseDate;
+        } else if (dueDate) {
+            document.getElementById('edit_purchase_date').value = dueDate;
         }
 
         document.getElementById('edit_is_split_payment').checked = isSplitPayment;
@@ -834,19 +795,6 @@
         editForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(editForm);
-            // yearとmonthからyear_monthを再構築し、フォームデータに追加
-            const year = formData.get('year');
-            const month = formData.get('month');
-            formData.append('year_month', `${year}-${month}`);
-
-            // ボーナス払いの場合、due_date（利用日）をpurchase_date（購入日）としても送信
-            const isBonusPayment = formData.get('is_bonus_payment');
-            if (isBonusPayment) {
-                const dueDate = formData.get('due_date');
-                if (dueDate) {
-                    formData.append('purchase_date', dueDate);
-                }
-            }
 
             await window.sendAjaxRequest(editForm.action, formData, {
                 closeModal: closeEditModal

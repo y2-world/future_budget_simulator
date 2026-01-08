@@ -407,6 +407,12 @@ class CreditDefault(models.Model):
     amount = models.IntegerField(default=0, verbose_name="金額（円）")
     is_active = models.BooleanField(default=True, verbose_name="有効")
     apply_odd_months_only = models.BooleanField(default=False, verbose_name="奇数月のみ適用")
+    payment_day = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MinValueValidator(31)],
+        verbose_name="毎月の利用日",
+        help_text="1-31の数値。毎月この日に自動生成されます（例: Netflix = 1日）"
+    )
 
     class Meta:
         verbose_name = "定期デフォルト"

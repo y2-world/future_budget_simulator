@@ -430,24 +430,10 @@ class MonthlyPlanForm(forms.Form):
 class CreditEstimateForm(forms.ModelForm):
     """クレカ見積りフォーム"""
 
-    year = forms.ChoiceField(
-        label='利用年',
-        widget=forms.Select(attrs={
-            'class': 'w-full p-2 border rounded'
-        })
-    )
-    month = forms.ChoiceField(
-        label='利用月',
-        widget=forms.Select(attrs={
-            'class': 'w-full p-2 border rounded'
-        })
-    )
-
     class Meta:
         model = CreditEstimate
-        fields = ['year_month', 'card_type', 'description', 'amount', 'due_date', 'purchase_date', 'is_split_payment', 'is_bonus_payment']
+        fields = ['card_type', 'description', 'amount', 'purchase_date', 'is_split_payment', 'is_bonus_payment']
         widgets = {
-            'year_month': forms.HiddenInput(),
             'card_type': forms.RadioSelect(attrs={
                 'class': 'card-type-radio',
             }),
@@ -459,10 +445,6 @@ class CreditEstimateForm(forms.ModelForm):
                 'class': 'w-full p-2 border rounded',
                 'placeholder': '例: 30000',
                 'min': 0,
-            }),
-            'due_date': forms.DateInput(attrs={
-                'class': 'w-full p-2 border rounded',
-                'type': 'date',
             }),
             'purchase_date': forms.DateInput(attrs={
                 'class': 'w-full p-2 border rounded',
@@ -476,12 +458,10 @@ class CreditEstimateForm(forms.ModelForm):
             }),
         }
         labels = {
-            'year_month': '利用月（YYYY-MM）',
             'card_type': 'カード種別',
             'description': 'メモ（任意）',
             'amount': '見積額（円）',
-            'due_date': '利用日（任意）',
-            'purchase_date': '購入日（ボーナス払い時）',
+            'purchase_date': '購入日',
             'is_split_payment': '分割2回払い',
             'is_bonus_payment': 'ボーナス払い',
         }
@@ -493,11 +473,6 @@ class CreditEstimateForm(forms.ModelForm):
         from .models import CreditEstimate
         self.fields['card_type'].widget.choices = CreditEstimate.get_card_choices()
 
-        self.fields['year_month'].required = False
-        self.fields['year'].widget.attrs.update({'data-year-select': 'true'})
-        self.fields['month'].widget.attrs.update({'data-month-select': 'true'})
-        self.fields['year_month'].widget.attrs.update({'data-year-month': 'true'})
-
         # 編集モーダルで使われるIDを設定
         self.fields['card_type'].widget.attrs.update({'id': 'edit_card_type'})
 
@@ -506,45 +481,18 @@ class CreditEstimateForm(forms.ModelForm):
         # choicesを明示的に設定して空の選択肢を除外
         self.fields['card_type'].choices = CreditEstimate.CARD_TYPES
 
-        # 年の選択肢（現在の年から前後3年）
-        current_year = datetime.now().year
-        year_choices = [(str(year), str(year)) for year in range(current_year - 3, current_year + 4)]
-        self.fields['year'].choices = year_choices
-
-        # 月の選択肢
-        month_choices = [
-            ('01', '1月'), ('02', '2月'), ('03', '3月'), ('04', '4月'),
-            ('05', '5月'), ('06', '6月'), ('07', '7月'), ('08', '8月'),
-            ('09', '9月'), ('10', '10月'), ('11', '11月'), ('12', '12月')
-        ]
-        self.fields['month'].choices = month_choices
-
-        # 既存インスタンスの場合、初期値を設定
-        if self.instance and self.instance.pk and self.instance.year_month:
-            try:
-                year, month = self.instance.year_month.split('-')
-                self.fields['year'].initial = year
-                self.fields['month'].initial = month
-            except ValueError:
-                pass
-
-        # 新規作成時のデフォルト（当月）
-        if not self.fields['year'].initial:
-            self.fields['year'].initial = str(current_year)
-        if not self.fields['month'].initial:
-            self.fields['month'].initial = f"{datetime.now().month:02d}"
+        # purchase_dateを必須にする
+        self.fields['purchase_date'].required = True
 
         # カード種別のデフォルトをVIEWカードに設定
         if not self.instance.pk:
             self.fields['card_type'].initial = 'item_6'
+            # 新規作成時は購入日のデフォルトを本日に設定
+            from datetime import date
+            self.fields['purchase_date'].initial = date.today()
 
     def clean(self):
         cleaned_data = super().clean()
-        year = cleaned_data.get('year')
-        month = cleaned_data.get('month')
-
-        if year and month:
-            cleaned_data['year_month'] = f"{year}-{month}"
 
         # 分割払いとボーナス払いが同時に選択されていないかチェック
         is_split_payment = cleaned_data.get('is_split_payment')
@@ -597,7 +545,46 @@ class CreditEstimateForm(forms.ModelForm):
 
         instance = super().save(commit=False)
 
-        # 引き落とし月を計算
+        # purchase_dateからyear_monthとbilling_monthを計算
+        if instance.purchase_date:
+            # year_monthは購入日の年月
+            instance.year_month = instance.purchase_date.strftime('%Y-%m')
+
+            # billing_monthを計算
+            from .models import MonthlyPlanDefault
+            card_default = MonthlyPlanDefault.objects.filter(key=instance.card_type, is_active=True).first()
+
+            if card_default:
+                # 締め日を取得
+                if card_default.is_end_of_month:
+                    closing_day = 31
+                elif card_default.closing_day:
+                    closing_day = card_default.closing_day
+                else:
+                    # クレジットカードでない場合は締め日がないので、offsetをそのまま使用
+                    closing_day = None
+
+                offset_months = card_default.offset_months if card_default.offset_months else 1
+
+                # 締め日がある場合のみ、購入日と比較
+                if closing_day and instance.purchase_date.day > closing_day:
+                    months_offset = offset_months + 1
+                else:
+                    months_offset = offset_months
+            else:
+                # デフォルト値（情報がない場合は翌月）
+                months_offset = 1
+
+            # billing_monthを計算
+            billing_month = instance.purchase_date.month + months_offset
+            billing_year = instance.purchase_date.year
+            while billing_month > 12:
+                billing_month -= 12
+                billing_year += 1
+
+            instance.billing_month = f"{billing_year}-{billing_month:02d}"
+
+        # 引き落とし月を計算（後方互換性のため残す）
         def calculate_billing_month(usage_month, card_type, split_part=None):
             """利用月から引き落とし月を計算
 
@@ -828,7 +815,7 @@ class CreditDefaultForm(forms.ModelForm):
 
     class Meta:
         model = CreditDefault
-        fields = ['label', 'card_type', 'amount', 'apply_odd_months_only']
+        fields = ['label', 'card_type', 'amount', 'payment_day', 'apply_odd_months_only']
         widgets = {
             'label': forms.TextInput(attrs={
                 'class': 'w-full p-2 border rounded',
@@ -844,6 +831,12 @@ class CreditDefaultForm(forms.ModelForm):
                 'inputmode': 'numeric',
                 'pattern': '[0-9,]*',
             }),
+            'payment_day': forms.NumberInput(attrs={
+                'class': 'w-full p-2 border rounded',
+                'min': '1',
+                'max': '31',
+                'placeholder': '1-31',
+            }),
             'apply_odd_months_only': forms.CheckboxInput(attrs={
                 'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded',
             }),
@@ -852,6 +845,7 @@ class CreditDefaultForm(forms.ModelForm):
             'label': '項目名',
             'card_type': 'カード種別',
             'amount': '金額（円）',
+            'payment_day': '毎月の利用日',
             'apply_odd_months_only': '奇数月のみ適用（例：水道代）',
         }
 
