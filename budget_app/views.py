@@ -1145,6 +1145,9 @@ def credit_estimate_list(request):
         if has_normal_payment:
             existing_billing_months.add(billing_month)
 
+    # 現在の年月を取得
+    current_year_month = f"{today.year}-{today.month:02d}"
+
     # 過去の全ての月を自動的に追加（定期デフォルト表示のため）
     # MonthlyPlanから過去の年月をすべて取得
     past_plans = MonthlyPlan.objects.filter(year_month__lt=current_year_month).values_list('year_month', flat=True)
@@ -1164,7 +1167,6 @@ def credit_estimate_list(request):
     # 既存の引き落とし月から逆算して、対応する利用月を計算
     # {(usage_month, card_id): billing_month} の辞書として保存
     candidate_usage_cards = {}
-    current_year_month = f"{today.year}-{today.month:02d}"
 
     for billing_month in existing_billing_months:
         billing_year, billing_month_num = map(int, billing_month.split('-'))
@@ -1415,8 +1417,8 @@ def credit_estimate_list(request):
                         'is_bonus_section': False,
                     })
 
-                    # 2回目のエントリ（利用月は1回目と同じyear_month）
-                    default_entry_2 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month)
+                    # 2回目のエントリ（利用月は1回目と同じyear_month、引き落とし月はnext_billing_month）
+                    default_entry_2 = DefaultEntry(default, next_billing_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month)
                     if default_entry_2.amount > 0:
                         next_card_group['entries'].append(default_entry_2)
                         next_card_group['total'] += default_entry_2.amount
