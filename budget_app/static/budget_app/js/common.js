@@ -149,7 +149,30 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
             // target_urlがある場合は自動遷移（トーストクリックでも遷移可能）
             if (data.target_url && reloadOnSuccess) {
                 console.log('Redirecting to:', data.target_url);
-                setTimeout(() => window.location.href = data.target_url, reloadDelay);
+                // URLにアンカーが含まれているかチェック
+                const hashIndex = data.target_url.indexOf('#');
+
+                if (hashIndex !== -1) {
+                    const anchorId = data.target_url.substring(hashIndex);
+                    const baseUrl = data.target_url.substring(0, hashIndex);
+                    const currentPath = window.location.pathname;
+                    const currentOrigin = window.location.origin;
+
+                    // 同じページへの遷移（アンカーのみ違う）の場合
+                    if (!baseUrl || baseUrl === currentPath || baseUrl === currentOrigin + currentPath) {
+                        // sessionStorageにアンカーを保存してリロード
+                        console.log('Same page detected, saving anchor and reloading');
+                        sessionStorage.setItem('scrollToAnchor', anchorId);
+                        setTimeout(() => window.location.reload(), reloadDelay);
+                    } else {
+                        // 別ページへの遷移（sessionStorageにアンカーを保存）
+                        sessionStorage.setItem('scrollToAnchor', anchorId);
+                        setTimeout(() => window.location.href = data.target_url, reloadDelay);
+                    }
+                } else {
+                    // アンカーなしの遷移
+                    setTimeout(() => window.location.href = data.target_url, reloadDelay);
+                }
             } else if (!data.target_url && reloadOnSuccess) {
                 // target_urlがない場合は通常のリロード
                 console.log('Reloading page');

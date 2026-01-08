@@ -1,5 +1,4 @@
 from django import template
-from django.contrib.humanize.templatetags.humanize import intcomma
 
 register = template.Library()
 
@@ -28,7 +27,8 @@ def yen(value):
             amount = int(value)
         except (TypeError, ValueError):
             return value
-    return f'¥{intcomma(amount)}'
+    # Pythonの組み込み機能でコンマ区切り
+    return f'¥{amount:,}'
 
 
 @register.filter
