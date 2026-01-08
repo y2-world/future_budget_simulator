@@ -1,7 +1,7 @@
 from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.db import models as django_models
 from django.db.models import Sum
 from django.utils import timezone
@@ -1874,13 +1874,29 @@ def credit_estimate_list(request):
                     estimate.year_month = get_next_bonus_month(estimate.year_month)
 
                 instance = form.save() # 分割払い対応のためsaveメソッドを使う
+
+                # 追加した見積もりが表示される年月を取得
+                if instance.billing_month:
+                    target_month = instance.billing_month
+                elif instance.is_bonus_payment and instance.due_date:
+                    target_month = instance.due_date.strftime('%Y-%m')
+                else:
+                    target_month = instance.year_month
+
                 if is_ajax:
-                     return JsonResponse({'status': 'success', 'message': 'クレカ見積りを追加しました。'})
+                    target_url = reverse('budget_app:credit_estimates') + f'#estimate-content-{target_month}'
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'クレカ見積りを追加しました。',
+                        'target_url': target_url
+                    })
                 messages.success(request, 'クレカ見積りを追加しました。')
+                return HttpResponseRedirect(reverse('budget_app:credit_estimates') + f'#estimate-content-{target_month}')
             else:
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
                 messages.error(request, f'エラー: {form.errors.as_text()}')
+                return redirect('budget_app:credit_estimates')
 
         # どのactionにも一致しない場合は、単にリダイレクト
         return redirect('budget_app:credit_estimates')

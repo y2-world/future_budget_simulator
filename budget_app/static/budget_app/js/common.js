@@ -141,9 +141,11 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
                 onSuccess(data);
             }
 
-            // target_urlがある場合でも自動遷移はせず、トーストをクリックした場合のみ遷移
-            // リロードが必要な場合のみ実行
-            if (!data.target_url && reloadOnSuccess) {
+            // target_urlがある場合は自動遷移（トーストクリックでも遷移可能）
+            if (data.target_url && reloadOnSuccess) {
+                setTimeout(() => window.location.href = data.target_url, reloadDelay);
+            } else if (!data.target_url && reloadOnSuccess) {
+                // target_urlがない場合は通常のリロード
                 setTimeout(() => window.location.reload(), reloadDelay);
             }
 
