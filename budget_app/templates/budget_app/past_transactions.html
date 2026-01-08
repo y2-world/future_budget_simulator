@@ -886,8 +886,8 @@ document.querySelectorAll('.reflect-card-form').forEach(reflectForm => {
         if (!confirm('このカードの合計額を月次計画に反映しますか？')) return;
 
         await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(reflectForm), {
-            toastDuration: 10000,  // 10秒表示
-            reloadOnSuccess: false  // リロードせず、トーストクリックで遷移
+            toastDuration: 3000,  // 3秒表示
+            reloadOnSuccess: true  // 自動的に月次計画ページへ遷移
         });
     });
 });

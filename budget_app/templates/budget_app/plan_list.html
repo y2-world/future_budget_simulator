@@ -24,12 +24,12 @@
     {% if plans or past_plans %}
         {% if plans %}
         {% for plan in plans %}
-        <div class="mb-8 border rounded-lg overflow-hidden" id="plan-{{ plan.pk }}">
+        <div class="mb-8 border rounded-lg overflow-hidden" id="plan-{{ plan.year_month }}">
             <!-- 計画ヘッダー -->
-            <div class="bg-gray-100 p-3 md:p-4 cursor-pointer hover:bg-gray-200 transition" onclick="togglePlan{{ plan.pk }}()">
+            <div class="bg-gray-100 p-3 md:p-4 cursor-pointer hover:bg-gray-200 transition plan-header" data-year-month="{{ plan.year_month }}">
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex items-center gap-2">
-                        <svg id="collapse-icon-{{ plan.pk }}" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg id="collapse-icon-{{ plan.year_month }}" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                         <h3 class="text-lg md:text-xl font-bold">{{ plan.year_month|format_year_month }}</h3>
@@ -93,17 +93,8 @@
                 </div>
             </div>
 
-            <script>
-                function togglePlan{{ plan.pk }}() {
-                    const content = document.getElementById('plan-content-{{ plan.pk }}');
-                    const icon = document.getElementById('collapse-icon-{{ plan.pk }}');
-                    content.classList.toggle('hidden');
-                    icon.classList.toggle('rotate-180');
-                }
-            </script>
-
             <!-- タイムライン -->
-            <div id="plan-content-{{ plan.pk }}" class="p-3 md:p-4">
+            <div id="plan-content-{{ plan.year_month }}" class="p-3 md:p-4">
                 {# 当日以降の明細 #}
                 <div class="space-y-2">
                     {% for item in plan.timeline %}
@@ -632,6 +623,21 @@ function updateYearMonth() {
         yearMonthInput.value = `${year}-${month}`;
     }
 }
+
+// 月次計画の折りたたみ機能
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.plan-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const yearMonth = this.getAttribute('data-year-month');
+            const content = document.getElementById('plan-content-' + yearMonth);
+            const icon = document.getElementById('collapse-icon-' + yearMonth);
+            if (content && icon) {
+                content.classList.toggle('hidden');
+                icon.classList.toggle('rotate-180');
+            }
+        });
+    });
+});
 </script>
 {% endblock %}
 {% endblock %}

@@ -585,7 +585,6 @@ def plan_create(request):
                     initial_data[field] = existing_plan.get_item(field)
 
                 # MonthlyPlanDefaultから動的フィールドを追加
-                from .models import MonthlyPlanDefault
                 default_items = MonthlyPlanDefault.objects.filter(is_active=True)
                 for item in default_items:
                     if item.key:
@@ -616,7 +615,6 @@ def plan_create(request):
             form = MonthlyPlanForm(initial=initial_data)
 
     # デフォルト項目の情報をJavaScript用にJSON形式で渡す
-    from .models import MonthlyPlanDefault
     import json
 
     default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
@@ -714,7 +712,6 @@ def plan_data(request, pk):
     """月次計画データをJSON形式で返す（モーダル用）"""
     from django.http import JsonResponse
     plan = get_object_or_404(MonthlyPlan, pk=pk)
-    from .models import MonthlyPlanDefault
 
     # MonthlyPlanDefaultから収入・支出項目を取得
     default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
@@ -775,7 +772,6 @@ def plan_edit(request, pk):
         # チェックボックスの文字列値をbooleanに変換
         post_data = request.POST.copy()
         # MonthlyPlanDefaultからクレカ項目の除外フラグを動的に生成
-        from .models import MonthlyPlanDefault
         checkbox_fields = []
         default_items = MonthlyPlanDefault.objects.filter(is_active=True)
         for item in default_items:
@@ -885,7 +881,6 @@ def plan_edit(request, pk):
             form = MonthlyPlanForm(instance=plan)
 
     # デフォルト項目の情報をJavaScript用にJSON形式で渡す
-    from .models import MonthlyPlanDefault
     import json
 
     default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
@@ -961,7 +956,6 @@ def credit_estimate_list(request):
 
     # サマリー（年月 -> カード -> {total, entries}）
     # card_id -> タイトル、支払日、オフセット月 のマッピングを MonthlyPlanDefault から取得
-    from .models import MonthlyPlanDefault
     card_labels = {}
     card_due_days = {}
     card_offset_months = {}
@@ -1652,7 +1646,6 @@ def credit_estimate_list(request):
 
             # card_idからMonthlyPlanDefaultのkeyを取得
             # ボーナス払いの場合は is_bonus_payment=True の項目を検索（例: item_6 → item_7）
-            from .models import MonthlyPlanDefault
             try:
                 if is_bonus:
                     # ボーナス払いの場合: 基本カードを取得し、それに対応するボーナス払い項目を検索
@@ -1742,7 +1735,7 @@ def credit_estimate_list(request):
             target_year_month = year_month
 
             # 月次計画を取得または作成
-            plan, _ = MonthlyPlan.objects.get_or_create(year_month=target_year_month)
+            plan, created = MonthlyPlan.objects.get_or_create(year_month=target_year_month)
 
             # set_itemメソッドを使用（items JSONFieldに保存）
             plan.set_item(monthly_plan_key, total_amount)
@@ -1751,14 +1744,22 @@ def credit_estimate_list(request):
             success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
 
             if is_ajax:
-                # 月次計画ページへのURLを生成（アンカー付き）
-                target_url = reverse('budget_app:index') + f'#plan-{plan.pk}'
-                return JsonResponse({
+                response_data = {
                     'status': 'success',
                     'message': success_message,
                     'target_year_month': target_year_month,
-                    'target_url': target_url
-                })
+                }
+                # 現在月以降の場合は target_url を返してリダイレクト（新規作成でも既存でも）
+                # （一覧に表示されない過去の月の場合はリダイレクトしない）
+                from datetime import date
+                today = date.today()
+                current_year_month = f"{today.year}-{today.month:02d}"
+
+                # 現在月以降の場合のみリダイレクト（新規作成でも既存でも）
+                if target_year_month >= current_year_month:
+                    target_url = reverse('budget_app:index') + f'#plan-{target_year_month}'
+                    response_data['target_url'] = target_url
+                return JsonResponse(response_data)
             else:
                 messages.success(request, success_message)
                 return redirect('budget_app:credit_estimates')
