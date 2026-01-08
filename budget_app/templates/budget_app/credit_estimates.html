@@ -462,6 +462,8 @@
     function openDefaultEditModal(id, label, amount, cardType, yearMonth, isSplitPayment) {
         const modal = document.getElementById('defaultEditModal');
 
+        console.log('openDefaultEditModal called with:', { id, label, amount, cardType, yearMonth, isSplitPayment });
+
         // カード種別を設定（ラジオボタン形式）
         document.querySelectorAll('#defaultEditModal .default-card-type-radio').forEach(radio => {
             radio.checked = (radio.value === cardType);

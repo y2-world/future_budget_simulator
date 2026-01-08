@@ -238,6 +238,8 @@ function closeCreateModal() {
 function openDefaultEditModal(id, label, amount, cardType, applyOddMonthsOnly, paymentDay) {
     const modal = document.getElementById('defaultEditModal');
 
+    console.log('openDefaultEditModal called with:', { id, label, amount, cardType, applyOddMonthsOnly, paymentDay });
+
     // フォームのフィールドに値を設定
     document.getElementById('default_edit_id').value = id;
     document.getElementById('default_edit_label').value = label;
