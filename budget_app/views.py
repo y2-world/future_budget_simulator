@@ -2941,6 +2941,9 @@ def past_transactions_list(request):
                 'total_amount': 0
             }
 
+        # is_default属性を追加（過去の明細では通常の見積もりはFalse）
+        estimate.is_default = False
+
         yearly_data[year]['credit_months'][billing_month]['cards'][card_name]['estimates'].append({
             'card_type': estimate.card_type,
             'amount': estimate.amount,
