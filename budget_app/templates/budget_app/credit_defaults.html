@@ -37,7 +37,7 @@
                         {% if d.apply_odd_months_only %}<span class="text-xs bg-yellow-100 px-2 py-1 rounded">奇数月のみ</span>{% else %}毎月{% endif %}
                     </td>
                     <td class="px-3 py-2 text-center align-middle">
-                        <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', {{ d.amount|default:0 }}, '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
+                        <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', {{ d.amount|default:0|floatformat:0 }}, '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
                         <form method="post" action="{% url 'budget_app:credit_default_delete' d.pk %}" class="delete-form inline">
                             {% csrf_token %}
                             <button type="submit" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">削除</button>
@@ -69,7 +69,7 @@
                 </div>
             </div>
             <div class="flex gap-2 mt-4">
-                <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', {{ d.amount|default:0 }}, '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
+                <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', {{ d.amount|default:0|floatformat:0 }}, '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
                 <form method="post" action="{% url 'budget_app:credit_default_delete' d.pk %}" class="delete-form flex-1">
                     {% csrf_token %}
                     <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 font-medium transition">削除</button>
