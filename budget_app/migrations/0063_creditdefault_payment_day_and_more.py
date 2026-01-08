@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='creditdefault',
             name='payment_day',
-            field=models.IntegerField(default=1, help_text='1-31の数値。毎月この日に自動生成されます（例: Netflix = 1日）', validators=[django.core.validators.MinValueValidator(1), django.core.validators.MinValueValidator(31)], verbose_name='毎月の利用日'),
+            field=models.IntegerField(default=1, help_text='1-31の数値。毎月この日に自動生成されます（例: Netflix = 1日）', validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(31)], verbose_name='毎月の利用日'),
         ),
         migrations.AlterField(
             model_name='creditdefault',

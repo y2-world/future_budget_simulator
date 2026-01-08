@@ -48,7 +48,8 @@
                             <tr class="border-b {% if item.is_default %}bg-gray-50{% endif %}">
                                 <td class="px-3 py-2">
                                     {% if item.is_default %}
-                                        {# 定期デフォルト項目は日付を表示しない #}
+                                        {# 定期デフォルト項目は利用日を表示 #}
+                                        {{ item.payment_day|default:1 }}日
                                     {% elif item.is_bonus_payment and item.purchase_date %}
                                         {# ボーナス払いは購入日（利用日）を表示 #}
                                         {{ item.purchase_date|date:'Y/m/d' }}
@@ -142,12 +143,12 @@
                                         {% endif %}
                                     </div>
                                     <div class="text-sm text-gray-600 space-y-1">
-                                        {% if not item.is_default %}
-                                            {% if item.is_bonus_payment and item.purchase_date %}
-                                                <div>📅 {{ item.purchase_date|date:'Y/m/d' }}</div>
-                                            {% elif item.due_date %}
-                                                <div>📅 {{ item.due_date|date:'Y/m/d' }}</div>
-                                            {% endif %}
+                                        {% if item.is_default %}
+                                            <div>📅 毎月{{ item.payment_day|default:1 }}日</div>
+                                        {% elif item.is_bonus_payment and item.purchase_date %}
+                                            <div>📅 {{ item.purchase_date|date:'Y/m/d' }}</div>
+                                        {% elif item.due_date %}
+                                            <div>📅 {{ item.due_date|date:'Y/m/d' }}</div>
                                         {% endif %}
                                         {% if item.split_payment_part %}
                                             <div class="flex gap-1 flex-wrap">

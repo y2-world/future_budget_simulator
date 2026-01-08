@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class Salary(models.Model):
@@ -409,7 +409,7 @@ class CreditDefault(models.Model):
     apply_odd_months_only = models.BooleanField(default=False, verbose_name="奇数月のみ適用")
     payment_day = models.IntegerField(
         default=1,
-        validators=[MinValueValidator(1), MinValueValidator(31)],
+        validators=[MinValueValidator(1), MaxValueValidator(31)],
         verbose_name="毎月の利用日",
         help_text="1-31の数値。毎月この日に自動生成されます（例: Netflix = 1日）"
     )

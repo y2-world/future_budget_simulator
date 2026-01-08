@@ -1305,6 +1305,7 @@ def credit_estimate_list(request):
                     self.is_bonus_payment = False
                     self.is_default = True  # デフォルトエントリーであることを示すフラグ
                     self.default_id = default_obj.id  # デフォルト項目のID
+                    self.payment_day = default_obj.payment_day  # 毎月の利用日
 
             # 2回払いの場合は2つのエントリを作成
             is_split = override_data.get('is_split_payment', False) if override_data else False
