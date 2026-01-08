@@ -1168,6 +1168,8 @@ def credit_estimate_list(request):
     # {(usage_month, card_id): billing_month} の辞書として保存
     candidate_usage_cards = {}
 
+    from dateutil.relativedelta import relativedelta
+
     for billing_month in existing_billing_months:
         billing_year, billing_month_num = map(int, billing_month.split('-'))
 
