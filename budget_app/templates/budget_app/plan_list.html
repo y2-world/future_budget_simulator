@@ -153,8 +153,14 @@
         {% endfor %}
         {% endif %}
     {% else %}
-        <p class="text-gray-600">月次計画がありません。</p>
-        <a href="{% url 'budget_app:plan_create' %}" class="text-blue-600 hover:underline">最初の計画を作成</a>
+        <!-- データがない場合のメッセージ -->
+        <div class="text-center py-12 bg-gray-50 rounded-lg">
+            <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <p class="text-gray-600 text-lg font-medium">まだ月次計画は登録されていません</p>
+            <p class="text-gray-500 text-sm mt-2">右上の「新規作成」ボタンから月次計画を追加できます</p>
+        </div>
     {% endif %}
 </div>
 

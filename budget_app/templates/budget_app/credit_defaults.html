@@ -32,7 +32,7 @@
                     <td class="px-3 py-2 align-middle">{{ d.label }}</td>
                     <td class="px-3 py-2 align-middle">{{ d.get_card_type_display }}</td>
                     <td class="px-3 py-2 align-middle text-right">{{ d.amount|default:0|yen }}</td>
-                    <td class="px-3 py-2 align-middle text-center">{{ d.payment_day }}日</td>
+                    <td class="px-3 py-2 align-middle text-center">{{ d.payment_day|default:1 }}日</td>
                     <td class="px-3 py-2 align-middle text-center">
                         {% if d.apply_odd_months_only %}<span class="text-xs bg-yellow-100 px-2 py-1 rounded">奇数月のみ</span>{% else %}毎月{% endif %}
                     </td>
@@ -57,7 +57,7 @@
                 <div class="flex-1">
                     <h3 class="font-bold text-lg text-gray-800">{{ d.label }}</h3>
                     <p class="text-sm text-gray-600 mt-1">{{ d.get_card_type_display }}</p>
-                    <p class="text-xs text-gray-500 mt-1">毎月{{ d.payment_day }}日に利用</p>
+                    <p class="text-xs text-gray-500 mt-1">毎月{{ d.payment_day|default:1 }}日に利用</p>
                 </div>
                 <div class="text-right ml-3">
                     <p class="text-xl font-bold text-green-600">{{ d.amount|default:0|yen }}</p>
