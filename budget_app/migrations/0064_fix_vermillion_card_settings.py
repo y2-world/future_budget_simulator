@@ -35,7 +35,7 @@ def reverse_vermillion_card_settings(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('budget_app', '0063_alter_monthlyplandefault_card_id'),
+        ('budget_app', '0063_creditdefault_payment_day_and_more'),
     ]
 
     operations = [
