@@ -141,11 +141,18 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
                 onSuccess(data);
             }
 
+            // デバッグログ
+            console.log('Response data:', data);
+            console.log('target_url:', data.target_url);
+            console.log('reloadOnSuccess:', reloadOnSuccess);
+
             // target_urlがある場合は自動遷移（トーストクリックでも遷移可能）
             if (data.target_url && reloadOnSuccess) {
+                console.log('Redirecting to:', data.target_url);
                 setTimeout(() => window.location.href = data.target_url, reloadDelay);
             } else if (!data.target_url && reloadOnSuccess) {
                 // target_urlがない場合は通常のリロード
+                console.log('Reloading page');
                 setTimeout(() => window.location.reload(), reloadDelay);
             }
 
