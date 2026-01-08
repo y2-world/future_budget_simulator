@@ -930,6 +930,44 @@ document.addEventListener('DOMContentLoaded', function() {
     {% for message in messages %}
         window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
+
+    // URLのハッシュ（アンカー）をチェックして、該当する月のセクションを自動的に開く
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#estimate-content-')) {
+        // ハッシュから年月を抽出（例：#estimate-content-2025-12 → 2025-12）
+        const yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
+
+        // 該当するアンカー要素を探す
+        const targetElement = document.querySelector(hash);
+        if (targetElement) {
+            // 親要素のtrを探す（デスクトップ版の場合）
+            const parentTr = targetElement.closest('tr');
+            if (parentTr && parentTr.id) {
+                // 詳細セクションが折りたたまれている場合は開く
+                if (parentTr.classList.contains('hidden')) {
+                    parentTr.classList.remove('hidden');
+                }
+            }
+
+            // モバイル版の場合（div要素）
+            const mobileDetails = document.getElementById(`mobile-credit-${yearMonth}`);
+            if (mobileDetails && mobileDetails.classList.contains('hidden')) {
+                mobileDetails.classList.remove('hidden');
+            }
+
+            // デスクトップ版の場合（tr要素で探す）
+            // 年ごとにループして該当する月を探す
+            document.querySelectorAll('[id^="desktop-credit-"]').forEach(element => {
+                const tdWithAnchor = element.querySelector(`#estimate-content-${yearMonth}`);
+                if (tdWithAnchor) {
+                    element.classList.remove('hidden');
+                }
+            });
+
+            // 要素にスクロール
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
 });
 </script>
 {% endblock %}
