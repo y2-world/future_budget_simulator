@@ -282,7 +282,7 @@
                         {% if yearly_data|get_item:year|get_item:'credit_months' %}
                             {% for month_data in yearly_data|get_item:year|get_item:'credit_months' %}
                                 <div class="bg-white rounded-lg shadow p-4" id="estimate-content-mobile-{{ month_data.year_month }}">
-                                    <div class="font-semibold text-gray-800 mb-3 pb-2 border-b cursor-pointer" onclick="toggleDetails('mobile-credit-{{ year }}-{{ forloop.counter }}')">
+                                    <div class="font-semibold text-gray-800 mb-3 pb-2 border-b cursor-pointer" onclick="toggleDetails('mobile-credit-{{ month_data.year_month }}')">
                                         {{ month_data.year_month|format_year_month }}
                                         <span class="text-xs text-gray-400 ml-1">▼</span>
                                     </div>
@@ -290,7 +290,7 @@
                                         <span class="text-sm text-gray-600">合計金額</span>
                                         <span class="text-sm font-medium text-red-600">{{ month_data.total_amount|yen }}</span>
                                     </div>
-                                    <div id="mobile-credit-{{ year }}-{{ forloop.counter }}" class="hidden mt-3 pt-3 border-t border-gray-200">
+                                    <div id="mobile-credit-{{ month_data.year_month }}" class="hidden mt-3 pt-3 border-t border-gray-200">
                                         <div class="space-y-3">
                                             {% for card in month_data.cards %}
                                                 <div>
