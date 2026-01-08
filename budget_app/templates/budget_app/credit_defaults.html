@@ -37,7 +37,7 @@
                         {% if d.apply_odd_months_only %}<span class="text-xs bg-yellow-100 px-2 py-1 rounded">奇数月のみ</span>{% else %}毎月{% endif %}
                     </td>
                     <td class="px-3 py-2 text-center align-middle">
-                        <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', {{ d.amount|default:0|floatformat:0 }}, '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
+                        <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', '{{ d.amount|default:0|floatformat:0 }}', '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
                         <form method="post" action="{% url 'budget_app:credit_default_delete' d.pk %}" class="delete-form inline">
                             {% csrf_token %}
                             <button type="submit" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">削除</button>
@@ -69,7 +69,7 @@
                 </div>
             </div>
             <div class="flex gap-2 mt-4">
-                <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', {{ d.amount|default:0|floatformat:0 }}, '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
+                <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', '{{ d.amount|default:0|floatformat:0 }}', '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
                 <form method="post" action="{% url 'budget_app:credit_default_delete' d.pk %}" class="delete-form flex-1">
                     {% csrf_token %}
                     <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 font-medium transition">削除</button>
@@ -238,13 +238,16 @@ function closeCreateModal() {
 function openDefaultEditModal(id, label, amount, cardType, applyOddMonthsOnly, paymentDay) {
     const modal = document.getElementById('defaultEditModal');
 
+    // 金額を数値に変換（文字列として渡された場合）
+    const numericAmount = typeof amount === 'string' ? parseInt(amount.replace(/,/g, ''), 10) : amount;
+
     console.log('openDefaultEditModal called with:', { id, label, amount, cardType, applyOddMonthsOnly, paymentDay });
-    console.log('amount type:', typeof amount, 'amount value:', amount);
+    console.log('amount type:', typeof amount, 'amount value:', amount, 'numericAmount:', numericAmount);
 
     // フォームのフィールドに値を設定
     document.getElementById('default_edit_id').value = id;
     document.getElementById('default_edit_label').value = label;
-    document.getElementById('modal_edit_amount').value = amount;
+    document.getElementById('modal_edit_amount').value = numericAmount;
     console.log('modal_edit_amount input value after set:', document.getElementById('modal_edit_amount').value);
     document.getElementById('default_edit_payment_day').value = paymentDay || 1;
     document.getElementById('default_edit_apply_odd_months_only').checked = applyOddMonthsOnly;

@@ -462,7 +462,10 @@
     function openDefaultEditModal(id, label, amount, cardType, yearMonth, isSplitPayment) {
         const modal = document.getElementById('defaultEditModal');
 
-        console.log('openDefaultEditModal called with:', { id, label, amount, cardType, yearMonth, isSplitPayment });
+        // 金額を数値に変換（文字列として渡された場合）
+        const numericAmount = typeof amount === 'string' ? parseInt(amount.replace(/,/g, ''), 10) : amount;
+
+        console.log('openDefaultEditModal called with:', { id, label, amount, cardType, yearMonth, isSplitPayment, numericAmount });
 
         // カード種別を設定（ラジオボタン形式）
         document.querySelectorAll('#defaultEditModal .default-card-type-radio').forEach(radio => {
@@ -492,7 +495,7 @@
         document.getElementById('default_edit_label').value = label;
         document.getElementById('default_edit_year_month').value = yearMonth;
         document.getElementById('default_edit_hidden_label').value = label; // hiddenフィールドにも値を設定
-        document.getElementById('default_edit_amount').value = amount;
+        document.getElementById('default_edit_amount').value = numericAmount;
         document.getElementById('default_edit_is_split_payment').checked = isSplitPayment || false;
 
         // 最後にモーダルを表示
