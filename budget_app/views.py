@@ -970,7 +970,7 @@ def credit_estimate_list(request):
     overrides = DefaultChargeOverride.objects.all()
     override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment} for ov in overrides}
     estimates = list(CreditEstimate.objects.all().order_by('-year_month', 'card_type', 'due_date', 'created_at'))
-    credit_defaults = list(CreditDefault.objects.filter(is_active=True))
+    credit_defaults = list(CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id'))
 
     # サマリー（年月 -> カード -> {total, entries}）
     # card_id -> タイトル、支払日、オフセット月 のマッピングを MonthlyPlanDefault から取得
@@ -1298,7 +1298,16 @@ def credit_estimate_list(request):
                         # 元の金額も同じ
                         self.original_amount = self.amount
                     self.is_overridden = override_data is not None # 上書きされているかどうかのフラグ
-                    self.due_date = None
+                    # due_dateを計算（請求年月 + payment_day）
+                    # entry_year_month は請求月（billing_month）なので、その月のpayment_day日をdue_dateとする
+                    try:
+                        year, month = map(int, entry_year_month.split('-'))
+                        # payment_dayが月の最終日を超える場合は、その月の最終日にする
+                        max_day = calendar.monthrange(year, month)[1]
+                        actual_day = min(default_obj.payment_day, max_day)
+                        self.due_date = date(year, month, actual_day)
+                    except (ValueError, AttributeError):
+                        self.due_date = None
                     # 上書きデータにis_split_paymentがあればそれを使用、なければFalse
                     self.is_split_payment = override_data.get('is_split_payment', False) if override_data else False
                     self.split_payment_part = split_part  # 1 or 2
@@ -1412,11 +1421,10 @@ def credit_estimate_list(request):
                         card_group['entries'].append(default_entry)
                         card_group['total'] += default_entry.amount
 
-    # 各カードのエントリーを支払日順にソート（定期デフォルトは最後、日付は降順）
+    # 各カードのエントリーを支払日順にソート（日付は降順）
     for year_month, month_group in summary.items():
         for card_type, card_data in month_group.items():
             card_data['entries'].sort(key=lambda x: (
-                x.is_default if hasattr(x, 'is_default') else False,  # 定期デフォルトを最後に
                 -(x.due_date.toordinal()) if x.due_date else float('-inf'),  # due_dateを降順に（新しい日付が先）
                 x.is_bonus_payment if hasattr(x, 'is_bonus_payment') else False,  # 同じ日付なら通常払いを先に
                 # 定期デフォルト項目の場合はdefault_idでソート、通常項目はpkでソート（降順）
@@ -2158,7 +2166,7 @@ def credit_estimate_delete(request, pk):
 
 def credit_default_list(request):
     """定期デフォルト（サブスク・固定費）の編集"""
-    defaults = CreditDefault.objects.filter(is_active=True).order_by('id')
+    defaults = CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id')
 
     # POST時の処理
     if request.method == 'POST':
