@@ -1924,7 +1924,7 @@ def credit_estimate_list(request):
 
                 # 過去の見積もりなら past_transactions ページへ、そうでなければ credit_estimates ページへ
                 if is_past_estimate:
-                    target_page = 'budget_app:past_transactions_list'
+                    target_page = 'budget_app:past_transactions'
                 else:
                     target_page = 'budget_app:credit_estimates'
 
