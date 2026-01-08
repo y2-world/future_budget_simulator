@@ -1889,27 +1889,31 @@ def credit_estimate_list(request):
                 current_date = timezone.now().date()
                 is_past_estimate = False
 
-                if not instance.is_bonus_payment:
+                if not instance.is_bonus_payment and instance.year_month and instance.card_type:
                     # 通常払いの場合、締め日が過ぎたかチェック
-                    year, month = map(int, instance.year_month.split('-'))
-                    card_plan = MonthlyPlanDefault.objects.filter(key=instance.card_type, is_active=True).first()
+                    try:
+                        year, month = map(int, instance.year_month.split('-'))
+                        card_plan = MonthlyPlanDefault.objects.filter(key=instance.card_type, is_active=True).first()
 
-                    if card_plan and not card_plan.is_end_of_month and card_plan.closing_day:
-                        # 指定日締め（翌月の締め日）
-                        closing_month = month + 1
-                        closing_year = year
-                        if closing_month > 12:
-                            closing_month = 1
-                            closing_year += 1
-                        closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
-                    else:
-                        # 月末締め
-                        last_day = calendar.monthrange(year, month)[1]
-                        closing_date = dt_date(year, month, last_day)
+                        if card_plan and not card_plan.is_end_of_month and card_plan.closing_day:
+                            # 指定日締め（翌月の締め日）
+                            closing_month = month + 1
+                            closing_year = year
+                            if closing_month > 12:
+                                closing_month = 1
+                                closing_year += 1
+                            closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
+                        else:
+                            # 月末締め
+                            last_day = calendar.monthrange(year, month)[1]
+                            closing_date = dt_date(year, month, last_day)
 
-                    # 締め日の翌日以降なら過去の見積もり
-                    if current_date > closing_date:
-                        is_past_estimate = True
+                        # 締め日の翌日以降なら過去の見積もり
+                        if current_date > closing_date:
+                            is_past_estimate = True
+                    except (ValueError, AttributeError):
+                        # year_monthのパースに失敗した場合はスキップ
+                        pass
                 elif instance.is_bonus_payment and instance.due_date:
                     # ボーナス払いの場合、支払日が過ぎたかチェック
                     if current_date >= instance.due_date:
