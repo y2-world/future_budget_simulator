@@ -1994,16 +1994,39 @@ def credit_estimate_edit(request, pk):
         form = CreditEstimateForm(request.POST, instance=estimate)
         if form.is_valid():
             # フォームのsave()メソッドで分割払いとボーナス払いの処理を含めて保存
-            form.save()
+            updated_estimate = form.save()
 
-            if is_ajax:
-                return JsonResponse({'status': 'success', 'message': 'クレカ見積りを更新しました。'})
-            messages.success(request, 'クレカ見積りを更新しました。')
-            # リファラーをチェックして適切なページにリダイレクト
+            # 更新後の見積もりが表示される年月を取得
+            target_month = None
+            if updated_estimate.billing_month:
+                target_month = updated_estimate.billing_month
+            elif updated_estimate.is_bonus_payment and updated_estimate.due_date:
+                target_month = updated_estimate.due_date.strftime('%Y-%m')
+            elif updated_estimate.year_month:
+                target_month = updated_estimate.year_month
+
+            # リファラーをチェックして適切なページを判定
             referer = request.META.get('HTTP_REFERER', '')
             if 'past-transactions' in referer:
-                return redirect('budget_app:past_transactions')
-            return redirect('budget_app:credit_estimates')
+                target_page = 'budget_app:past_transactions'
+            else:
+                target_page = 'budget_app:credit_estimates'
+
+            # アンカー付きURLを生成
+            if target_month:
+                anchor = f'#estimate-content-{target_month}'
+            else:
+                anchor = ''
+
+            if is_ajax:
+                target_url = reverse(target_page) + anchor
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'クレカ見積りを更新しました。',
+                    'target_url': target_url
+                })
+            messages.success(request, 'クレカ見積りを更新しました。')
+            return HttpResponseRedirect(reverse(target_page) + anchor)
         else:
             if is_ajax:
                 return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
@@ -2055,6 +2078,15 @@ def credit_estimate_delete(request, pk):
             else:
                 estimate = get_object_or_404(CreditEstimate, pk=pk)
 
+                # 削除前に表示先の情報を取得
+                target_month = None
+                if estimate.billing_month:
+                    target_month = estimate.billing_month
+                elif estimate.is_bonus_payment and estimate.due_date:
+                    target_month = estimate.due_date.strftime('%Y-%m')
+                elif estimate.year_month:
+                    target_month = estimate.year_month
+
                 # 分割払いの場合、ペアも一緒に削除
                 if estimate.is_split_payment and estimate.split_payment_group:
                     # 同じグループIDを持つ他のレコードも削除
@@ -2066,15 +2098,29 @@ def credit_estimate_delete(request, pk):
                     estimate.delete()
                     message = 'クレカ見積りを削除しました。'
 
+            # リファラーをチェックして適切なページを判定
+            referer = request.META.get('HTTP_REFERER', '')
+            if 'past-transactions' in referer:
+                target_page = 'budget_app:past_transactions'
+            else:
+                target_page = 'budget_app:credit_estimates'
+
+            # アンカー付きURLを生成
+            if target_month:
+                anchor = f'#estimate-content-{target_month}'
+            else:
+                anchor = ''
+
             if is_ajax:
-                return JsonResponse({'status': 'success', 'message': message})
+                target_url = reverse(target_page) + anchor
+                return JsonResponse({
+                    'status': 'success',
+                    'message': message,
+                    'target_url': target_url
+                })
             else:
                 messages.success(request, message)
-                # リファラーをチェックして適切なページにリダイレクト
-                referer = request.META.get('HTTP_REFERER', '')
-                if 'past-transactions' in referer:
-                    return redirect('budget_app:past_transactions')
-                return redirect('budget_app:credit_estimates')
+                return HttpResponseRedirect(reverse(target_page) + anchor)
 
         except Exception as e:
             if is_ajax:
