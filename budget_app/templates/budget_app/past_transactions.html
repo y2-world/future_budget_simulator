@@ -918,8 +918,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // ハッシュから年月を抽出（例：#estimate-content-2025-12 → 2025-12）
         const yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
 
-        // 該当するアンカー要素を探す
-        const targetElement = document.querySelector(hash);
+        // デスクトップ版とモバイル版の両方の要素を探す
+        let targetElement = document.querySelector(hash);
+        if (!targetElement) {
+            // デスクトップ版が見つからない場合、モバイル版を探す
+            targetElement = document.querySelector(`#estimate-content-mobile-${yearMonth}`);
+        }
+
         if (targetElement) {
             // 親要素のtrを探す（デスクトップ版の場合）
             const parentTr = targetElement.closest('tr');
