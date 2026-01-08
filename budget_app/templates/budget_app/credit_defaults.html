@@ -239,11 +239,13 @@ function openDefaultEditModal(id, label, amount, cardType, applyOddMonthsOnly, p
     const modal = document.getElementById('defaultEditModal');
 
     console.log('openDefaultEditModal called with:', { id, label, amount, cardType, applyOddMonthsOnly, paymentDay });
+    console.log('amount type:', typeof amount, 'amount value:', amount);
 
     // フォームのフィールドに値を設定
     document.getElementById('default_edit_id').value = id;
     document.getElementById('default_edit_label').value = label;
     document.getElementById('modal_edit_amount').value = amount;
+    console.log('modal_edit_amount input value after set:', document.getElementById('modal_edit_amount').value);
     document.getElementById('default_edit_payment_day').value = paymentDay || 1;
     document.getElementById('default_edit_apply_odd_months_only').checked = applyOddMonthsOnly;
 
