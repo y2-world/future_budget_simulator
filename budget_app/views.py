@@ -1145,12 +1145,20 @@ def credit_estimate_list(request):
         if has_normal_payment:
             existing_billing_months.add(billing_month)
 
-    # 過去3ヶ月分を自動的に追加（定期デフォルト表示のため）
-    from dateutil.relativedelta import relativedelta
-    for i in range(1, 4):  # 1, 2, 3ヶ月前
-        past_date = today - relativedelta(months=i)
-        past_month_str = past_date.strftime('%Y-%m')
-        existing_billing_months.add(past_month_str)
+    # 過去の全ての月を自動的に追加（定期デフォルト表示のため）
+    # MonthlyPlanから過去の年月をすべて取得
+    past_plans = MonthlyPlan.objects.filter(year_month__lt=current_year_month).values_list('year_month', flat=True)
+    for past_month_str in past_plans:
+        # 過去の計画から引き落とし月を計算して追加
+        past_year, past_month = map(int, past_month_str.split('-'))
+        for card_id, offset_months in card_offset_months.items():
+            billing_month_num = past_month + offset_months
+            billing_year = past_year
+            while billing_month_num > 12:
+                billing_month_num -= 12
+                billing_year += 1
+            billing_month = f"{billing_year}-{billing_month_num:02d}"
+            existing_billing_months.add(billing_month)
 
     # 定期デフォルトを追加する利用月を決定
     # 既存の引き落とし月から逆算して、対応する利用月を計算
@@ -1169,8 +1177,9 @@ def credit_estimate_list(request):
                 usage_month_num += 12
                 usage_year -= 1
             usage_month = f"{usage_year}-{usage_month_num:02d}"
-            # 現在の月以降のみ追加
-            if usage_month >= current_year_month:
+            # 過去3ヶ月以降を追加（定期デフォルト表示のため）
+            three_months_ago = (today - relativedelta(months=3)).strftime('%Y-%m')
+            if usage_month >= three_months_ago:
                 candidate_usage_cards[(usage_month, card_id)] = billing_month
 
     # 利用月のリストを取得してソート（重複削除）

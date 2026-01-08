@@ -148,7 +148,7 @@
                                                             </div>
                                                             <div class="space-y-1">
                                                                 {% for est in card.estimates %}
-                                                                    <div class="bg-white p-2 rounded border border-gray-200">
+                                                                    <div class="{% if est.estimate.is_default %}bg-blue-50{% else %}bg-white{% endif %} p-2 rounded border border-gray-200">
                                                                         <div class="flex justify-between items-center">
                                                                             <div class="flex items-center gap-2">
                                                                                 <span class="text-gray-500">
@@ -314,7 +314,7 @@
                                                     </div>
                                                     <div class="space-y-1">
                                                         {% for est in card.estimates %}
-                                                            <div class="bg-gray-50 p-2 rounded text-xs">
+                                                            <div class="{% if est.estimate.is_default %}bg-blue-100{% else %}bg-gray-50{% endif %} p-2 rounded text-xs">
                                                                 <div class="flex justify-between items-start mb-1">
                                                                     <div class="flex items-center gap-1 flex-wrap">
                                                                         <span class="text-gray-500">
