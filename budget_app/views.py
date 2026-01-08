@@ -1876,11 +1876,12 @@ def credit_estimate_list(request):
                 instance = form.save() # 分割払い対応のためsaveメソッドを使う
 
                 # 追加した見積もりが表示される年月を取得
+                target_month = None
                 if instance.billing_month:
                     target_month = instance.billing_month
                 elif instance.is_bonus_payment and instance.due_date:
                     target_month = instance.due_date.strftime('%Y-%m')
-                else:
+                elif instance.year_month:
                     target_month = instance.year_month
 
                 # 締め日チェック：過去の見積もりか現在/未来の見積もりかを判定
@@ -1889,9 +1890,9 @@ def credit_estimate_list(request):
                 current_date = timezone.now().date()
                 is_past_estimate = False
 
-                if not instance.is_bonus_payment and instance.year_month and instance.card_type:
-                    # 通常払いの場合、締め日が過ぎたかチェック
-                    try:
+                try:
+                    if not instance.is_bonus_payment and instance.year_month and instance.card_type:
+                        # 通常払いの場合、締め日が過ぎたかチェック
                         year, month = map(int, instance.year_month.split('-'))
                         card_plan = MonthlyPlanDefault.objects.filter(key=instance.card_type, is_active=True).first()
 
@@ -1911,21 +1912,27 @@ def credit_estimate_list(request):
                         # 締め日の翌日以降なら過去の見積もり
                         if current_date > closing_date:
                             is_past_estimate = True
-                    except (ValueError, AttributeError):
-                        # year_monthのパースに失敗した場合はスキップ
-                        pass
-                elif instance.is_bonus_payment and instance.due_date:
-                    # ボーナス払いの場合、支払日が過ぎたかチェック
-                    if current_date >= instance.due_date:
-                        is_past_estimate = True
+                    elif instance.is_bonus_payment and instance.due_date:
+                        # ボーナス払いの場合、支払日が過ぎたかチェック
+                        if current_date >= instance.due_date:
+                            is_past_estimate = True
+                except Exception as e:
+                    # 締め日チェックでエラーが発生した場合はログに記録してスキップ
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Error in closing date check: {e}')
 
                 # 過去の見積もりなら past_transactions ページへ、そうでなければ credit_estimates ページへ
                 if is_past_estimate:
                     target_page = 'budget_app:past_transactions_list'
-                    anchor = f'#estimate-content-{target_month}'
                 else:
                     target_page = 'budget_app:credit_estimates'
+
+                # アンカー付きURLを生成
+                if target_month:
                     anchor = f'#estimate-content-{target_month}'
+                else:
+                    anchor = ''
 
                 if is_ajax:
                     target_url = reverse(target_page) + anchor
