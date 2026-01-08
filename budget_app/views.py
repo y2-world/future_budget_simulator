@@ -1328,16 +1328,20 @@ def credit_estimate_list(request):
             if is_split:
                 total_amount = override_data.get('amount') if override_data else default.amount
 
-                # 1回目の締め日チェック
+                # 1回目の締め日チェック（過去月の場合はスキップ）
                 # 1回目の利用月year_monthの締め日が過ぎていなければ表示
                 first_payment_closed = False
-                card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
-                if card_info and card_info.closing_day and not card_info.is_end_of_month:
-                    # 指定日締めの場合（例: 5日締め）
-                    first_payment_closed = view_closed
-                else:
-                    # 月末締めの場合
-                    first_payment_closed = other_closed
+                current_year_month_str = f"{today.year}-{today.month:02d}"
+
+                # billing_monthが過去月または現在月の場合のみ締め日チェック
+                if billing_month >= current_year_month_str:
+                    card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+                    if card_info and card_info.closing_day and not card_info.is_end_of_month:
+                        # 指定日締めの場合（例: 5日締め）
+                        first_payment_closed = view_closed
+                    else:
+                        # 月末締めの場合
+                        first_payment_closed = other_closed
 
                 # 1回目（利用月のbilling_monthに表示）
                 if not first_payment_closed:
@@ -1382,8 +1386,8 @@ def credit_estimate_list(request):
                     second_last_day = calendar.monthrange(second_usage_year, second_usage_month)[1]
                     second_closing_date = date(second_usage_year, second_usage_month, second_last_day)
 
-                # 2回目の締め日が過ぎていなければ表示
-                if today.date() <= second_closing_date:
+                # 2回目の締め日が過ぎていなければ表示（過去月の場合は常に表示）
+                if next_billing_month < current_year_month_str or today.date() <= second_closing_date:
                     # 2回目の引き落とし月のカードグループを取得または作成
                     next_month_group = summary.setdefault(next_billing_month, OrderedDict())
 
@@ -1409,18 +1413,22 @@ def credit_estimate_list(request):
                         next_card_group['total'] += default_entry_2.amount
             else:
                 # 通常の1回払い
-                # 締め日チェック
+                # 締め日チェック（過去月の場合はスキップ）
                 payment_closed = False
-                # カード情報を取得
-                card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
-                if card_info and card_info.closing_day and not card_info.is_end_of_month:
-                    # 指定日締めの場合
-                    payment_closed = view_closed
-                else:
-                    # 月末締めの場合
-                    payment_closed = other_closed
+                current_year_month_str = f"{today.year}-{today.month:02d}"
 
-                # 締め日が過ぎていなければ表示
+                # billing_monthが過去月または現在月の場合のみ締め日チェック
+                if billing_month >= current_year_month_str:
+                    # カード情報を取得
+                    card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+                    if card_info and card_info.closing_day and not card_info.is_end_of_month:
+                        # 指定日締めの場合
+                        payment_closed = view_closed
+                    else:
+                        # 月末締めの場合
+                        payment_closed = other_closed
+
+                # 締め日が過ぎていなければ表示（過去月は常に表示）
                 if not payment_closed:
                     default_entry = DefaultEntry(default, year_month, override_data, actual_card_type)
                     # 金額が0の場合は追加しない（削除された定期項目）
