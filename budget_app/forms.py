@@ -683,15 +683,6 @@ class CreditEstimateForm(forms.ModelForm):
 
         # ボーナス払いの場合、年月を調整
         if instance.is_bonus_payment:
-            # UIでは「利用日」フィールドがdue_dateとして送信される
-            # ボーナス払いの場合、これを利用日(purchase_date)として扱い、
-            # 実際の支払日(due_date)を計算する必要がある
-
-            # UIから受け取ったdue_dateを利用日(purchase_date)として扱う
-            # ボーナス払いの場合、フォームのdue_dateフィールドは実際には利用日（利用日）
-            if instance.due_date:
-                instance.purchase_date = instance.due_date
-
             # purchase_dateからyear_month（利用月）とdue_date（支払日）を設定
             if instance.purchase_date:
                 # year_monthは利用月（購入月）
