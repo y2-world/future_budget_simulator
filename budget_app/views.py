@@ -2835,6 +2835,86 @@ def past_transactions_list(request):
                 if current_date > closing_date:
                     past_credit_estimates.append(est)
 
+    # 定期項目（DefaultChargeOverride）も過去の明細に追加
+    all_overrides = DefaultChargeOverride.objects.all().select_related('default')
+
+    # DefaultChargeOverrideを year_month ごとにグループ化
+    for override in all_overrides:
+        if not override.default.is_active:
+            continue
+
+        year_month = override.year_month
+        year, month = map(int, year_month.split('-'))
+
+        # 奇数月のみ適用フラグのチェック
+        is_odd_month = (month % 2 == 1)
+        if override.default.apply_odd_months_only and not is_odd_month:
+            continue
+
+        # カード情報を取得
+        card_plan = MonthlyPlanDefault.objects.filter(key=override.card_type, is_active=True).first()
+        if not card_plan:
+            continue
+
+        # 締め日を計算
+        if card_plan.is_end_of_month:
+            # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
+            last_day = calendar.monthrange(year, month)[1]
+            closing_date = dt_date(year, month, last_day)
+        elif card_plan.closing_day:
+            # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
+            closing_month = month + 1
+            closing_year = year
+            if closing_month > 12:
+                closing_month = 1
+                closing_year += 1
+            closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
+        else:
+            # デフォルト: 月末締め
+            last_day = calendar.monthrange(year, month)[1]
+            closing_date = dt_date(year, month, last_day)
+
+        # 締め日の翌日以降なら過去の明細に含める
+        if current_date > closing_date:
+            # billing_monthを計算
+            if card_plan.is_end_of_month:
+                billing_month_num = month + 1
+            else:
+                billing_month_num = month + 2
+
+            billing_year = year
+            if billing_month_num > 12:
+                billing_month_num -= 12
+                billing_year += 1
+            billing_month = f"{billing_year}-{billing_month_num:02d}"
+
+            # 支払日を計算
+            payment_day = override.default.payment_day
+            max_day = calendar.monthrange(billing_year, billing_month_num)[1]
+            actual_day = min(payment_day, max_day)
+            due_date = dt_date(billing_year, billing_month_num, actual_day)
+
+            # 疑似CreditEstimateオブジェクトを作成
+            class DefaultEstimate:
+                def __init__(self, override_obj, year_month, billing_month, due_date, card_type):
+                    self.pk = None  # 定期項目であることを示す
+                    self.year_month = year_month
+                    self.billing_month = billing_month
+                    self.card_type = card_type
+                    self.description = override_obj.default.label
+                    self.amount = override_obj.amount
+                    self.due_date = due_date
+                    self.purchase_date = None  # 定期項目なので購入日はなし
+                    self.is_bonus_payment = False
+                    self.is_split_payment = override_obj.is_split_payment
+                    self.is_default = True  # 定期項目フラグ
+                    self.default_id = override_obj.default.id
+                    self.payment_day = override_obj.default.payment_day
+                    self.created_at = override_obj.created_at if hasattr(override_obj, 'created_at') else None
+
+            default_est = DefaultEstimate(override, year_month, billing_month, due_date, override.card_type)
+            past_credit_estimates.append(default_est)
+
     # 並び替え（billing_month降順、year_month降順）
     past_credit_estimates.sort(key=lambda x: (x.billing_month if x.billing_month else x.year_month, x.year_month), reverse=True)
 
