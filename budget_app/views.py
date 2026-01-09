@@ -1153,8 +1153,8 @@ def credit_estimate_list(request):
                 # 月末締め: billing_month = year_month + 1 → year_month = billing_month - 1
                 usage_month_num = billing_month_num - 1
             else:
-                # 指定日締め: billing_month = year_month + 2 → year_month = billing_month - 2
-                usage_month_num = billing_month_num - 2
+                # 指定日締め: billing_month = year_month + 1 → year_month = billing_month - 1
+                usage_month_num = billing_month_num - 1
 
             usage_year = billing_year
             if usage_month_num < 1:
@@ -1242,11 +1242,14 @@ def credit_estimate_list(request):
             info = card_info.get(actual_card_type, {'is_end_of_month': False})
 
             if info['is_end_of_month']:
-                # 月末締め: billing_month = year_month + 1
+                # 月末締め: 利用月 → 利用月末締め → 翌月払い
+                # 例: 1月利用 → 1/31締め → 2月払い
                 billing_month_num = usage_date.month + 1
             else:
-                # 指定日締め: billing_month = year_month + 2
-                billing_month_num = usage_date.month + 2
+                # 指定日締め: 利用月 → 翌月締め → 翌々月払い
+                # 例: 1月利用 → 2/5締め → 2月払い（VIEWカードは2/4払い）
+                # billing_month = 締め月 = year_month + 1
+                billing_month_num = usage_date.month + 1
 
             billing_year = usage_date.year
             while billing_month_num > 12:
@@ -1426,11 +1429,9 @@ def credit_estimate_list(request):
     # 各カードのエントリーを利用日順にソート（日付は降順＝新しい順）
     for year_month, month_group in summary.items():
         for card_type, card_data in month_group.items():
-            card_data['entries'].sort(key=lambda x: (
-                # purchase_dateを優先、なければdue_dateを使用（降順）
-                -((x.purchase_date.toordinal() if hasattr(x, 'purchase_date') and x.purchase_date else (x.due_date.toordinal() if x.due_date else 0))),
-                # 定期デフォルト項目の場合はdefault_id、通常項目はpkでソート（降順）
-                -(x.default_id if (hasattr(x, 'is_default') and x.is_default and hasattr(x, 'default_id')) else (x.pk if hasattr(x, 'pk') and x.pk else 0))
+            card_data['entries'].sort(key=lambda x: -(
+                x.purchase_date.toordinal() if (hasattr(x, 'purchase_date') and x.purchase_date)
+                else (x.due_date.toordinal() if (hasattr(x, 'due_date') and x.due_date) else 0)
             ))
 
     # 各月のカードを支払日順にソート

@@ -187,18 +187,18 @@
                     <div class="xl:hidden space-y-2">
                         {% for salary in year_salaries %}
                         {% if salary.has_bonus %}
-                        <div class="border rounded-lg p-4 bg-white shadow-sm">
-                            <div class="flex justify-between items-center mb-2">
-                                <div class="font-bold text-lg text-gray-800">賞与 ({{ salary.year_month|format_year_month }})</div>
+                        <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg shadow-md overflow-hidden">
+                            <div class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 flex justify-between items-center">
+                                <div class="font-bold text-sm">賞与 ({{ salary.year_month|format_year_month }})</div>
                                 <div class="flex gap-2">
-                                    <button onclick="openEditBonusModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.bonus_gross_salary|default:0|stringformat:'d' }}, {{ salary.bonus_deductions|default:0|stringformat:'d' }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
-                                    <button onclick="deleteSalary({{ salary.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
+                                    <button onclick="openEditBonusModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.bonus_gross_salary|default:0|stringformat:'d' }}, {{ salary.bonus_deductions|default:0|stringformat:'d' }})" class="text-white hover:text-emerald-100 text-xs">✏️</button>
+                                    <button onclick="deleteSalary({{ salary.pk }})" class="text-white hover:text-red-200 text-xs">🗑️</button>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">総支給額</div>
-                                    <div class="font-semibold text-emerald-700">
+                            <div class="p-3 grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white rounded p-2">
+                                    <div class="text-gray-500 text-xs mb-0.5">総支給額</div>
+                                    <div class="font-bold text-emerald-700 text-sm">
                                         {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
                                             {{ salary.bonus_gross_salary|yen }}
                                         {% else %}
@@ -206,27 +206,13 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">総支給額-交通費</div>
-                                    <div class="font-semibold text-blue-700">
-                                        {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
-                                            {{ salary.bonus_gross_salary|yen }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </div>
+                                <div class="bg-white rounded p-2">
+                                    <div class="text-gray-500 text-xs mb-0.5">差引支給額</div>
+                                    <div class="font-bold text-violet-700 text-sm">{{ salary.get_net_bonus|yen }}</div>
                                 </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">差引支給額</div>
-                                    <div class="font-semibold text-violet-700">{{ salary.get_net_bonus|yen }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">交通費</div>
-                                    <div class="font-semibold text-teal-700">-</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">控除合計</div>
-                                    <div class="font-semibold text-rose-700">
+                                <div class="bg-white rounded p-2">
+                                    <div class="text-gray-500 text-xs mb-0.5">控除額</div>
+                                    <div class="font-bold text-rose-700 text-sm">
                                         {% if salary.bonus_deductions and salary.bonus_deductions > 0 %}
                                             {{ salary.bonus_deductions|yen }}
                                         {% else %}
@@ -234,9 +220,9 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">控除率</div>
-                                    <div class="font-semibold text-orange-700">
+                                <div class="bg-white rounded p-2">
+                                    <div class="text-gray-500 text-xs mb-0.5">控除率</div>
+                                    <div class="font-bold text-orange-700 text-sm">
                                         {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
                                             {% widthratio salary.bonus_deductions salary.bonus_gross_salary 100 as bonus_deduction_pct %}
                                             {{ bonus_deduction_pct|floatformat:2 }}%
@@ -249,38 +235,30 @@
                         </div>
                         {% endif %}
                         {% if salary.gross_salary and salary.gross_salary > 0 %}
-                        <div class="border rounded-lg p-4 bg-white shadow-sm">
-                            <div class="flex justify-between items-center mb-2">
-                                <div class="font-bold text-lg text-gray-800">{{ salary.year_month|format_year_month }}</div>
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md overflow-hidden">
+                            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-2 flex justify-between items-center">
+                                <div class="font-bold text-sm">{{ salary.year_month|format_year_month }}</div>
                                 <div class="flex gap-2">
-                                    <button onclick="openEditSalaryModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.gross_salary|default:0|stringformat:'d' }}, {{ salary.deductions|default:0|stringformat:'d' }}, {{ salary.transportation|default:0|stringformat:'d' }}, {{ salary.has_bonus|yesno:'true,false' }}, {{ salary.bonus_gross_salary|default:0|stringformat:'d' }}, {{ salary.bonus_deductions|default:0|stringformat:'d' }})" class="text-blue-600 hover:text-blue-800 text-sm">編集</button>
-                                    <button onclick="deleteSalary({{ salary.pk }})" class="text-red-600 hover:text-red-800 text-sm">削除</button>
+                                    <button onclick="openEditSalaryModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.gross_salary|default:0|stringformat:'d' }}, {{ salary.deductions|default:0|stringformat:'d' }}, {{ salary.transportation|default:0|stringformat:'d' }}, {{ salary.has_bonus|yesno:'true,false' }}, {{ salary.bonus_gross_salary|default:0|stringformat:'d' }}, {{ salary.bonus_deductions|default:0|stringformat:'d' }})" class="text-white hover:text-blue-100 text-xs">✏️</button>
+                                    <button onclick="deleteSalary({{ salary.pk }})" class="text-white hover:text-red-200 text-xs">🗑️</button>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">総支給額</div>
-                                    <div class="font-semibold text-green-700">{{ salary.gross_salary|yen }}</div>
+                            <div class="p-3 grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white rounded p-2">
+                                    <div class="text-gray-500 text-xs mb-0.5">総支給額</div>
+                                    <div class="font-bold text-green-700 text-sm">{{ salary.gross_salary|yen }}</div>
                                 </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">総支給額-交通費</div>
-                                    <div class="font-semibold text-blue-700">{{ salary.gross_salary|subtract:salary.transportation|yen }}</div>
+                                <div class="bg-white rounded p-2">
+                                    <div class="text-gray-500 text-xs mb-0.5">差引支給額</div>
+                                    <div class="font-bold text-purple-700 text-sm">{{ salary.get_net_salary|yen }}</div>
                                 </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">差引支給額</div>
-                                    <div class="font-semibold text-purple-700">{{ salary.get_net_salary|yen }}</div>
+                                <div class="bg-white rounded p-2">
+                                    <div class="text-gray-500 text-xs mb-0.5">控除額</div>
+                                    <div class="font-bold text-red-700 text-sm">{{ salary.deductions|yen }}</div>
                                 </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">交通費</div>
-                                    <div class="font-semibold text-teal-700">{{ salary.transportation|yen }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">控除合計</div>
-                                    <div class="font-semibold text-red-700">{{ salary.deductions|yen }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-600 mb-1">控除率</div>
-                                    <div class="font-semibold text-orange-700">
+                                <div class="bg-white rounded p-2">
+                                    <div class="text-gray-500 text-xs mb-0.5">控除率</div>
+                                    <div class="font-bold text-orange-700 text-sm">
                                         {% if salary.gross_salary and salary.transportation %}
                                             {% widthratio salary.deductions salary.gross_salary|subtract:salary.transportation 100 as deduction_pct %}
                                             {{ deduction_pct|floatformat:2 }}%

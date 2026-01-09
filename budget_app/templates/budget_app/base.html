@@ -40,13 +40,13 @@
 
         /* アンカーリンク用のスクロールマージン（ヘッダー分のオフセット） */
         [id] {
-            scroll-margin-top: 100px; /* モバイル: ヘッダー高さ + 余白 */
+            scroll-margin-top: 120px; /* モバイル: ヘッダー高さ + 余白 */
         }
 
         /* デスクトップ用 (1024px以上) */
         @media (min-width: 1024px) {
             [id] {
-                scroll-margin-top: 100px; /* デスクトップ: ヘッダー高さ + 余白 */
+                scroll-margin-top: 120px; /* デスクトップ: ヘッダー高さ + 余白 */
             }
         }
     </style>
@@ -135,7 +135,7 @@
 
                 // 要素の位置を取得してヘッダー分を引く
                 const elementPosition = targetElement.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20; // 20pxの余白を追加
+                const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 40; // 40pxの余白を追加
 
                 // スムーズスクロール
                 window.scrollTo({
