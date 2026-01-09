@@ -1734,6 +1734,8 @@ def credit_estimate_list(request):
                 is_bonus_payment=is_bonus
             )
 
+            print(f"DEBUG REFLECT: year_month = {year_month}")  # デバッグ用
+
             # ボーナス払いの場合は支払月（due_date）でフィルタ
             if is_bonus:
                 estimates_query = estimates_query.filter(
@@ -1744,9 +1746,13 @@ def credit_estimate_list(request):
                 # 通常払いの場合はbilling_monthでフィルタ
                 estimates_query = estimates_query.filter(billing_month=year_month)
 
+            print(f"DEBUG REFLECT: estimates_query count = {estimates_query.count()}")  # デバッグ用
+
             # 合計額を計算
             result = estimates_query.aggregate(total=Sum('amount'))
             total_amount = result['total'] or 0
+
+            print(f"DEBUG REFLECT: total_amount = {total_amount}")  # デバッグ用
 
             if total_amount == 0:
                 error_message = 'カードデータが見つかりません。'
