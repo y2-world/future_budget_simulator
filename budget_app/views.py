@@ -2735,12 +2735,15 @@ def past_transactions_list(request):
 
     # POST処理: 定期項目の金額編集
     if request.method == 'POST':
-        action = request.POST.get('action')
+        action = request.POST.get('form_action')  # form_action に変更
         if action == 'edit_default_amount':
             default_id = request.POST.get('default_id')
             year_month = request.POST.get('year_month')
             card_type = request.POST.get('card_type')
             amount = request.POST.get('amount')
+
+            # デバッグ: 受信したパラメータをログ出力
+            print(f"DEBUG: default_id={default_id}, year_month={year_month}, card_type={card_type}, amount={amount}")
 
             try:
                 # DefaultChargeOverrideを取得または作成
@@ -2750,21 +2753,59 @@ def past_transactions_list(request):
                     defaults={'card_type': card_type, 'amount': amount}
                 )
                 if not created:
-                    # 既存の場合は金額を更新
+                    # 既存の場合は金額とカード種別を更新
                     override.amount = amount
+                    override.card_type = card_type
                     override.save()
 
-                return JsonResponse({'status': 'success'})
+                # Ajaxリクエストの場合はJSONレスポンスを返す
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    # 定期項目の名前を取得
+                    from .models import CreditDefault, MonthlyPlanDefault
+                    from django.urls import reverse
+                    default = CreditDefault.objects.get(id=default_id)
+
+                    # billing_monthを計算（引き落とし月のセクションにジャンプするため）
+                    year, month = map(int, year_month.split('-'))
+                    card_plan = MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
+
+                    if card_plan:
+                        if card_plan.is_end_of_month:
+                            billing_month_num = month + 1
+                        else:
+                            billing_month_num = month + 2
+
+                        billing_year = year
+                        if billing_month_num > 12:
+                            billing_month_num -= 12
+                            billing_year += 1
+                        billing_month = f"{billing_year}-{billing_month_num:02d}"
+                    else:
+                        billing_month = year_month
+
+                    # 過去の明細画面のアンカー付きURLを生成
+                    target_url = reverse('budget_app:past_transactions') + f'#estimate-content-{billing_month}'
+
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': f'{default.label}を更新しました。',
+                        'target_url': target_url
+                    })
+                else:
+                    return redirect('budget_app:past_transactions')
             except Exception as e:
+                import traceback
+                error_detail = traceback.format_exc()
+                print(f"ERROR: {error_detail}")
                 return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
     current_date = datetime.now().date()
     current_year_month = datetime.now().strftime('%Y-%m')
 
-    # 過去のMonthlyPlanを取得（当月より前、年月で降順ソート）
+    # 過去のMonthlyPlanを取得（当月より前、年月で昇順ソート）
     past_plans_qs = MonthlyPlan.objects.filter(
         year_month__lt=current_year_month
-    ).order_by('-year_month')
+    ).order_by('year_month')
 
     # 当月のプランで今日以降の明細がないものも含める
     current_month_plan = MonthlyPlan.objects.filter(year_month=current_year_month).first()
@@ -2805,7 +2846,7 @@ def past_transactions_list(request):
 
         # 今日以降の明細がない場合、過去の明細に含める
         if not future_items:
-            past_plans.insert(0, current_month_plan)  # 先頭に追加（降順なので）
+            past_plans.append(current_month_plan)  # 末尾に追加（昇順なので）
 
     # 過去のクレカ見積りを取得
     # 締め日が過ぎたものを表示するため、未来の引き落とし月も含めて取得
@@ -2914,32 +2955,38 @@ def past_transactions_list(request):
                 billing_year += 1
             billing_month = f"{billing_year}-{billing_month_num:02d}"
 
-            # 支払日を計算
+            # 利用日を計算（利用月のpayment_day日）
             payment_day = override.default.payment_day
-            max_day = calendar.monthrange(billing_year, billing_month_num)[1]
-            actual_day = min(payment_day, max_day)
-            due_date = dt_date(billing_year, billing_month_num, actual_day)
+            max_day_usage = calendar.monthrange(year, month)[1]
+            actual_day_usage = min(payment_day, max_day_usage)
+            purchase_date = dt_date(year, month, actual_day_usage)
+
+            # 引き落とし日を計算（billing_monthのpayment_day日）
+            max_day_billing = calendar.monthrange(billing_year, billing_month_num)[1]
+            actual_day_billing = min(payment_day, max_day_billing)
+            due_date = dt_date(billing_year, billing_month_num, actual_day_billing)
 
             # 疑似CreditEstimateオブジェクトを作成
             class DefaultEstimate:
-                def __init__(self, override_obj, year_month, billing_month, due_date, card_type):
-                    self.id = None  # 定期項目であることを示す
-                    self.pk = None  # 定期項目であることを示す
+                def __init__(self, override_obj, year_month, billing_month, purchase_date, due_date, card_type):
+                    self.id = override_obj.id  # DefaultChargeOverrideのID
+                    self.pk = override_obj.id  # DefaultChargeOverrideのID
                     self.year_month = year_month
                     self.billing_month = billing_month
                     self.card_type = card_type
                     self.description = override_obj.default.label
                     self.amount = override_obj.amount
-                    self.due_date = due_date
-                    self.purchase_date = None  # 定期項目なので購入日はなし
+                    self.due_date = due_date  # 引き落とし日
+                    self.purchase_date = purchase_date  # 利用日（利用月のpayment_day）
                     self.is_bonus_payment = False
                     self.is_split_payment = override_obj.is_split_payment
                     self.is_default = True  # 定期項目フラグ
                     self.default_id = override_obj.default.id
+                    self.override_id = override_obj.id  # DefaultChargeOverrideのID
                     self.payment_day = override_obj.default.payment_day
                     self.created_at = override_obj.created_at if hasattr(override_obj, 'created_at') else None
 
-            default_est = DefaultEstimate(override, year_month, billing_month, due_date, override.card_type)
+            default_est = DefaultEstimate(override, year_month, billing_month, purchase_date, due_date, override.card_type)
             past_credit_estimates.append(default_est)
 
     # 並び替え（billing_month降順、year_month降順）
@@ -3158,7 +3205,9 @@ def past_transactions_list(request):
             }
 
         # is_default属性を追加（過去の明細では通常の見積もりはFalse）
-        estimate.is_default = False
+        # 定期項目（DefaultEstimate）の場合はすでにis_default=Trueが設定されているので上書きしない
+        if not hasattr(estimate, 'is_default'):
+            estimate.is_default = False
 
         yearly_data[year]['credit_months'][billing_month]['cards'][card_name]['estimates'].append({
             'card_type': estimate.card_type,
@@ -3171,27 +3220,27 @@ def past_transactions_list(request):
         yearly_data[year]['total_credit'] += estimate.amount
 
     # クレカ見積りの月別データをリストに変換してソート
-    # billing_month（引き落とし月）でソート
+    # billing_month（引き落とし月）でソート（昇順 = 古い順）
     for year in yearly_data:
         credit_months_list = sorted(
             yearly_data[year]['credit_months'].values(),
             key=lambda x: x['year_month'],  # year_monthはbilling_monthが入っている
-            reverse=True
+            reverse=False
         )
         # 各月のカード別データをリストに変換
         for month_data in credit_months_list:
             cards_list = []
             for card_name, card_data in month_data['cards'].items():
-                # 各カードの明細を引落日順にソート（年月日全体で）
+                # 各カードの明細を利用日順にソート（昇順 = 古い順）
                 def get_sort_key(est):
+                    # purchase_dateを優先、なければdue_date、それもなければyear_month
+                    purchase = est['estimate'].purchase_date
                     due = est['estimate'].due_date
                     is_bonus = est['estimate'].is_bonus_payment
-                    if due is None:
-                        # due_dateがない場合は最後に表示
-                        return (dt_date.max, False, est['estimate'].id)
-                    else:
-                        # due_date、is_bonus_payment（通常払いを先に）、idの順でソート
-                        return (due, is_bonus, est['estimate'].id)
+
+                    # ソートキー：日付（purchase_date優先）、is_bonus_payment、id
+                    date_key = purchase if purchase else (due if due else dt_date.max)
+                    return (date_key, is_bonus, est['estimate'].id if hasattr(est['estimate'], 'id') else 0)
 
                 card_data['estimates'] = sorted(card_data['estimates'], key=get_sort_key)
                 cards_list.append(card_data)

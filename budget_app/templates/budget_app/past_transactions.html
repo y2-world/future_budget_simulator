@@ -174,15 +174,15 @@
                                                                                 <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
                                                                                 {% if est.estimate.pk %}
                                                                                 <div class="flex gap-1">
-                                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }}, {{ est.estimate.is_default|lower }}, {{ est.estimate.default_id|default:'null' }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                                    {% if est.estimate.is_default %}
+                                                                                    <button type="button" disabled class="text-gray-400 text-xs cursor-not-allowed" title="定期項目は削除できません">削除</button>
+                                                                                    {% else %}
                                                                                     <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
                                                                                         {% csrf_token %}
                                                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                                                                     </form>
-                                                                                </div>
-                                                                                {% elif est.estimate.is_default %}
-                                                                                <div class="flex gap-1">
-                                                                                    <button type="button" onclick="editDefaultAmount({{ est.estimate.default_id }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', {{ est.estimate.amount }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                                    {% endif %}
                                                                                 </div>
                                                                                 {% endif %}
                                                                             </div>
@@ -346,15 +346,15 @@
                                                                 </div>
                                                                 {% if est.estimate.pk %}
                                                                 <div class="flex gap-2 justify-end">
-                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }}, {{ est.estimate.is_default|lower }}, {{ est.estimate.default_id|default:'null' }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                    {% if est.estimate.is_default %}
+                                                                    <button type="button" disabled class="text-gray-400 text-xs cursor-not-allowed" title="定期項目は削除できません">削除</button>
+                                                                    {% else %}
                                                                     <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
                                                                         {% csrf_token %}
                                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                                                     </form>
-                                                                </div>
-                                                                {% elif est.estimate.is_default %}
-                                                                <div class="flex gap-2 justify-end">
-                                                                    <button type="button" onclick="editDefaultAmount({{ est.estimate.default_id }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', {{ est.estimate.amount }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                    {% endif %}
                                                                 </div>
                                                                 {% endif %}
                                                             </div>
@@ -573,11 +573,52 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment) {
+function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment, isDefault = false, defaultId = null) {
     const modal = document.getElementById('editModal');
     const form = document.getElementById('editForm');
 
-    form.action = `/credit-estimates/${pk}/edit/`;
+    // 定期項目の場合は過去の明細のエンドポイントを使用
+    if (isDefault) {
+        form.setAttribute('action', "{% url 'budget_app:past_transactions' %}");
+        // form_action hiddenフィールドを追加または更新
+        let formActionInput = form.querySelector('input[name="form_action"]');
+        if (!formActionInput) {
+            formActionInput = document.createElement('input');
+            formActionInput.type = 'hidden';
+            formActionInput.name = 'form_action';
+            form.appendChild(formActionInput);
+        }
+        formActionInput.value = 'edit_default_amount';
+
+        // default_id hiddenフィールドを追加または更新
+        let defaultIdInput = form.querySelector('input[name="default_id"]');
+        if (!defaultIdInput) {
+            defaultIdInput = document.createElement('input');
+            defaultIdInput.type = 'hidden';
+            defaultIdInput.name = 'default_id';
+            form.appendChild(defaultIdInput);
+        }
+        defaultIdInput.value = defaultId;
+
+        // year_month hiddenフィールドを追加または更新
+        let yearMonthInput = form.querySelector('input[name="year_month"]');
+        if (!yearMonthInput) {
+            yearMonthInput = document.createElement('input');
+            yearMonthInput.type = 'hidden';
+            yearMonthInput.name = 'year_month';
+            form.appendChild(yearMonthInput);
+        }
+        yearMonthInput.value = yearMonth;
+    } else {
+        form.setAttribute('action', `/credit-estimates/${pk}/edit/`);
+        // 定期項目用のhiddenフィールドを削除
+        const formActionInput = form.querySelector('input[name="form_action"]');
+        if (formActionInput) formActionInput.remove();
+        const defaultIdInput = form.querySelector('input[name="default_id"]');
+        if (defaultIdInput) defaultIdInput.remove();
+        const yearMonthInput = form.querySelector('input[name="year_month"]');
+        if (yearMonthInput) yearMonthInput.remove();
+    }
 
     // 年月をhiddenフィールドに設定
     document.getElementById('edit_year_month_hidden').value = yearMonth;
@@ -617,6 +658,12 @@ function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, pu
 
     document.getElementById('edit_is_split_payment').checked = isSplitPayment;
     document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
+
+    // 定期項目の場合は項目名と支払種別を無効化
+    document.getElementById('edit_description').disabled = isDefault;
+    document.getElementById('edit_is_split_payment').disabled = isDefault;
+    document.getElementById('edit_is_bonus_payment').disabled = isDefault;
+    document.getElementById('edit_purchase_date').disabled = isDefault;
 
     // カード種別に応じて分割払い・ボーナス払いの表示を更新
     togglePaymentOptions();
@@ -788,8 +835,15 @@ editForm.addEventListener('submit', async function(e) {
 
     const formData = new FormData(editForm);
 
+    // デバッグ: FormDataの内容を確認
+    console.log('Form action:', editForm.action);
+    for (let [key, value] of formData.entries()) {
+        console.log(key + ':', value);
+    }
+
     await window.sendAjaxRequest(editForm.action, formData, {
         closeModal: closeEditModal,
+        reloadOnSuccess: true,  // 編集成功後にページをリロード
         onSuccess: (data) => {
             // target_urlがある場合はリダイレクト（セクション展開のため）
             if (data.target_url) {
@@ -876,14 +930,8 @@ document.querySelectorAll('.delete-estimate-form').forEach(deleteForm => {
     });
 });
 
-// Djangoのmessagesフレームワークからのメッセージをトーストで表示
-document.addEventListener('DOMContentLoaded', function() {
-    {% for message in messages %}
-        window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
-    {% endfor %}
-
-    // URLのハッシュ（アンカー）をチェックして、該当する月のセクションを自動的に開く
-    const hash = window.location.hash;
+// セクションを開く関数
+function expandEstimateSection(hash) {
     if (hash && hash.startsWith('#estimate-content-')) {
         // ハッシュから年月を抽出（例：#estimate-content-2025-12 → 2025-12）
         const yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
@@ -938,6 +986,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 200); // 少し遅延させて、表示が完了してからスクロール
         }
     }
+}
+
+// Djangoのmessagesフレームワークからのメッセージをトーストで表示
+document.addEventListener('DOMContentLoaded', function() {
+    {% for message in messages %}
+        window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+    {% endfor %}
+
+    // URLのハッシュ（アンカー）をチェックして、該当する月のセクションを自動的に開く
+    expandEstimateSection(window.location.hash);
+});
+
+// ページ読み込み完了後もチェック（sessionStorageからアンカーを取得した場合など）
+window.addEventListener('load', function() {
+    // 少し遅延させて、sessionStorageからのスクロールが完了してから実行
+    setTimeout(() => {
+        expandEstimateSection(window.location.hash);
+    }, 300);
 });
 
 // 定期項目の金額を編集する関数
