@@ -1025,7 +1025,7 @@ def credit_estimate_list(request):
     # 設定からVIEWカードのデフォルト値を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
 
-    today = datetime.now()
+    today = timezone.now()
 
     for est in estimates:
         # 通常払いの場合、締め日が過ぎたら非表示
@@ -1480,7 +1480,7 @@ def credit_estimate_list(request):
             del summary[year_month]
 
     # summaryを現在、未来、過去に分割
-    today = datetime.now()
+    today = timezone.now()
     current_month_str = today.strftime('%Y-%m')
     current_day = today.day
     current_month_summary = OrderedDict()
