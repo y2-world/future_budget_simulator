@@ -973,18 +973,21 @@ def credit_estimate_list(request):
     credit_defaults = list(CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id'))
 
     # サマリー（年月 -> カード -> {total, entries}）
-    # card_id -> タイトル、支払日、オフセット月 のマッピングを MonthlyPlanDefault から取得
+    # card_id -> タイトル、支払日、締め日情報 のマッピングを MonthlyPlanDefault から取得
     card_labels = {}
     card_due_days = {}
-    card_offset_months = {}
+    card_info = {}  # is_end_of_month, closing_day を保存
 
     for item in MonthlyPlanDefault.objects.filter(is_active=True, card_id__isnull=False):
         if item.card_id:
             card_labels[item.card_id] = item.title
             if item.withdrawal_day:
                 card_due_days[item.card_id] = item.withdrawal_day
-            # offset_monthsを記録（0=同月、1=翌月、2=翌々月）
-            card_offset_months[item.card_id] = item.offset_months if item.offset_months else 0
+            # 締め日情報を記録
+            card_info[item.card_id] = {
+                'is_end_of_month': item.is_end_of_month,
+                'closing_day': item.closing_day
+            }
 
     # カード名に支払日を追加する関数
     def get_card_label_with_due_day(card_type, is_bonus=False, year_month=None):
@@ -993,25 +996,10 @@ def credit_estimate_list(request):
 
         base_label = card_labels.get(card_type, card_type)
         due_day = card_due_days.get(card_type, '')
-        offset_months = card_offset_months.get(card_type, 0)
 
         if due_day and year_month:
-            # 年月から年と月を取得
-            year, month = map(int, year_month.split('-'))
-
-            # ボーナス払いの場合はオフセット0、通常払いはoffset_monthsを使用
-            if is_bonus:
-                # ボーナス払いはその月に支払い
-                months_to_add = 0
-            else:
-                # MonthlyPlanDefaultのoffset_monthsを使用
-                months_to_add = offset_months
-
-            payment_month = month + months_to_add
-            payment_year = year
-            while payment_month > 12:
-                payment_month -= 12
-                payment_year += 1
+            # year_monthは既にbilling_month（支払月）として渡される
+            payment_year, payment_month = map(int, year_month.split('-'))
 
             # 支払月の最終日を取得
             last_day = calendar.monthrange(payment_year, payment_month)[1]
@@ -1147,8 +1135,15 @@ def credit_estimate_list(request):
     for past_month_str in past_plans:
         # 過去の計画から引き落とし月を計算して追加
         past_year, past_month = map(int, past_month_str.split('-'))
-        for card_id, offset_months in card_offset_months.items():
-            billing_month_num = past_month + offset_months
+        for card_id, info in card_info.items():
+            # 締め日情報からbilling_monthを計算
+            if info['is_end_of_month']:
+                # 月末締め: year_month = 利用月 → billing_month = 利用月 + 1
+                billing_month_num = past_month + 1
+            else:
+                # 指定日締め: year_month = 締め日の前月 → billing_month = year_month + 2
+                billing_month_num = past_month + 2
+
             billing_year = past_year
             while billing_month_num > 12:
                 billing_month_num -= 12
@@ -1166,10 +1161,15 @@ def credit_estimate_list(request):
     for billing_month in existing_billing_months:
         billing_year, billing_month_num = map(int, billing_month.split('-'))
 
-        # year_monthを計算（offset_monthsは廃止）
-        # year_month = billing_month - 2（締め期間の識別子）
-        for card_id in card_offset_months.keys():
-            usage_month_num = billing_month_num - 2
+        # billing_monthからyear_monthを逆算
+        for card_id, info in card_info.items():
+            if info['is_end_of_month']:
+                # 月末締め: billing_month = year_month + 1 → year_month = billing_month - 1
+                usage_month_num = billing_month_num - 1
+            else:
+                # 指定日締め: billing_month = year_month + 2 → year_month = billing_month - 2
+                usage_month_num = billing_month_num - 2
+
             usage_year = billing_year
             if usage_month_num < 1:
                 usage_month_num += 12
@@ -1248,14 +1248,20 @@ def credit_estimate_list(request):
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
 
-            # 引き落とし月を計算（offset_monthsは廃止）
-            # year_monthは締め期間の識別子（締め日の前月）
-            # billing_month = 締め日の翌月 = year_month + 2
+            # 引き落とし月を計算（締め日情報から）
             from datetime import datetime
             usage_date = datetime.strptime(year_month, '%Y-%m')
 
-            # 支払い月 = year_month + 2（締め日の翌月）
-            billing_month_num = usage_date.month + 2
+            # カード情報を取得
+            info = card_info.get(actual_card_type, {'is_end_of_month': False})
+
+            if info['is_end_of_month']:
+                # 月末締め: billing_month = year_month + 1
+                billing_month_num = usage_date.month + 1
+            else:
+                # 指定日締め: billing_month = year_month + 2
+                billing_month_num = usage_date.month + 2
+
             billing_year = usage_date.year
             while billing_month_num > 12:
                 billing_month_num -= 12
@@ -1670,16 +1676,12 @@ def credit_estimate_list(request):
             card_id = request.POST.get('card_type')  # 実際には card_id
             is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
-            print(f"DEBUG REFLECT: card_id received = {card_id}")  # デバッグ用
-
             # card_idからボーナス払いフラグを判定
             is_bonus = card_id.endswith('_bonus')
             if is_bonus:
                 actual_card_id = card_id.replace('_bonus', '')
             else:
                 actual_card_id = card_id
-
-            print(f"DEBUG REFLECT: is_bonus = {is_bonus}, actual_card_id = {actual_card_id}")  # デバッグ用
 
             # card_idからMonthlyPlanDefaultのkeyを取得
             # ボーナス払いの場合は is_bonus_payment=True の項目を検索（例: item_6 → item_7）
@@ -1714,7 +1716,6 @@ def credit_estimate_list(request):
                     )
 
                 monthly_plan_key = card_item.key
-                print(f"DEBUG REFLECT: Found monthly_plan_key = {monthly_plan_key}")  # デバッグ用
             except MonthlyPlanDefault.DoesNotExist:
                 bonus_text = "ボーナス払い" if is_bonus else "通常払い"
                 error_message = f'カードID {actual_card_id} の{bonus_text}に対応する月次計画項目が見つかりません。'
@@ -1735,8 +1736,6 @@ def credit_estimate_list(request):
                 is_bonus_payment=is_bonus
             )
 
-            print(f"DEBUG REFLECT: year_month = {year_month}")  # デバッグ用
-
             # ボーナス払いの場合は支払月（due_date）でフィルタ
             if is_bonus:
                 estimates_query = estimates_query.filter(
@@ -1747,13 +1746,9 @@ def credit_estimate_list(request):
                 # 通常払いの場合はbilling_monthでフィルタ
                 estimates_query = estimates_query.filter(billing_month=year_month)
 
-            print(f"DEBUG REFLECT: estimates_query count = {estimates_query.count()}")  # デバッグ用
-
             # 合計額を計算
             result = estimates_query.aggregate(total=Sum('amount'))
             total_amount = result['total'] or 0
-
-            print(f"DEBUG REFLECT: total_amount = {total_amount}")  # デバッグ用
 
             if total_amount == 0:
                 error_message = 'カードデータが見つかりません。'
@@ -1842,33 +1837,8 @@ def credit_estimate_list(request):
                         # 反映先の年月を計算
                         current_date = datetime.strptime(year_month, '%Y-%m')
 
-                        # ボーナス払いの場合は請求月と同じ月に反映
-                        if is_bonus:
-                            target_year_month = year_month
-                        else:
-                            # 通常払いの場合
-                            # 通常払いの場合、カード種別に応じて支払い月を計算
-                            use_year, use_month = map(int, current_date.strftime('%Y-%m').split('-'))
-
-                            # MonthlyPlanDefaultからoffset_monthsを取得
-                            card_item = MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
-                            offset = card_item.offset_months if card_item and card_item.offset_months else 1
-
-                            payment_month = use_month + offset
-                            payment_year = use_year
-                            while payment_month > 12:
-                                payment_month -= 12
-                                payment_year += 1
-                            target_year_month = f"{payment_year}-{payment_month:02d}"
-
-                            # レガシー処理（互換性のため残しておく）
-                            if not card_item:
-                                payment_month = use_month + 1
-                                payment_year = use_year
-                                if payment_month > 12:
-                                    payment_month -= 12
-                                    payment_year += 1
-                                target_year_month = f"{payment_year}-{payment_month:02d}"                            
+                        # year_monthは既にbilling_month（支払月）なので、そのまま使用
+                        target_year_month = year_month                            
 
                         # 月次計画を取得または作成
                         # MonthlyPlanDefaultからデフォルト値を取得
