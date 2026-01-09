@@ -1413,6 +1413,7 @@ def credit_estimate_list(request):
                     card_plan = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
                     if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
                         # 指定日締めの場合
+                        print(f'DEBUG: year_month={year_month}, billing_month={billing_month}, view_closing_date={view_closing_date}, today={today.date()}, view_closed={view_closed}')
                         payment_closed = view_closed
                     else:
                         # 月末締めの場合
