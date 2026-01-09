@@ -1732,9 +1732,58 @@ def credit_estimate_list(request):
                 # 通常払いの場合はbilling_monthでフィルタ
                 estimates_query = estimates_query.filter(billing_month=year_month)
 
-            # 合計額を計算
+            # 手動入力データの合計額を計算
             result = estimates_query.aggregate(total=Sum('amount'))
-            total_amount = result['total'] or 0
+            manual_total = result['total'] or 0
+
+            # 定期項目（DefaultChargeOverride）の合計額を計算
+            # billing_monthからyear_monthを逆算して、該当する定期項目を取得
+            from datetime import datetime
+
+            # カード情報を取得して締め日タイプを確認
+            card_plan = MonthlyPlanDefault.objects.filter(
+                key=actual_card_id,
+                is_active=True
+            ).first()
+
+            regular_total = 0
+            if card_plan and not is_bonus:  # ボーナス払いは定期項目対象外
+                # billing_monthからyear_monthを逆算
+                billing_year, billing_month_num = map(int, year_month.split('-'))
+
+                if card_plan.is_end_of_month:
+                    # 月末締め: billing_month = year_month + 1 → year_month = billing_month - 1
+                    usage_month_num = billing_month_num - 1
+                else:
+                    # 指定日締め: billing_month = year_month + 2 → year_month = billing_month - 2
+                    usage_month_num = billing_month_num - 2
+
+                usage_year = billing_year
+                if usage_month_num < 1:
+                    usage_month_num += 12
+                    usage_year -= 1
+
+                usage_year_month = f"{usage_year}-{usage_month_num:02d}"
+
+                # 該当するDefaultChargeOverrideを取得
+                overrides = DefaultChargeOverride.objects.filter(
+                    year_month=usage_year_month,
+                    card_type=actual_card_id
+                ).select_related('default')
+
+                # 奇数月のみ適用フラグのチェック
+                usage_month_int = int(usage_month_num)
+                is_odd_month = (usage_month_int % 2 == 1)
+
+                for override in overrides:
+                    # 奇数月のみ適用フラグが立っている場合、偶数月はスキップ
+                    if override.default.apply_odd_months_only and not is_odd_month:
+                        continue
+
+                    regular_total += override.amount
+
+            # 合計額
+            total_amount = manual_total + regular_total
 
             if total_amount == 0:
                 error_message = 'カードデータが見つかりません。'
@@ -1765,7 +1814,15 @@ def credit_estimate_list(request):
             plan.set_item(monthly_plan_key, total_amount)
             plan.save()
 
-            success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（{total_amount:,}円）'
+            # 内訳を含むメッセージ作成
+            breakdown = []
+            if manual_total > 0:
+                breakdown.append(f'手動入力: {manual_total:,}円')
+            if regular_total > 0:
+                breakdown.append(f'定期項目: {regular_total:,}円')
+            breakdown_text = ' (' + ', '.join(breakdown) + ')' if breakdown else ''
+
+            success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（合計: {total_amount:,}円{breakdown_text}）'
 
             if is_ajax:
                 response_data = {
@@ -1789,6 +1846,8 @@ def credit_estimate_list(request):
                 return redirect('budget_app:credit_estimates')
 
         elif action == 'reflect':
+            from django.db.models import Sum
+
             year_month = request.POST.get('year_month')
             reflect_type = request.POST.get('reflect_type') # 'normal' or 'bonus'
 
@@ -1818,13 +1877,71 @@ def credit_estimate_list(request):
                         else:
                             card_type = card_key
 
-                        total_amount = data['total']
+                        # 手動入力と定期項目を分けて計算
+                        # 手動入力データの合計
+                        if is_bonus:
+                            estimates = CreditEstimate.objects.filter(
+                                card_type=card_type,
+                                is_bonus_payment=True,
+                                due_date__year=int(year_month.split('-')[0]),
+                                due_date__month=int(year_month.split('-')[1])
+                            )
+                        else:
+                            estimates = CreditEstimate.objects.filter(
+                                card_type=card_type,
+                                billing_month=year_month,
+                                is_bonus_payment=False
+                            )
+                        manual_total = estimates.aggregate(total=Sum('amount'))['total'] or 0
+
+                        # 定期項目の合計（ボーナス払いは定期項目対象外）
+                        regular_total = 0
+                        if not is_bonus:
+                            # カード情報を取得して締め日タイプを確認
+                            card_plan = MonthlyPlanDefault.objects.filter(
+                                key=card_type,
+                                is_active=True
+                            ).first()
+
+                            if card_plan:
+                                # billing_monthからyear_monthを逆算
+                                billing_year, billing_month_num = map(int, year_month.split('-'))
+
+                                if card_plan.is_end_of_month:
+                                    usage_month_num = billing_month_num - 1
+                                else:
+                                    usage_month_num = billing_month_num - 2
+
+                                usage_year = billing_year
+                                if usage_month_num < 1:
+                                    usage_month_num += 12
+                                    usage_year -= 1
+
+                                usage_year_month = f"{usage_year}-{usage_month_num:02d}"
+
+                                # 該当するDefaultChargeOverrideを取得
+                                overrides = DefaultChargeOverride.objects.filter(
+                                    year_month=usage_year_month,
+                                    card_type=card_type
+                                ).select_related('default')
+
+                                # 奇数月のみ適用フラグのチェック
+                                usage_month_int = int(usage_month_num)
+                                is_odd_month = (usage_month_int % 2 == 1)
+
+                                for override in overrides:
+                                    if override.default.apply_odd_months_only and not is_odd_month:
+                                        continue
+                                    regular_total += override.amount
+
+                        # 合計額
+                        total_amount = manual_total + regular_total
 
                         # 反映先の年月を計算
                         current_date = datetime.strptime(year_month, '%Y-%m')
 
                         # year_monthは既にbilling_month（支払月）なので、そのまま使用
-                        target_year_month = year_month                            
+                        target_year_month = year_month
 
                         # 月次計画を取得または作成
                         # MonthlyPlanDefaultからデフォルト値を取得
@@ -1849,12 +1966,21 @@ def credit_estimate_list(request):
                         plan.set_item(field_name, total_amount)
                         plan.save()
 
-                        # 反映詳細を記録
+                        # 反映詳細を記録（内訳付き）
                         plan_display = format_year_month_display(target_year_month)
                         card_label = data.get('label', card_type)
                         if plan_display not in reflected_details:
                             reflected_details[plan_display] = []
-                        reflected_details[plan_display].append(f"{card_label}: {total_amount:,}円")
+
+                        # 内訳を含むメッセージ作成
+                        breakdown = []
+                        if manual_total > 0:
+                            breakdown.append(f'手動入力: {manual_total:,}円')
+                        if regular_total > 0:
+                            breakdown.append(f'定期項目: {regular_total:,}円')
+                        breakdown_text = ' (' + ', '.join(breakdown) + ')' if breakdown else ''
+
+                        reflected_details[plan_display].append(f"{card_label}: {total_amount:,}円{breakdown_text}")
 
                 # 成功メッセージを生成
                 message_parts = [f"{format_year_month_display(year_month)}の見積もりを反映しました。"]
