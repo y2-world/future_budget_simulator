@@ -518,11 +518,6 @@ function toggleClosingDayInput() {
     }
 }
 
-// カンマ区切りフォーマット関数
-function formatNumberWithCommas(value) {
-    return value.replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
 // DOMContentLoadedでイベントリスナーを設定
 document.addEventListener('DOMContentLoaded', () => {
     const createModal = document.getElementById('createModal');
@@ -573,24 +568,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-    // 金額入力フィールドにカンマ区切りを適用
-    document.querySelectorAll('.amount-input').forEach(input => {
-        if (input.value) {
-            input.value = formatNumberWithCommas(input.value);
-        }
-
-        input.addEventListener('input', (e) => {
-            const cursorPosition = e.target.selectionStart;
-            const oldLength = e.target.value.length;
-
-            e.target.value = formatNumberWithCommas(e.target.value);
-
-            const newLength = e.target.value.length;
-            const lengthDiff = newLength - oldLength;
-            e.target.setSelectionRange(cursorPosition + lengthDiff, cursorPosition + lengthDiff);
-        });
-    });
 
     // Djangoのmessagesフレームワークからのメッセージをトーストで表示
     {% for message in messages %}

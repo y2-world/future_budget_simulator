@@ -282,12 +282,6 @@ function closeDefaultEditModal() {
     document.getElementById('defaultEditModal').classList.add('hidden');
 }
 
-// カンマ区切りフォーマット関数
-function formatNumberWithCommas(value) {
-    // カンマを削除してから、3桁ごとにカンマを追加
-    return value.replace(/,/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
 // 背景クリックでモーダルを閉じる
 document.addEventListener('DOMContentLoaded', () => {
     const createModal = document.getElementById('createModal');
@@ -324,28 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
             indicator.classList.add('border-green-600');
             indicator.classList.remove('border-gray-400');
             dot.classList.remove('hidden');
-        });
-    });
-
-    // 金額入力フィールドにカンマ区切りを適用
-    document.querySelectorAll('.amount-input').forEach(input => {
-        // 既存の値にカンマを追加
-        if (input.value) {
-            input.value = formatNumberWithCommas(input.value);
-        }
-
-        // 入力時にカンマを追加
-        input.addEventListener('input', (e) => {
-            const cursorPosition = e.target.selectionStart;
-            const oldLength = e.target.value.length;
-            const oldValue = e.target.value;
-
-            e.target.value = formatNumberWithCommas(e.target.value);
-
-            // カーソル位置を調整（カンマが追加された場合）
-            const newLength = e.target.value.length;
-            const lengthDiff = newLength - oldLength;
-            e.target.setSelectionRange(cursorPosition + lengthDiff, cursorPosition + lengthDiff);
         });
     });
 

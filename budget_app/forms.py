@@ -927,10 +927,6 @@ class CreditDefaultForm(forms.ModelForm):
         if not self.instance.pk and card_choices:
             self.fields['card_type'].initial = card_choices[0][0]
 
-        # 既存インスタンスの場合、金額にカンマを追加して表示
-        if self.instance.pk and self.instance.amount:
-            self.fields['amount'].initial = f"{self.instance.amount:,}"
-
     def clean_amount(self):
         """カンマを除去して整数に変換"""
         amount_str = self.cleaned_data.get('amount', '')
