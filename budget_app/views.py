@@ -1046,20 +1046,8 @@ def credit_estimate_list(request):
             from datetime import date
             import calendar
 
-            # 分割払いの2回目の場合は、2回目の引き落とし月から逆算した締め日でチェック
-            if est.is_split_payment and est.split_payment_part == 2:
-                # billing_monthが設定されている場合はそれを使用
-                if est.billing_month:
-                    billing_year, billing_month = map(int, est.billing_month.split('-'))
-                    # 引き落とし月から利用月を逆算（offset_monthsを使用）
-                    offset = card_offset_months.get(est.card_type, 1)
-                    usage_month = billing_month - offset
-                    usage_year = billing_year
-                    while usage_month < 1:
-                        usage_month += 12
-                        usage_year -= 1
-                    year = usage_year
-                    month = usage_month
+            # 分割払いの2回目も1回目と同じyear_monthを使用
+            # （締め日チェックも同じロジック、billing_monthだけが異なる）
 
             # MonthlyPlanDefaultから締め日を取得
             card_default = MonthlyPlanDefault.objects.filter(key=est.card_type, is_active=True).first()
@@ -1388,38 +1376,11 @@ def credit_estimate_list(request):
                 next_billing_month = next_billing_date.strftime('%Y-%m')
 
                 # 2回目の締め日チェック
-                # 2回目の引き落とし月から逆算した利用月の締め日をチェック
-                next_billing_year, next_billing_month_num = map(int, next_billing_month.split('-'))
+                # 2回目も1回目と同じyear_monthなので、締め日チェックも同じ
+                # （引き落とし月だけが異なる）
 
-                # 引き落とし月から利用月を逆算（offset_monthsを使用）
-                offset = card_offset_months.get(actual_card_type, 1)
-                second_usage_month = next_billing_month_num - offset
-                second_usage_year = next_billing_year
-                while second_usage_month < 1:
-                    second_usage_month += 12
-                    second_usage_year -= 1
-
-                # 2回目の利用月の締め日を計算
-                if card_info:
-                    if card_info.is_end_of_month or not card_info.closing_day:
-                        # 月末締め
-                        second_last_day = calendar.monthrange(second_usage_year, second_usage_month)[1]
-                        second_closing_date = date(second_usage_year, second_usage_month, second_last_day)
-                    else:
-                        # 指定日締め（翌月の締め日）
-                        second_closing_month = second_usage_month + 1
-                        second_closing_year = second_usage_year
-                        if second_closing_month > 12:
-                            second_closing_month = 1
-                            second_closing_year += 1
-                        second_closing_date = date(second_closing_year, second_closing_month, card_info.closing_day)
-                else:
-                    # デフォルト: 月末締め
-                    second_last_day = calendar.monthrange(second_usage_year, second_usage_month)[1]
-                    second_closing_date = date(second_usage_year, second_usage_month, second_last_day)
-
-                # 2回目の締め日が過ぎていなければ表示（過去月の場合は常に表示）
-                if next_billing_month < current_year_month_str or today.date() <= second_closing_date:
+                # 2回目の表示可否は1回目と同じ締め日チェック結果を使用
+                if not first_payment_closed:
                     # 2回目の引き落とし月のカードグループを取得または作成
                     next_month_group = summary.setdefault(next_billing_month, OrderedDict())
 
