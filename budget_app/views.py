@@ -2897,6 +2897,7 @@ def past_transactions_list(request):
             # 疑似CreditEstimateオブジェクトを作成
             class DefaultEstimate:
                 def __init__(self, override_obj, year_month, billing_month, due_date, card_type):
+                    self.id = None  # 定期項目であることを示す
                     self.pk = None  # 定期項目であることを示す
                     self.year_month = year_month
                     self.billing_month = billing_month
