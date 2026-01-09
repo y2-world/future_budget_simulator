@@ -1360,11 +1360,11 @@ def credit_estimate_list(request):
                 current_year_month_str = f"{today.year}-{today.month:02d}"
 
                 # カード情報を取得（2回目の締め日計算でも使用）
-                card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+                card_plan = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
 
                 # billing_monthが過去月または現在月の場合のみ締め日チェック
                 if billing_month >= current_year_month_str:
-                    if card_info and card_info.closing_day and not card_info.is_end_of_month:
+                    if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
                         # 指定日締めの場合（例: 5日締め）
                         first_payment_closed = view_closed
                     else:
@@ -1421,8 +1421,8 @@ def credit_estimate_list(request):
                 # billing_monthが過去月または現在月の場合のみ締め日チェック
                 if billing_month >= current_year_month_str:
                     # カード情報を取得
-                    card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
-                    if card_info and card_info.closing_day and not card_info.is_end_of_month:
+                    card_plan = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+                    if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
                         # 指定日締めの場合
                         payment_closed = view_closed
                     else:
