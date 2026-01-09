@@ -57,7 +57,7 @@
                     {% if d.amount %}
                     <tr class="border-b" data-id="{{ d.id }}">
                         <td class="px-3 py-2 align-middle">{{ d.title }}</td>
-                        <td class="px-3 py-2 align-middle text-right font-semibold">¥{{ d.amount|floatformat:0|intcomma }}</td>
+                        <td class="px-3 py-2 align-middle text-right font-semibold">¥{{ d.amount|stringformat:'d'|intcomma }}</td>
                         <td class="px-3 py-2 align-middle text-center">
                             {% if d.payment_type == 'deposit' %}
                                 <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded whitespace-nowrap">振込</span>
@@ -87,7 +87,7 @@
                             {% else %}-{% endif %}
                         </td>
                         <td class="px-3 py-2 text-center align-middle">
-                            <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.title|escapejs }}', {{ d.amount|default:0|floatformat:0 }}, '{{ d.payment_type }}', {{ d.withdrawal_day|default:'null' }}, {{ d.is_withdrawal_end_of_month|yesno:'true,false' }}, {{ d.consider_holidays|yesno:'true,false' }}, {{ d.closing_day|default:'null' }}, {{ d.is_end_of_month|yesno:'true,false' }})">変更</button>
+                            <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.title|escapejs }}', {{ d.amount|default:0|stringformat:'d' }}, '{{ d.payment_type }}', {{ d.withdrawal_day|default:'null' }}, {{ d.is_withdrawal_end_of_month|yesno:'true,false' }}, {{ d.consider_holidays|yesno:'true,false' }}, {{ d.closing_day|default:'null' }}, {{ d.is_end_of_month|yesno:'true,false' }})">変更</button>
                             <form method="post" action="{% url 'budget_app:monthly_plan_default_delete' d.pk %}" class="delete-form inline">
                                 {% csrf_token %}
                                 <button type="submit" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">削除</button>
@@ -150,7 +150,7 @@
                             {% else %}-{% endif %}
                         </td>
                         <td class="px-3 py-2 text-center align-middle">
-                            <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.title|escapejs }}', {{ d.amount|default:0|floatformat:0 }}, '{{ d.payment_type }}', {{ d.withdrawal_day|default:'null' }}, {{ d.is_withdrawal_end_of_month|yesno:'true,false' }}, {{ d.consider_holidays|yesno:'true,false' }}, {{ d.closing_day|default:'null' }}, {{ d.is_end_of_month|yesno:'true,false' }})">変更</button>
+                            <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.title|escapejs }}', {{ d.amount|default:0|stringformat:'d' }}, '{{ d.payment_type }}', {{ d.withdrawal_day|default:'null' }}, {{ d.is_withdrawal_end_of_month|yesno:'true,false' }}, {{ d.consider_holidays|yesno:'true,false' }}, {{ d.closing_day|default:'null' }}, {{ d.is_end_of_month|yesno:'true,false' }})">変更</button>
                             <form method="post" action="{% url 'budget_app:monthly_plan_default_delete' d.pk %}" class="delete-form inline">
                                 {% csrf_token %}
                                 <button type="submit" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">削除</button>
@@ -171,7 +171,7 @@
             <div class="border-l-4 border-blue-400 rounded-r-lg p-4 bg-white shadow-md hover:shadow-lg transition" data-id="{{ d.id }}">
                 <div class="mb-3">
                     <h4 class="font-bold text-base text-gray-800 mb-2">{{ d.title }}</h4>
-                    <p class="text-lg font-bold text-blue-600 mb-2">¥{{ d.amount|floatformat:0|intcomma }}</p>
+                    <p class="text-lg font-bold text-blue-600 mb-2">¥{{ d.amount|stringformat:'d'|intcomma }}</p>
                     <div class="text-sm text-gray-600 space-y-1">
                         <p>
                             {% if d.payment_type == 'deposit' %}
@@ -203,7 +203,7 @@
                     </div>
                 </div>
                 <div class="flex gap-2 mt-4">
-                    <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.title|escapejs }}', {{ d.amount|default:0|floatformat:0 }}, '{{ d.payment_type }}', {{ d.withdrawal_day|default:'null' }}, {{ d.is_withdrawal_end_of_month|yesno:'true,false' }}, {{ d.consider_holidays|yesno:'true,false' }}, {{ d.closing_day|default:'null' }}, {{ d.is_end_of_month|yesno:'true,false' }})">変更</button>
+                    <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.title|escapejs }}', {{ d.amount|default:0|stringformat:'d' }}, '{{ d.payment_type }}', {{ d.withdrawal_day|default:'null' }}, {{ d.is_withdrawal_end_of_month|yesno:'true,false' }}, {{ d.consider_holidays|yesno:'true,false' }}, {{ d.closing_day|default:'null' }}, {{ d.is_end_of_month|yesno:'true,false' }})">変更</button>
                     <form method="post" action="{% url 'budget_app:monthly_plan_default_delete' d.pk %}" class="delete-form flex-1">
                         {% csrf_token %}
                         <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 font-medium transition">削除</button>
@@ -253,7 +253,7 @@
                     </div>
                 </div>
                 <div class="flex gap-2 mt-4">
-                    <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.title|escapejs }}', {{ d.amount|default:0|floatformat:0 }}, '{{ d.payment_type }}', {{ d.withdrawal_day|default:'null' }}, {{ d.is_withdrawal_end_of_month|yesno:'true,false' }}, {{ d.consider_holidays|yesno:'true,false' }}, {{ d.closing_day|default:'null' }}, {{ d.is_end_of_month|yesno:'true,false' }})">変更</button>
+                    <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.title|escapejs }}', {{ d.amount|default:0|stringformat:'d' }}, '{{ d.payment_type }}', {{ d.withdrawal_day|default:'null' }}, {{ d.is_withdrawal_end_of_month|yesno:'true,false' }}, {{ d.consider_holidays|yesno:'true,false' }}, {{ d.closing_day|default:'null' }}, {{ d.is_end_of_month|yesno:'true,false' }})">変更</button>
                     <form method="post" action="{% url 'budget_app:monthly_plan_default_delete' d.pk %}" class="delete-form flex-1">
                         {% csrf_token %}
                         <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 font-medium transition">削除</button>
