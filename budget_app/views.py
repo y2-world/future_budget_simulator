@@ -1091,7 +1091,8 @@ def credit_estimate_list(request):
         month_group = summary.setdefault(display_month, OrderedDict())
 
         # カードキーとラベルを設定
-        card_key = est.card_type
+        # ボーナス払いの場合はcard_typeに_bonusサフィックスを付ける
+        card_key = f"{est.card_type}_bonus" if est.is_bonus_payment else est.card_type
         due_day = card_due_days.get(est.card_type, '')
 
         if est.is_bonus_payment:
