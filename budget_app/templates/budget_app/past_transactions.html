@@ -926,7 +926,9 @@ document.querySelectorAll('.delete-estimate-form').forEach(deleteForm => {
         const formData = new FormData();
         formData.append('delete_type', 'single');
 
-        await window.sendAjaxRequest(deleteForm.action, formData);
+        await window.sendAjaxRequest(deleteForm.action, formData, {
+            reloadOnSuccess: true  // 削除成功後にページをリロードして該当月を展開
+        });
     });
 });
 
