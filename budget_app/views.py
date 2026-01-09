@@ -1153,8 +1153,8 @@ def credit_estimate_list(request):
                 # 月末締め: billing_month = year_month + 1 → year_month = billing_month - 1
                 usage_month_num = billing_month_num - 1
             else:
-                # 指定日締め: billing_month = year_month + 1 → year_month = billing_month - 1
-                usage_month_num = billing_month_num - 1
+                # 指定日締め: billing_month = year_month + 2 → year_month = billing_month - 2
+                usage_month_num = billing_month_num - 2
 
             usage_year = billing_year
             if usage_month_num < 1:
@@ -2941,7 +2941,6 @@ def past_transactions_list(request):
             closing_date = dt_date(year, month, last_day)
 
         # 締め日の翌日以降なら過去の明細に含める
-        print(f'DEBUG DefaultCharge: {override.default.label}, year_month={year_month}, closing_date={closing_date}, current_date={current_date}, should_show={current_date > closing_date}')
         if current_date > closing_date:
             # billing_monthを計算
             if card_plan.is_end_of_month:
