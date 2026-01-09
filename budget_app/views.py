@@ -1354,11 +1354,21 @@ def credit_estimate_list(request):
                 # billing_monthが過去月または現在月の場合のみ締め日チェック
                 if billing_month >= current_year_month_str:
                     if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
-                        # 指定日締めの場合（例: 5日締め）
-                        first_payment_closed = view_closed
+                        # 指定日締めの場合：year_monthの締め日を計算
+                        split_year, split_month = map(int, year_month.split('-'))
+                        split_closing_month = split_month + 1
+                        split_closing_year = split_year
+                        if split_closing_month > 12:
+                            split_closing_month = 1
+                            split_closing_year += 1
+                        split_closing_date = date(split_closing_year, split_closing_month, card_plan.closing_day)
+                        first_payment_closed = today.date() > split_closing_date
                     else:
-                        # 月末締めの場合
-                        first_payment_closed = other_closed
+                        # 月末締めの場合：year_monthの月末を締め日とする
+                        split_year, split_month = map(int, year_month.split('-'))
+                        split_last_day = calendar.monthrange(split_year, split_month)[1]
+                        split_closing_date = date(split_year, split_month, split_last_day)
+                        first_payment_closed = today.date() > split_closing_date
 
                 # 1回目（利用月のbilling_monthに表示）
                 if not first_payment_closed:
@@ -1412,12 +1422,21 @@ def credit_estimate_list(request):
                     # カード情報を取得
                     card_plan = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
                     if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
-                        # 指定日締めの場合
-                        print(f'DEBUG: year_month={year_month}, billing_month={billing_month}, view_closing_date={view_closing_date}, today={today.date()}, view_closed={view_closed}')
-                        payment_closed = view_closed
+                        # 指定日締めの場合：year_monthの締め日を計算
+                        year, month = map(int, year_month.split('-'))
+                        closing_month = month + 1
+                        closing_year = year
+                        if closing_month > 12:
+                            closing_month = 1
+                            closing_year += 1
+                        this_closing_date = date(closing_year, closing_month, card_plan.closing_day)
+                        payment_closed = today.date() > this_closing_date
                     else:
-                        # 月末締めの場合
-                        payment_closed = other_closed
+                        # 月末締めの場合：year_monthの月末を締め日とする
+                        year, month = map(int, year_month.split('-'))
+                        last_day = calendar.monthrange(year, month)[1]
+                        this_closing_date = date(year, month, last_day)
+                        payment_closed = today.date() > this_closing_date
 
                 # 締め日が過ぎていなければ表示（過去月は常に表示）
                 if not payment_closed:
