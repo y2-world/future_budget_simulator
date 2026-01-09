@@ -2973,11 +2973,16 @@ def past_transactions_list(request):
                 billing_year += 1
             billing_month = f"{billing_year}-{billing_month_num:02d}"
 
-            # 利用日を計算（利用月のpayment_day日）
+            # 利用日を計算
             payment_day = override.default.payment_day
-            max_day_usage = calendar.monthrange(year, month)[1]
-            actual_day_usage = min(payment_day, max_day_usage)
-            purchase_date = dt_date(year, month, actual_day_usage)
+            if card_plan.is_end_of_month:
+                # 月末締めの場合：year_monthのpayment_day日
+                max_day_usage = calendar.monthrange(year, month)[1]
+                actual_day_usage = min(payment_day, max_day_usage)
+                purchase_date = dt_date(year, month, actual_day_usage)
+            else:
+                # 指定日締めの場合：締め日をpurchase_dateとする
+                purchase_date = closing_date
 
             # 引き落とし日を計算（billing_monthのwithdrawal_day日）
             max_day_billing = calendar.monthrange(billing_year, billing_month_num)[1]
