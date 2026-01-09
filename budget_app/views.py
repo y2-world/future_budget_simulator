@@ -2761,8 +2761,6 @@ def past_transactions_list(request):
                 # Ajaxリクエストの場合はJSONレスポンスを返す
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     # 定期項目の名前を取得
-                    from .models import CreditDefault, MonthlyPlanDefault
-                    from django.urls import reverse
                     default = CreditDefault.objects.get(id=default_id)
 
                     # billing_monthを計算（引き落とし月のセクションにジャンプするため）
