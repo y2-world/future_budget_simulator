@@ -2731,6 +2731,32 @@ def past_transactions_list(request):
     """過去の明細一覧（アーカイブ）"""
     from datetime import datetime, date as dt_date
     import calendar
+    from django.http import JsonResponse
+
+    # POST処理: 定期項目の金額編集
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'edit_default_amount':
+            default_id = request.POST.get('default_id')
+            year_month = request.POST.get('year_month')
+            card_type = request.POST.get('card_type')
+            amount = request.POST.get('amount')
+
+            try:
+                # DefaultChargeOverrideを取得または作成
+                override, created = DefaultChargeOverride.objects.get_or_create(
+                    default_id=default_id,
+                    year_month=year_month,
+                    defaults={'card_type': card_type, 'amount': amount}
+                )
+                if not created:
+                    # 既存の場合は金額を更新
+                    override.amount = amount
+                    override.save()
+
+                return JsonResponse({'status': 'success'})
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
     current_date = datetime.now().date()
     current_year_month = datetime.now().strftime('%Y-%m')

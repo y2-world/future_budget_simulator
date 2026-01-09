@@ -148,7 +148,7 @@
                                                             </div>
                                                             <div class="space-y-1">
                                                                 {% for est in card.estimates %}
-                                                                    <div class="{% if est.estimate.is_default %}bg-blue-200{% else %}bg-white{% endif %} p-2 rounded border border-gray-200">
+                                                                    <div class="{% if est.estimate.is_default %}bg-gray-100{% else %}bg-white{% endif %} p-2 rounded border border-gray-200">
                                                                         <div class="flex justify-between items-center">
                                                                             <div class="flex items-center gap-2">
                                                                                 <span class="text-gray-500">
@@ -179,6 +179,10 @@
                                                                                         {% csrf_token %}
                                                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                                                                     </form>
+                                                                                </div>
+                                                                                {% elif est.estimate.is_default %}
+                                                                                <div class="flex gap-1">
+                                                                                    <button type="button" onclick="editDefaultAmount({{ est.estimate.default_id }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', {{ est.estimate.amount }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
                                                                                 </div>
                                                                                 {% endif %}
                                                                             </div>
@@ -316,7 +320,7 @@
                                                     </div>
                                                     <div class="space-y-1">
                                                         {% for est in card.estimates %}
-                                                            <div class="{% if est.estimate.is_default %}bg-blue-300{% else %}bg-gray-50{% endif %} p-2 rounded text-xs">
+                                                            <div class="{% if est.estimate.is_default %}bg-gray-100{% else %}bg-gray-50{% endif %} p-2 rounded text-xs">
                                                                 <div class="flex justify-between items-start mb-1">
                                                                     <div class="flex items-center gap-1 flex-wrap">
                                                                         <span class="text-gray-500">
@@ -347,6 +351,10 @@
                                                                         {% csrf_token %}
                                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
                                                                     </form>
+                                                                </div>
+                                                                {% elif est.estimate.is_default %}
+                                                                <div class="flex gap-2 justify-end">
+                                                                    <button type="button" onclick="editDefaultAmount({{ est.estimate.default_id }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', {{ est.estimate.amount }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
                                                                 </div>
                                                                 {% endif %}
                                                             </div>
@@ -931,5 +939,46 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// 定期項目の金額を編集する関数
+function editDefaultAmount(defaultId, yearMonth, cardType, currentAmount) {
+    const newAmount = prompt('新しい金額を入力してください:', currentAmount);
+    if (newAmount === null) return; // キャンセルされた
+
+    const amount = parseInt(newAmount);
+    if (isNaN(amount) || amount < 0) {
+        alert('正しい金額を入力してください');
+        return;
+    }
+
+    // サーバーに送信
+    fetch('{% url "budget_app:past_transactions" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: new URLSearchParams({
+            'action': 'edit_default_amount',
+            'default_id': defaultId,
+            'year_month': yearMonth,
+            'card_type': cardType,
+            'amount': amount
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // ページをリロード
+            location.reload();
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('エラーが発生しました');
+        console.error(error);
+    });
+}
 </script>
 {% endblock %}
