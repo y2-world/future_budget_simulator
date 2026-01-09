@@ -2,7 +2,7 @@
 {% load humanize budget_filters %}
 
 {% block content %}
-<div class="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto">
+<div class="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto mt-4">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold">クレカ請求見積り</h2>
         <button onclick="openCreateModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
@@ -11,23 +11,13 @@
     </div>
 
     <div class="mt-10">
-        {% comment %} 登録済み見積もりを「今月」「未来」「過去」に分けて表示 {% endcomment %}
+        {% comment %} 登録済み見積もりを表示 {% endcomment %}
 
         <div class="space-y-8">
-            {% if current_month_summary %}
-            <div>
-                <h3 class="text-xl font-bold mb-4">今月の見積もり（{{ current_month_str|format_year_month }}）</h3>
-                {% include 'budget_app/_summary_section.html' with summary_data=current_month_summary title='今月' %}
-            </div>
-            {% endif %}
-
-            <div>
-                <h3 class="text-xl font-bold mb-4">今後の見積もり</h3>
-                {% include 'budget_app/_summary_section.html' with summary_data=future_summary title='未来' %}
-            </div>
+            {% include 'budget_app/_summary_section.html' with summary_data=future_summary title='未来' %}
         </div>
 
-        {% if not current_month_summary and not future_summary %}
+        {% if not future_summary %}
             <!-- データがない場合のメッセージ -->
             <div class="text-center py-12 bg-gray-50 rounded-lg">
                 <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -657,14 +647,14 @@
 
                     // 要素の位置を取得してヘッダー分を引く
                     const elementPosition = targetElement.getBoundingClientRect().top;
-                    const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20; // 20pxの余白を追加
+                    const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 100; // 100pxの余白を追加
 
                     // スムーズスクロール
                     window.scrollTo({
                         top: offsetPosition,
                         behavior: 'smooth'
                     });
-                }, 100); // 少し遅延させて、表示が完了してからスクロール
+                }, 200); // 少し遅延させて、表示が完了してからスクロール
             }
         }
 
@@ -809,7 +799,13 @@
             const formData = new FormData(editForm);
 
             await window.sendAjaxRequest(editForm.action, formData, {
-                closeModal: closeEditModal
+                closeModal: closeEditModal,
+                onSuccess: (data) => {
+                    // target_urlがある場合はリダイレクト（セクション展開のため）
+                    if (data.target_url) {
+                        window.location.href = data.target_url;
+                    }
+                }
             });
         });
 

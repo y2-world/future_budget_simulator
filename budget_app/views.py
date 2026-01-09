@@ -1064,18 +1064,22 @@ def credit_estimate_list(request):
             # MonthlyPlanDefaultから締め日を取得
             card_default = MonthlyPlanDefault.objects.filter(key=est.card_type, is_active=True).first()
             if card_default:
-                if card_default.is_end_of_month or not card_default.closing_day:
-                    # 月末締め
+                if card_default.is_end_of_month:
+                    # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
                     last_day = calendar.monthrange(year, month)[1]
                     closing_date = date(year, month, last_day)
-                else:
-                    # 指定日締め（翌月の締め日）
+                elif card_default.closing_day:
+                    # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
                     closing_month = month + 1
                     closing_year = year
                     if closing_month > 12:
                         closing_month = 1
                         closing_year += 1
                     closing_date = date(closing_year, closing_month, card_default.closing_day)
+                else:
+                    # デフォルト: 月末締め
+                    last_day = calendar.monthrange(year, month)[1]
+                    closing_date = date(year, month, last_day)
             else:
                 # デフォルト: 月末締め
                 last_day = calendar.monthrange(year, month)[1]
@@ -1173,9 +1177,10 @@ def credit_estimate_list(request):
     for billing_month in existing_billing_months:
         billing_year, billing_month_num = map(int, billing_month.split('-'))
 
-        # 各カードのoffset_monthsを使って利用月を計算
-        for card_id, offset_months in card_offset_months.items():
-            usage_month_num = billing_month_num - offset_months
+        # year_monthを計算（offset_monthsは廃止）
+        # year_month = billing_month - 2（締め期間の識別子）
+        for card_id in card_offset_months.keys():
+            usage_month_num = billing_month_num - 2
             usage_year = billing_year
             if usage_month_num < 1:
                 usage_month_num += 12
@@ -1254,12 +1259,14 @@ def credit_estimate_list(request):
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
 
-            # 引き落とし月を計算（利用月year_monthから）
+            # 引き落とし月を計算（offset_monthsは廃止）
+            # year_monthは締め期間の識別子（締め日の前月）
+            # billing_month = 締め日の翌月 = year_month + 2
             from datetime import datetime
             usage_date = datetime.strptime(year_month, '%Y-%m')
-            # card_offset_monthsを使用して引き落とし月を計算
-            billing_offset = card_offset_months.get(actual_card_type, 1)  # デフォルトは翌月
-            billing_month_num = usage_date.month + billing_offset
+
+            # 支払い月 = year_month + 2（締め日の翌月）
+            billing_month_num = usage_date.month + 2
             billing_year = usage_date.year
             while billing_month_num > 12:
                 billing_month_num -= 12
@@ -1335,6 +1342,16 @@ def credit_estimate_list(request):
                     self.is_default = True  # デフォルトエントリーであることを示すフラグ
                     self.default_id = default_obj.id  # デフォルト項目のID
                     self.payment_day = default_obj.payment_day  # 毎月の利用日
+                    # purchase_dateを計算
+                    # year_monthは「利用月」を表す
+                    # purchase_date = year_month の payment_day日
+                    try:
+                        year, month = map(int, self.year_month.split('-'))
+                        max_day = calendar.monthrange(year, month)[1]
+                        actual_day = min(default_obj.payment_day, max_day)
+                        self.purchase_date = date(year, month, actual_day)
+                    except (ValueError, AttributeError):
+                        self.purchase_date = None
 
             # 2回払いの場合は2つのエントリを作成
             is_split = override_data.get('is_split_payment', False) if override_data else False
@@ -1346,9 +1363,11 @@ def credit_estimate_list(request):
                 first_payment_closed = False
                 current_year_month_str = f"{today.year}-{today.month:02d}"
 
+                # カード情報を取得（2回目の締め日計算でも使用）
+                card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+
                 # billing_monthが過去月または現在月の場合のみ締め日チェック
                 if billing_month >= current_year_month_str:
-                    card_info = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
                     if card_info and card_info.closing_day and not card_info.is_end_of_month:
                         # 指定日締めの場合（例: 5日締め）
                         first_payment_closed = view_closed
@@ -1449,13 +1468,13 @@ def credit_estimate_list(request):
                         card_group['entries'].append(default_entry)
                         card_group['total'] += default_entry.amount
 
-    # 各カードのエントリーを支払日順にソート（日付は降順）
+    # 各カードのエントリーを利用日順にソート（日付は降順＝新しい順）
     for year_month, month_group in summary.items():
         for card_type, card_data in month_group.items():
             card_data['entries'].sort(key=lambda x: (
-                -(x.due_date.toordinal()) if x.due_date else float('-inf'),  # due_dateを降順に（新しい日付が先）
-                x.is_bonus_payment if hasattr(x, 'is_bonus_payment') else False,  # 同じ日付なら通常払いを先に
-                # 定期デフォルト項目の場合はdefault_idでソート、通常項目はpkでソート（降順）
+                # purchase_dateを優先、なければdue_dateを使用（降順）
+                -((x.purchase_date.toordinal() if hasattr(x, 'purchase_date') and x.purchase_date else (x.due_date.toordinal() if x.due_date else 0))),
+                # 定期デフォルト項目の場合はdefault_id、通常項目はpkでソート（降順）
                 -(x.default_id if (hasattr(x, 'is_default') and x.is_default and hasattr(x, 'default_id')) else (x.pk if hasattr(x, 'pk') and x.pk else 0))
             ))
 
@@ -2061,9 +2080,44 @@ def credit_estimate_edit(request, pk):
             elif updated_estimate.year_month:
                 target_month = updated_estimate.year_month
 
-            # リファラーをチェックして適切なページを判定
-            referer = request.META.get('HTTP_REFERER', '')
-            if 'past-transactions' in referer:
+            # 締め日をチェックして、過去の明細かクレカ見積もりか判定
+            from datetime import datetime, date
+            import calendar
+
+            current_date = datetime.now().date()
+            is_past_transaction = False
+
+            # ボーナス払いの場合は支払日で判定
+            if updated_estimate.is_bonus_payment and updated_estimate.due_date:
+                is_past_transaction = updated_estimate.due_date < current_date
+            # 通常払いの場合は締め日で判定
+            elif updated_estimate.year_month:
+                year, month = map(int, updated_estimate.year_month.split('-'))
+                card_plan = MonthlyPlanDefault.objects.filter(key=updated_estimate.card_type, is_active=True).first()
+
+                if card_plan:
+                    if card_plan.is_end_of_month:
+                        # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
+                        last_day = calendar.monthrange(year, month)[1]
+                        closing_date = date(year, month, last_day)
+                    elif card_plan.closing_day:
+                        # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
+                        closing_month = month + 1
+                        closing_year = year
+                        if closing_month > 12:
+                            closing_month = 1
+                            closing_year += 1
+                        closing_date = date(closing_year, closing_month, card_plan.closing_day)
+                else:
+                    # デフォルト: 月末締め
+                    last_day = calendar.monthrange(year, month)[1]
+                    closing_date = date(year, month, last_day)
+
+                # 締め日の翌日以降なら過去の明細
+                is_past_transaction = current_date > closing_date
+
+            # 締め日チェックの結果に基づいてページを判定
+            if is_past_transaction:
                 target_page = 'budget_app:past_transactions'
             else:
                 target_page = 'budget_app:credit_estimates'
@@ -2705,18 +2759,22 @@ def past_transactions_list(request):
 
                 card_plan = MonthlyPlanDefault.objects.filter(key=est.card_type, is_active=True).first()
                 if card_plan:
-                    if card_plan.is_end_of_month or not card_plan.closing_day:
-                        # 月末締め
+                    if card_plan.is_end_of_month:
+                        # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
                         last_day = calendar.monthrange(year, month)[1]
                         closing_date = dt_date(year, month, last_day)
-                    else:
-                        # 指定日締め（翌月の締め日）
+                    elif card_plan.closing_day:
+                        # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
                         closing_month = month + 1
                         closing_year = year
                         if closing_month > 12:
                             closing_month = 1
                             closing_year += 1
                         closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
+                    else:
+                        # デフォルト: 月末締め
+                        last_day = calendar.monthrange(year, month)[1]
+                        closing_date = dt_date(year, month, last_day)
                 else:
                     # デフォルト: 月末締め
                     last_day = calendar.monthrange(year, month)[1]

@@ -490,6 +490,15 @@ class CreditEstimateForm(forms.ModelForm):
             # 新規作成時は利用日のデフォルトを本日に設定
             from datetime import date
             self.fields['purchase_date'].initial = date.today()
+        else:
+            # 編集時: 分割払いの場合は合計金額を表示
+            if self.instance.is_split_payment and self.instance.split_payment_group:
+                from django.db import models
+                # 同じグループの全エントリーの合計金額を計算
+                total_amount = CreditEstimate.objects.filter(
+                    split_payment_group=self.instance.split_payment_group
+                ).aggregate(total=models.Sum('amount'))['total'] or 0
+                self.fields['amount'].initial = total_amount
 
     def clean(self):
         cleaned_data = super().clean()
@@ -564,59 +573,113 @@ class CreditEstimateForm(forms.ModelForm):
                     # クレジットカードでない場合は締め日がないので、offsetをそのまま使用
                     closing_day = None
 
-                offset_months = card_default.offset_months if card_default.offset_months else 1
+                # 締め日から支払い月を計算（offset_monthsは廃止）
+                if closing_day:
+                    if card_default.is_end_of_month:
+                        # 月末締めの場合：締め期間は当月1日〜月末
+                        # 例: 1/1利用 → 1/31締め → year_month=2026-01, billing_month=2026-02
+                        closing_month = instance.purchase_date.month
+                        closing_year = instance.purchase_date.year
 
-                # 締め日がある場合のみ、利用日と比較
-                if closing_day and instance.purchase_date.day > closing_day:
-                    months_offset = offset_months + 1
+                        # year_month = 利用日の月（締め期間は当月1日〜月末）
+                        instance.year_month = f"{closing_year}-{closing_month:02d}"
+
+                        # billing_month = 利用日の月 + 1
+                        billing_month = closing_month + 1
+                        billing_year = closing_year
+                        if billing_month > 12:
+                            billing_month = 1
+                            billing_year += 1
+                    else:
+                        # 指定日締めの場合：締め期間は前月(締め日+1)〜当月締め日
+                        # 利用日が締め日以内なら当月締め、締め日を超えたら翌月締め
+                        if instance.purchase_date.day <= closing_day:
+                            # 当月締め（例: 1/5利用 → 1/5締め）
+                            closing_month = instance.purchase_date.month
+                            closing_year = instance.purchase_date.year
+                        else:
+                            # 翌月締め（例: 1/7利用 → 2/5締め）
+                            closing_month = instance.purchase_date.month + 1
+                            closing_year = instance.purchase_date.year
+                            if closing_month > 12:
+                                closing_month = 1
+                                closing_year += 1
+
+                        # year_month = 締め日の前月（締め期間の識別子）
+                        # 例: 1/5締め → year_month=2025-12（12/6〜1/5の期間を12月として扱う）
+                        usage_month = closing_month - 1
+                        usage_year = closing_year
+                        if usage_month < 1:
+                            usage_month = 12
+                            usage_year -= 1
+                        instance.year_month = f"{usage_year}-{usage_month:02d}"
+
+                        # billing_month = 締め日の翌月（支払い日はwithdrawal_day日）
+                        # 例: 1/5締め → billing_month=2026-02（2/4払い）
+                        billing_month = closing_month + 1
+                        billing_year = closing_year
+                        if billing_month > 12:
+                            billing_month = 1
+                            billing_year += 1
                 else:
-                    months_offset = offset_months
+                    # 締め日がない場合は利用日の月をそのまま使用
+                    instance.year_month = instance.purchase_date.strftime('%Y-%m')
+                    billing_month = instance.purchase_date.month + 1
+                    billing_year = instance.purchase_date.year
+                    if billing_month > 12:
+                        billing_month = 1
+                        billing_year += 1
             else:
                 # デフォルト値（情報がない場合は翌月）
-                months_offset = 1
-
-            # billing_monthを計算
-            billing_month = instance.purchase_date.month + months_offset
-            billing_year = instance.purchase_date.year
-            while billing_month > 12:
-                billing_month -= 12
-                billing_year += 1
+                billing_month = instance.purchase_date.month + 1
+                billing_year = instance.purchase_date.year
+                if billing_month > 12:
+                    billing_month = 1
+                    billing_year += 1
 
             instance.billing_month = f"{billing_year}-{billing_month:02d}"
 
-        # 引き落とし月を計算（後方互換性のため残す）
+        # 引き落とし月を計算
         def calculate_billing_month(usage_month, card_type, split_part=None):
             """利用月から引き落とし月を計算
 
-            MonthlyPlanDefaultから締め日と引き落とし日を取得して計算
+            締め日ロジックに基づいて計算:
+            - 月末締め: year_month = 利用月 → billing_month = 利用月 + 1
+            - 指定日締め: year_month = 締め日の前月 → billing_month = 締め日の翌月 = year_month + 2
+            - 分割2回目: billing_month + 1
             """
             from .models import MonthlyPlanDefault
             from calendar import monthrange
 
-            usage_date = datetime.strptime(usage_month, '%Y-%m')
+            year, month = map(int, usage_month.split('-'))
 
             # MonthlyPlanDefaultからカード情報を取得
             card_default = MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
 
             if card_default:
-                # offset_monthsを使用（MonthlyPlanDefaultに保存されている引き落とし月のオフセット）
-                months_offset = card_default.offset_months if card_default.offset_months else 1
+                if card_default.is_end_of_month:
+                    # 月末締めの場合：year_month = 利用月 → billing_month = 利用月 + 1
+                    billing_month = month + 1
+                    billing_year = year
+                else:
+                    # 指定日締めの場合：year_month = 締め日の前月 → billing_month = year_month + 2
+                    billing_month = month + 2
+                    billing_year = year
             else:
                 # デフォルト値（情報がない場合は翌月）
-                months_offset = 1
+                billing_month = month + 1
+                billing_year = year
 
             # 分割2回目の場合はさらに+1ヶ月
             if split_part == 2:
-                months_offset += 1
+                billing_month += 1
 
-            # 月を加算
-            new_month = usage_date.month + months_offset
-            new_year = usage_date.year
-            while new_month > 12:
-                new_month -= 12
-                new_year += 1
+            # 月の繰り上がり処理
+            while billing_month > 12:
+                billing_month -= 12
+                billing_year += 1
 
-            return f"{new_year}-{new_month:02d}"
+            return f"{billing_year}-{billing_month:02d}"
 
         # ボーナス払いの場合、年月を調整
         if instance.is_bonus_payment:
@@ -699,6 +762,7 @@ class CreditEstimateForm(forms.ModelForm):
                     card_type=instance.card_type,
                     description=instance.description,
                     amount=second_payment,
+                    purchase_date=instance.purchase_date,  # 利用日も1回目と同じ
                     due_date=second_due_date,
                     is_split_payment=True,
                     split_payment_part=2,
@@ -707,7 +771,7 @@ class CreditEstimateForm(forms.ModelForm):
             else:
                 # 既に分割済みのエントリーを編集する場合、2回目のエントリーも更新
                 if instance.split_payment_part == 1 and instance.split_payment_group:
-                    # 金額を再計算
+                    # フォームから送信された金額は合計金額
                     total_amount = instance.amount
                     second_payment_amount = (total_amount // 2) // 100 * 100
                     first_payment_amount = total_amount - second_payment_amount
@@ -728,6 +792,7 @@ class CreditEstimateForm(forms.ModelForm):
                         second_payment.card_type = instance.card_type
                         second_payment.description = instance.description
                         second_payment.amount = second_payment_amount  # 金額を更新
+                        second_payment.purchase_date = instance.purchase_date  # 利用日も1回目と同じ
                         second_payment.due_date = instance.due_date
                         second_payment.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=2)
                         second_payment.save()
