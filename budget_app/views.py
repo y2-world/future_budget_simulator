@@ -1331,10 +1331,11 @@ def credit_estimate_list(request):
                     self.default_id = default_obj.id  # デフォルト項目のID
                     self.payment_day = default_obj.payment_day  # 毎月の利用日
                     # purchase_dateを計算
-                    # year_monthは「利用月」を表す
-                    # purchase_date = year_month の payment_day日
+                    # original_year_monthは「利用月」を表す（分割2回目でも同じ）
+                    # purchase_date = original_year_month の payment_day日
                     try:
-                        year, month = map(int, self.year_month.split('-'))
+                        usage_ym = original_year_month if original_year_month else self.year_month
+                        year, month = map(int, usage_ym.split('-'))
                         max_day = calendar.monthrange(year, month)[1]
                         actual_day = min(default_obj.payment_day, max_day)
                         self.purchase_date = date(year, month, actual_day)
