@@ -2941,6 +2941,7 @@ def past_transactions_list(request):
             closing_date = dt_date(year, month, last_day)
 
         # 締め日の翌日以降なら過去の明細に含める
+        print(f'DEBUG DefaultCharge: {override.default.label}, year_month={year_month}, closing_date={closing_date}, current_date={current_date}, should_show={current_date > closing_date}')
         if current_date > closing_date:
             # billing_monthを計算
             if card_plan.is_end_of_month:
