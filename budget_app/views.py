@@ -1247,9 +1247,8 @@ def credit_estimate_list(request):
                 billing_month_num = usage_date.month + 1
             else:
                 # 指定日締め: 利用月 → 翌月締め → 翌々月払い
-                # 例: 1月利用 → 2/5締め → 2月払い（VIEWカードは2/4払い）
-                # billing_month = 締め月 = year_month + 1
-                billing_month_num = usage_date.month + 1
+                # 例: 1月利用 → 2/5締め → 3月払い（VIEWカードは3/4払い）
+                billing_month_num = usage_date.month + 2
 
             billing_year = usage_date.year
             while billing_month_num > 12:
