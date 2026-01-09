@@ -2960,9 +2960,9 @@ def past_transactions_list(request):
             actual_day_usage = min(payment_day, max_day_usage)
             purchase_date = dt_date(year, month, actual_day_usage)
 
-            # 引き落とし日を計算（billing_monthのpayment_day日）
+            # 引き落とし日を計算（billing_monthのwithdrawal_day日）
             max_day_billing = calendar.monthrange(billing_year, billing_month_num)[1]
-            actual_day_billing = min(payment_day, max_day_billing)
+            actual_day_billing = min(card_plan.withdrawal_day, max_day_billing)
             due_date = dt_date(billing_year, billing_month_num, actual_day_billing)
 
             # 疑似CreditEstimateオブジェクトを作成
