@@ -1,9 +1,6 @@
 import base64
 from django.http import HttpResponse
 from django.conf import settings
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class BasicAuthMiddleware:
@@ -12,10 +9,7 @@ class BasicAuthMiddleware:
 
     def __call__(self, request):
         # Basic認証が有効な場合のみチェック
-        enabled = getattr(settings, 'BASIC_AUTH_ENABLED', False)
-        print(f"[MIDDLEWARE] BASIC_AUTH_ENABLED: {enabled}, Path: {request.path}")
-        if not enabled:
-            print("[MIDDLEWARE] Basic auth is disabled, skipping")
+        if not getattr(settings, 'BASIC_AUTH_ENABLED', False):
             return self.get_response(request)
 
         # 静的ファイルとメディアファイルは認証をスキップ
@@ -23,10 +17,7 @@ class BasicAuthMiddleware:
             return self.get_response(request)
 
         # セッションに認証済みフラグがあればスキップ
-        session_verified = request.session.get('basic_auth_verified', False)
-        print(f"[MIDDLEWARE] Session verified: {session_verified}")
-        if session_verified:
-            print("[MIDDLEWARE] Already authenticated via session")
+        if request.session.get('basic_auth_verified', False):
             return self.get_response(request)
 
         # 認証ヘッダーを確認
