@@ -37,10 +37,18 @@
                         {% if d.apply_odd_months_only %}<span class="text-xs bg-yellow-100 px-2 py-1 rounded">奇数月のみ</span>{% else %}毎月{% endif %}
                     </td>
                     <td class="px-3 py-2 text-center align-middle">
-                        <button type="button" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 mr-1" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', '{{ d.amount|default:0|stringformat:'d' }}', '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
+                        <button type="button" class="text-blue-600 hover:text-blue-800 mr-2" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', '{{ d.amount|default:0|stringformat:'d' }}', '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">
+                            <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
                         <form method="post" action="{% url 'budget_app:credit_default_delete' d.pk %}" class="delete-form inline">
                             {% csrf_token %}
-                            <button type="submit" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">削除</button>
+                            <button type="submit" class="text-red-600 hover:text-red-800">
+                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
                         </form>
                     </td>
                 </tr>
@@ -69,10 +77,20 @@
                 </div>
             </div>
             <div class="flex gap-2 mt-4">
-                <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', '{{ d.amount|default:0|stringformat:'d' }}', '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">変更</button>
+                <button type="button" class="flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium transition flex items-center justify-center gap-2" onclick="openDefaultEditModal({{ d.id }}, '{{ d.label|escapejs }}', '{{ d.amount|default:0|stringformat:'d' }}', '{{ d.card_type }}', {{ d.apply_odd_months_only|yesno:'true,false' }}, {{ d.payment_day }})">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    変更
+                </button>
                 <form method="post" action="{% url 'budget_app:credit_default_delete' d.pk %}" class="delete-form flex-1">
                     {% csrf_token %}
-                    <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 font-medium transition">削除</button>
+                    <button type="submit" class="w-full bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 font-medium transition flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        削除
+                    </button>
                 </form>
             </div>
         </div>

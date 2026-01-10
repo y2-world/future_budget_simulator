@@ -57,7 +57,11 @@
                                                 {{ item.year_month|format_year_month }}
                                                 <span class="text-xs text-gray-400 ml-1">▼</span>
                                             </span>
-                                            <button type="button" onclick="openPlanModal({{ item.plan.pk }}, '{{ item.year_month|format_year_month }}', '{{ item.year_month }}')" class="ml-2 text-xs text-blue-600 hover:text-blue-800">編集</button>
+                                            <button type="button" onclick="openPlanModal({{ item.plan.pk }}, '{{ item.year_month|format_year_month }}', '{{ item.year_month }}')" class="ml-2 text-blue-600 hover:text-blue-800">
+                                                <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                            </button>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 font-medium">
                                             {{ item.income|yen }}
@@ -174,13 +178,25 @@
                                                                                 <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
                                                                                 {% if est.estimate.pk %}
                                                                                 <div class="flex gap-1">
-                                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }}, {{ est.estimate.is_default|lower }}, {{ est.estimate.default_id|default:'null' }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }}, {{ est.estimate.is_default|lower }}, {{ est.estimate.default_id|default:'null' }})" class="text-blue-600 hover:text-blue-800 cursor-pointer">
+                                                                                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                                                        </svg>
+                                                                                    </button>
                                                                                     {% if est.estimate.is_default %}
-                                                                                    <button type="button" disabled class="text-gray-400 text-xs cursor-not-allowed" title="定期項目は削除できません">削除</button>
+                                                                                    <button type="button" disabled class="text-gray-400 cursor-not-allowed" title="定期項目は削除できません">
+                                                                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                                    </svg>
+                                                                                </button>
                                                                                     {% else %}
                                                                                     <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
                                                                                         {% csrf_token %}
-                                                                                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
+                                                                                        <button type="submit" class="text-red-600 hover:text-red-800">
+                                                                                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                                        </svg>
+                                                                                    </button>
                                                                                     </form>
                                                                                     {% endif %}
                                                                                 </div>
@@ -226,7 +242,11 @@
                                         {{ item.year_month|format_year_month }}
                                         <span class="text-xs text-gray-400 ml-1">▼</span>
                                     </span>
-                                    <button type="button" onclick="openPlanModal({{ item.plan.pk }}, '{{ item.year_month|format_year_month }}', '{{ item.year_month }}')" class="text-xs text-blue-600 hover:text-blue-800">編集</button>
+                                    <button type="button" onclick="openPlanModal({{ item.plan.pk }}, '{{ item.year_month|format_year_month }}', '{{ item.year_month }}')" class="text-blue-600 hover:text-blue-800">
+                                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
                                 </div>
                                 <div class="space-y-2">
                                     <div class="flex justify-between items-center">
@@ -346,13 +366,25 @@
                                                                 </div>
                                                                 {% if est.estimate.pk %}
                                                                 <div class="flex gap-2 justify-end">
-                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }}, {{ est.estimate.is_default|lower }}, {{ est.estimate.default_id|default:'null' }})" class="text-blue-600 hover:text-blue-800 text-xs cursor-pointer">編集</button>
+                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }}, {{ est.estimate.is_default|lower }}, {{ est.estimate.default_id|default:'null' }})" class="text-blue-600 hover:text-blue-800 cursor-pointer">
+                                                                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                                        </svg>
+                                                                    </button>
                                                                     {% if est.estimate.is_default %}
-                                                                    <button type="button" disabled class="text-gray-400 text-xs cursor-not-allowed" title="定期項目は削除できません">削除</button>
+                                                                    <button type="button" disabled class="text-gray-400 cursor-not-allowed" title="定期項目は削除できません">
+                                                                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                                    </svg>
+                                                                                </button>
                                                                     {% else %}
                                                                     <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
                                                                         {% csrf_token %}
-                                                                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs">削除</button>
+                                                                        <button type="submit" class="text-red-600 hover:text-red-800">
+                                                                                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                                        </svg>
+                                                                                    </button>
                                                                     </form>
                                                                     {% endif %}
                                                                 </div>
