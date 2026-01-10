@@ -1135,42 +1135,22 @@ document.querySelectorAll('.delete-estimate-form').forEach(deleteForm => {
 function expandEstimateSection(hash) {
     if (!hash) return;
 
-    let yearMonth, targetElement, isEstimateSection = false, isPlanSection = false;
+    let yearMonth, scrollTarget = null, isEstimateSection = false, isPlanSection = false;
 
     // クレカ見積もりセクションの場合
     if (hash.startsWith('#estimate-content-')) {
         isEstimateSection = true;
         yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
-        targetElement = document.querySelector(hash);
-        if (!targetElement) {
-            targetElement = document.querySelector(`#estimate-content-mobile-${yearMonth}`);
-        }
     }
     // 月次計画セクションの場合
     else if (hash.startsWith('#plan-content-')) {
         isPlanSection = true;
         yearMonth = hash.replace('#plan-content-', '').replace('-mobile', '');
-        targetElement = document.querySelector(hash);
-        if (!targetElement) {
-            targetElement = document.querySelector(`#plan-content-mobile-${yearMonth}`);
-        }
     }
 
-    if (targetElement && yearMonth) {
+    if (yearMonth) {
         // クレカ見積もりセクションの展開
         if (isEstimateSection) {
-            // 親要素のtrを探す（デスクトップ版の場合）
-            const parentTr = targetElement.closest('tr');
-            if (parentTr && parentTr.id && parentTr.classList.contains('hidden')) {
-                parentTr.classList.remove('hidden');
-            }
-
-            // モバイル版の詳細セクションを展開
-            const mobileDetails = document.getElementById(`mobile-credit-${yearMonth}`);
-            if (mobileDetails && mobileDetails.classList.contains('hidden')) {
-                mobileDetails.classList.remove('hidden');
-            }
-
             // デスクトップ版の詳細セクションを展開
             document.querySelectorAll('[id^="desktop-credit-"]').forEach(element => {
                 const tdWithAnchor = element.querySelector(`#estimate-content-${yearMonth}`);
@@ -1178,15 +1158,21 @@ function expandEstimateSection(hash) {
                     element.classList.remove('hidden');
                 }
             });
+
+            // モバイル版の詳細セクションを展開
+            const mobileDetails = document.getElementById(`mobile-credit-${yearMonth}`);
+            if (mobileDetails && mobileDetails.classList.contains('hidden')) {
+                mobileDetails.classList.remove('hidden');
+            }
+
+            // スクロール先: モバイルヘッダー（常に表示）または詳細コンテンツ
+            scrollTarget = document.querySelector(`[onclick*="toggleDetails('mobile-credit-${yearMonth}')"]`);
+            if (!scrollTarget) {
+                scrollTarget = document.getElementById(`estimate-content-${yearMonth}`);
+            }
         }
         // 月次計画セクションの展開
         else if (isPlanSection) {
-            // 親要素のtrを探す（デスクトップ版の場合）
-            const parentTr = targetElement.closest('tr');
-            if (parentTr && parentTr.id && parentTr.classList.contains('hidden')) {
-                parentTr.classList.remove('hidden');
-            }
-
             // デスクトップ版の詳細セクションを展開
             document.querySelectorAll('[id^="desktop-plan-"]').forEach(element => {
                 const tdWithAnchor = element.querySelector(`#plan-content-${yearMonth}`);
@@ -1196,29 +1182,35 @@ function expandEstimateSection(hash) {
             });
 
             // モバイル版の詳細セクションを展開
-            // モバイル版では親divに年月のIDが付いているので、そこから詳細divを探す
             const mobileParent = document.getElementById(`plan-content-mobile-${yearMonth}`);
             if (mobileParent) {
-                // 該当する詳細divを探して展開（id^="mobile-plan-"で始まるdiv）
                 const mobileDetails = mobileParent.querySelector('[id^="mobile-plan-"]');
                 if (mobileDetails && mobileDetails.classList.contains('hidden')) {
                     mobileDetails.classList.remove('hidden');
                 }
             }
+
+            // スクロール先: モバイル親要素（常に表示）または詳細コンテンツ
+            scrollTarget = document.getElementById(`plan-content-mobile-${yearMonth}`);
+            if (!scrollTarget) {
+                scrollTarget = document.getElementById(`plan-content-${yearMonth}`);
+            }
         }
 
         // 要素にスクロール（ヘッダー分のオフセットを考慮）
-        setTimeout(() => {
-            const header = document.querySelector('nav');
-            const headerHeight = header ? header.offsetHeight : 0;
-            const elementPosition = targetElement.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 100;
+        if (scrollTarget) {
+            setTimeout(() => {
+                const header = document.querySelector('nav');
+                const headerHeight = header ? header.offsetHeight : 0;
+                const elementPosition = scrollTarget.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20;
 
-            window.scrollTo({
-                top: offsetPosition,
-                behavior: 'smooth'
-            });
-        }, 200);
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }, 200);
+        }
     }
 }
 
