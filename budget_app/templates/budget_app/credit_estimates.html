@@ -598,18 +598,9 @@
 
                 // デスクトップとモバイルの両方を同時にトグル
                 if (desktopContent && mobileContent) {
-                    // 現在開いているかチェック（モバイルコンテンツにhiddenがない = 開いている）
-                    const isOpen = !mobileContent.classList.contains('hidden');
-
-                    if (isOpen) {
-                        // 閉じる：両方にhiddenを追加
-                        desktopContent.classList.add('hidden');
-                        mobileContent.classList.add('hidden');
-                    } else {
-                        // 開く：両方からhiddenを削除
-                        desktopContent.classList.remove('hidden');
-                        mobileContent.classList.remove('hidden');
-                    }
+                    // モバイルコンテンツのhiddenだけをトグル
+                    // デスクトップは常に hidden md:block を維持（レスポンシブクラスで制御）
+                    mobileContent.classList.toggle('hidden');
                 }
 
                 if (icon) {
