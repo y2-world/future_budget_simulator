@@ -3297,6 +3297,8 @@ def past_transactions_list(request):
             key=lambda x: x['year_month'],  # year_monthはbilling_monthが入っている
             reverse=True
         )
+        # Debug: ソート順を確認
+        print(f"Year {year} credit months order: {[m['year_month'] for m in credit_months_list]}")
         # 各月のカード別データをリストに変換
         for month_data in credit_months_list:
             cards_list = []
