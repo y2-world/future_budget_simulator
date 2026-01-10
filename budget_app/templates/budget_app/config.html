@@ -1,8 +1,10 @@
 {% extends 'budget_app/base.html' %}
 {% load humanize budget_filters %}
 
+{% block main_padding %}px-2 py-4{% endblock %}
+
 {% block content %}
-<div class="bg-white rounded-lg shadow-md p-4 max-w-5xl mx-auto">
+<div class="bg-white rounded-lg shadow-md p-6 max-w-5xl mx-auto">
     <h2 class="text-2xl font-bold mb-6">設定</h2>
 
     <!-- 月次計画デフォルト項目セクション -->
@@ -15,7 +17,7 @@
         </div>
 
         <!-- ボーナス払いの注意書き -->
-        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-3 mb-6">
             <p class="text-sm text-blue-800">
                 <strong>※ボーナス払い項目:</strong> 締め日は使用せず、対象期間は以下の通り<br>
                 <span class="ml-4">・12/6〜6/5の購入 → 8/4請求</span><br>
