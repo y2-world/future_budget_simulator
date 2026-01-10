@@ -19,7 +19,7 @@ services:
 
   web:
     build: .
-    command: gunicorn --bind 0.0.0.0:8000 --workers 3 future_budget_simulator.wsgi:application
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
