@@ -1278,7 +1278,7 @@ def credit_estimate_list(request):
 
             # 疑似的なCreditEstimateオブジェクトを作成
             class DefaultEntry:
-                def __init__(self, default_obj, entry_year_month, override_data, actual_card_type, split_part=None, total_amount=None, original_year_month=None):
+                def __init__(self, default_obj, entry_year_month, override_data, actual_card_type, split_part=None, total_amount=None, original_year_month=None, card_plan_info=None):
                     self.pk = None  # 削除・編集不可を示すためにNone
                     # 上書きされた金額とカード種別があればそれを使用
                     self.year_month = entry_year_month
@@ -1327,13 +1327,23 @@ def credit_estimate_list(request):
                     self.payment_day = default_obj.payment_day  # 毎月の利用日
                     # purchase_dateを計算
                     # original_year_monthは「利用月」を表す（分割2回目でも同じ）
-                    # purchase_date = original_year_month の payment_day日
                     try:
                         usage_ym = original_year_month if original_year_month else self.year_month
                         year, month = map(int, usage_ym.split('-'))
-                        max_day = calendar.monthrange(year, month)[1]
-                        actual_day = min(default_obj.payment_day, max_day)
-                        self.purchase_date = date(year, month, actual_day)
+
+                        if card_plan_info and not card_plan_info.get('is_end_of_month') and card_plan_info.get('closing_day'):
+                            # 指定日締めの場合：締め日をpurchase_dateとする
+                            closing_month = month + 1
+                            closing_year = year
+                            if closing_month > 12:
+                                closing_month = 1
+                                closing_year += 1
+                            self.purchase_date = date(closing_year, closing_month, card_plan_info['closing_day'])
+                        else:
+                            # 月末締めの場合：year_monthのpayment_day日
+                            max_day = calendar.monthrange(year, month)[1]
+                            actual_day = min(default_obj.payment_day, max_day)
+                            self.purchase_date = date(year, month, actual_day)
                     except (ValueError, AttributeError):
                         self.purchase_date = None
 
@@ -1371,7 +1381,8 @@ def credit_estimate_list(request):
 
                 # 1回目（利用月のbilling_monthに表示）
                 if not first_payment_closed:
-                    default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month)
+                    plan_info = info if info else {}
+                    default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month, card_plan_info=plan_info)
                     if default_entry_1.amount > 0:
                         card_group['entries'].append(default_entry_1)
                         card_group['total'] += default_entry_1.amount
@@ -1406,7 +1417,8 @@ def credit_estimate_list(request):
                     })
 
                     # 2回目のエントリ（利用月は1回目と同じyear_month、引き落とし月はnext_billing_month）
-                    default_entry_2 = DefaultEntry(default, next_billing_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month)
+                    plan_info = info if info else {}
+                    default_entry_2 = DefaultEntry(default, next_billing_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month, card_plan_info=plan_info)
                     if default_entry_2.amount > 0:
                         next_card_group['entries'].append(default_entry_2)
                         next_card_group['total'] += default_entry_2.amount
@@ -1439,7 +1451,9 @@ def credit_estimate_list(request):
 
                 # 締め日が過ぎていなければ表示（過去月は常に表示）
                 if not payment_closed:
-                    default_entry = DefaultEntry(default, year_month, override_data, actual_card_type)
+                    # カード情報を辞書形式で作成
+                    plan_info = info if info else {}
+                    default_entry = DefaultEntry(default, year_month, override_data, actual_card_type, card_plan_info=plan_info)
                     # 金額が0の場合は追加しない（削除された定期項目）
                     if default_entry.amount > 0:
                         card_group['entries'].append(default_entry)
