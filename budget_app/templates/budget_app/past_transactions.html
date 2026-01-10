@@ -15,8 +15,11 @@
 </div>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
-    <div class="mb-4 md:mb-6">
+    <div class="mb-4 md:mb-6 flex justify-between items-center">
         <h1 class="text-2xl md:text-3xl font-bold">過去の明細</h1>
+        <button onclick="openCreateModal()" class="bg-blue-500 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-blue-600 transition text-sm md:text-base flex items-center gap-2">
+            <span>新規追加</span>
+        </button>
     </div>
 
     {% if not sorted_years %}
@@ -260,10 +263,6 @@
                                     </button>
                                 </div>
                                 <div class="space-y-2">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm text-gray-600">収入</span>
-                                        <span class="text-sm font-medium text-green-600">{{ item.income|yen }}</span>
-                                    </div>
                                     <div class="grid grid-cols-3 gap-1 text-xs">
                                         <div class="min-w-0">
                                             <div class="text-gray-600 mb-0.5 text-[10px]">収入</div>
@@ -468,6 +467,73 @@
             </div>
         {% endfor %}
     {% endif %}
+</div>
+
+<!-- クレカ見積もり新規作成モーダル -->
+<div id="createModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+    <div class="relative w-full max-w-2xl bg-white shadow-2xl rounded-2xl transform transition-all my-4 flex flex-col max-h-[85vh] overflow-x-hidden overflow-y-auto" onclick="event.stopPropagation()">
+        <!-- ヘッダー -->
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-2xl px-4 py-3 flex justify-between items-center flex-shrink-0">
+            <h3 class="text-lg font-bold text-white">見積り新規追加</h3>
+            <button type="button" onclick="closeCreateModal()" class="text-white hover:text-gray-200 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- ボディ -->
+        <form id="createEstimateForm" method="post" action="{% url 'budget_app:credit_estimates' %}" class="p-4 pb-6 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_estimate">
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">カード種別</label>
+                <select name="card_type" id="create_card_type" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
+                    <option value="item_6" selected>VIEWカード</option>
+                    <option value="item_8">楽天カード</option>
+                    <option value="item_9">PayPayカード</option>
+                    <option value="item_10">VERMILLION</option>
+                    <option value="item_12">Olive</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">内容</label>
+                <input type="text" name="description" id="create_description" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" placeholder="例: 旅行、家電など">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">金額（円）</label>
+                <input type="number" name="amount" id="create_amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" min="0" placeholder="30000">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">利用日</label>
+                <input type="date" name="purchase_date" id="create_purchase_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="create_split_payment_wrapper">
+                    <input type="checkbox" name="is_split_payment" id="create_is_split_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="ml-2 text-sm font-medium text-gray-700">分割2回払い</span>
+                </label>
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="create_bonus_payment_wrapper">
+                    <input type="checkbox" name="is_bonus_payment" id="create_is_bonus_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="ml-2 text-sm font-medium text-gray-700">ボーナス払い</span>
+                </label>
+            </div>
+
+            <div class="flex gap-2 pt-3">
+                <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition text-sm">
+                    キャンセル
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 font-medium transition shadow-md text-sm">
+                    追加
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- 月次計画編集モーダル -->
@@ -1162,6 +1228,66 @@ document.addEventListener('DOMContentLoaded', function() {
         window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
 
+    // 新規作成フォームの送信処理
+    const createForm = document.getElementById('createEstimateForm');
+    if (createForm) {
+        createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(createForm), {
+                closeModal: closeCreateModal,
+                onSuccess: (data) => {
+                    // 成功したらクレカ見積もりページに移動（target_urlがあればそのアンカーに移動）
+                    console.log('Create estimate success, data:', data);
+                    if (data.target_url) {
+                        console.log('target_url:', data.target_url);
+                        // target_urlからアンカー部分を抽出
+                        const urlParts = data.target_url.split('#');
+                        console.log('urlParts:', urlParts);
+                        if (urlParts.length > 1) {
+                            // アンカーをsessionStorageに保存
+                            const anchor = '#' + urlParts[1];
+                            console.log('Saving anchor to sessionStorage:', anchor);
+                            sessionStorage.setItem('scrollToAnchor', anchor);
+                            // アンカーなしのURLに遷移（sessionStorageから読み取って処理される）
+                            console.log('Navigating to:', urlParts[0]);
+                            window.location.href = urlParts[0];
+                        } else {
+                            console.log('No anchor found, navigating to target_url directly');
+                            window.location.href = data.target_url;
+                        }
+                    } else {
+                        console.log('No target_url, navigating to credit estimates page');
+                        window.location.href = "{% url 'budget_app:credit_estimates' %}";
+                    }
+                }
+            });
+        });
+    }
+
+    // 新規作成モーダルのカード種別変更時の処理
+    const createCardType = document.getElementById('create_card_type');
+    if (createCardType) {
+        createCardType.addEventListener('change', toggleCreatePaymentOptions);
+    }
+
+    // 新規作成モーダルの分割・ボーナス払いを排他的にする
+    const createSplitCheckbox = document.getElementById('create_is_split_payment');
+    const createBonusCheckbox = document.getElementById('create_is_bonus_payment');
+
+    if (createSplitCheckbox && createBonusCheckbox) {
+        createSplitCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                createBonusCheckbox.checked = false;
+            }
+        });
+
+        createBonusCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                createSplitCheckbox.checked = false;
+            }
+        });
+    }
+
     // sessionStorageからアンカーを取得（common.jsでリロード前に保存される）
     const savedAnchor = sessionStorage.getItem('scrollToAnchor');
     if (savedAnchor) {
@@ -1188,6 +1314,58 @@ window.addEventListener('load', function() {
         }
     }, 400);
 });
+
+// 新規作成モーダルを開く
+function openCreateModal() {
+    const modal = document.getElementById('createModal');
+    modal.classList.remove('hidden');
+
+    // フォームをリセット
+    document.getElementById('createEstimateForm').reset();
+
+    // 利用日のデフォルトを本日に設定
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    document.getElementById('create_purchase_date').value = todayStr;
+
+    // 分割・ボーナス払いの表示制御を更新
+    toggleCreatePaymentOptions();
+}
+
+function closeCreateModal() {
+    document.getElementById('createModal').classList.add('hidden');
+}
+
+// 新規作成時の分割払い・ボーナス払いの表示制御
+function toggleCreatePaymentOptions() {
+    const createSplitWrapper = document.getElementById('create_split_payment_wrapper');
+    const createBonusWrapper = document.getElementById('create_bonus_payment_wrapper');
+    const createSplitCheckbox = document.getElementById('create_is_split_payment');
+    const createBonusCheckbox = document.getElementById('create_is_bonus_payment');
+
+    // 選択されているカード種別を取得
+    const cardTypeSelect = document.getElementById('create_card_type');
+    const isViewCard = cardTypeSelect && cardTypeSelect.value === 'item_6';
+
+    // 分割払いはVIEWカードの場合のみ表示
+    if (createSplitWrapper) {
+        createSplitWrapper.style.display = isViewCard ? 'flex' : 'none';
+        if (!isViewCard && createSplitCheckbox) {
+            createSplitCheckbox.checked = false;
+        }
+    }
+
+    // ボーナス払いはVIEWカードの場合のみ表示
+    if (createBonusWrapper) {
+        createBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
+        if (!isViewCard && createBonusCheckbox) {
+            createBonusCheckbox.checked = false;
+        }
+    }
+}
 
 // 定期項目の金額を編集する関数
 function editDefaultAmount(defaultId, yearMonth, cardType, currentAmount) {
