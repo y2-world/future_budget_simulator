@@ -22,8 +22,8 @@
         {% if annual_summary.count > 0 %}
 
         <!-- 年ごとのセクション -->
-        <div class="bg-white rounded-lg shadow-md p-2">
-            <button type="button" onclick="toggleDetails('details-{{ annual_summary.year }}')" class="w-full flex items-center justify-between mb-2 hover:bg-gray-50 -mx-2 px-2 py-2 rounded-t-lg transition">
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <button type="button" onclick="toggleDetails('details-{{ annual_summary.year }}')" class="w-full flex items-center justify-between mb-2 hover:bg-gray-50 -mx-4 px-4 py-2 rounded-t-lg transition">
                 <h3 class="text-lg font-bold text-gray-800">{{ annual_summary.year|stringformat:'d' }}年（{{ annual_summary.count }}ヶ月分）</h3>
                 <svg id="details-{{ annual_summary.year }}-icon" class="w-5 h-5 transform transition-transform rotate-180 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -65,35 +65,35 @@
 
                     <!-- モバイル表示 -->
                     <div class="xl:hidden grid grid-cols-2 gap-2">
-                    <div class="bg-white p-2 rounded-lg">
+                    <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">給与総支給額</div>
                         <div class="text-base font-bold text-green-700">{{ annual_summary.total_gross|yen }}</div>
                     </div>
-                    <div class="bg-white p-2 rounded-lg">
+                    <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">賞与総支給額</div>
                         <div class="text-base font-bold text-emerald-700">{{ annual_summary.total_bonus_gross|yen }}</div>
                     </div>
-                    <div class="bg-white p-2 rounded-lg col-span-2">
+                    <div class="bg-white p-3 rounded-lg col-span-2">
                         <div class="text-xs text-gray-600 mb-1">合計総支給額</div>
                         <div class="text-lg font-bold text-green-800">{{ annual_summary.total_all_gross|yen }}</div>
                     </div>
-                    <div class="bg-white p-2 rounded-lg">
+                    <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">総支給額-交通費</div>
                         <div class="text-base font-bold text-blue-700">{{ annual_summary.gross_minus_transport|yen }}</div>
                     </div>
-                    <div class="bg-white p-2 rounded-lg">
+                    <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">差引支給額合計</div>
                         <div class="text-base font-bold text-purple-700">{{ annual_summary.total_all_net|yen }}</div>
                     </div>
-                    <div class="bg-white p-2 rounded-lg">
+                    <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">交通費</div>
                         <div class="text-base font-bold text-teal-700">{{ annual_summary.total_transportation|yen }}</div>
                     </div>
-                    <div class="bg-white p-2 rounded-lg">
+                    <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">控除合計</div>
                         <div class="text-base font-bold text-red-700">{{ annual_summary.total_all_deductions|yen }}</div>
                     </div>
-                    <div class="bg-white p-2 rounded-lg col-span-2">
+                    <div class="bg-white p-3 rounded-lg col-span-2">
                         <div class="text-xs text-gray-600 mb-1">平均控除率</div>
                         <div class="text-lg font-bold text-orange-700">{{ annual_summary.avg_deduction_rate }}%</div>
                     </div>
@@ -209,7 +209,7 @@
                         {% for salary in year_salaries %}
                         {% if salary.has_bonus %}
                         <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg shadow-md overflow-hidden">
-                            <div class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-2 py-1.5 flex justify-between items-center">
+                            <div class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 flex justify-between items-center">
                                 <div class="font-bold text-sm">賞与 ({{ salary.year_month|format_year_month }})</div>
                                 <div class="flex gap-2">
                                     <button onclick="openEditBonusModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.bonus_gross_salary|default:0|stringformat:'d' }}, {{ salary.bonus_deductions|default:0|stringformat:'d' }})" class="text-white hover:text-emerald-100">
@@ -224,8 +224,8 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="p-1.5 grid grid-cols-2 gap-1.5 text-xs">
-                                <div class="bg-white rounded p-1.5">
+                            <div class="p-3 grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white rounded p-2">
                                     <div class="text-gray-500 text-xs mb-0.5">総支給額</div>
                                     <div class="font-bold text-emerald-700 text-sm">
                                         {% if salary.bonus_gross_salary and salary.bonus_gross_salary > 0 %}
@@ -265,7 +265,7 @@
                         {% endif %}
                         {% if salary.gross_salary and salary.gross_salary > 0 %}
                         <div id="salary-{{ salary.year_month }}" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md overflow-hidden">
-                            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-1.5 flex justify-between items-center">
+                            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-2 flex justify-between items-center">
                                 <div class="font-bold text-sm">{{ salary.year_month|format_year_month }}</div>
                                 <div class="flex gap-2">
                                     <button onclick="openEditSalaryModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.gross_salary|default:0|stringformat:'d' }}, {{ salary.deductions|default:0|stringformat:'d' }}, {{ salary.transportation|default:0|stringformat:'d' }}, {{ salary.has_bonus|yesno:'true,false' }}, {{ salary.bonus_gross_salary|default:0|stringformat:'d' }}, {{ salary.bonus_deductions|default:0|stringformat:'d' }})" class="text-white hover:text-blue-100">
@@ -280,8 +280,8 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="p-1.5 grid grid-cols-2 gap-1.5 text-xs">
-                                <div class="bg-white rounded p-1.5">
+                            <div class="p-3 grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white rounded p-2">
                                     <div class="text-gray-500 text-xs mb-0.5">総支給額</div>
                                     <div class="font-bold text-green-700 text-sm">{{ salary.gross_salary|yen }}</div>
                                 </div>
