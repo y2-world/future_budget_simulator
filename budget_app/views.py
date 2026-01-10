@@ -859,8 +859,14 @@ def plan_edit(request, pk):
                     'status': 'success',
                     'message': f'{display_month} の計画を更新しました。',
                 }
-                # 更新した月にリダイレクト（過去月以外）
-                if not is_past_month:
+                # リファラーをチェックして適切なページを判定
+                referer = request.META.get('HTTP_REFERER', '')
+                if 'past-transactions' in referer:
+                    # 過去の明細ページから編集した場合
+                    target_url = reverse('budget_app:past_transactions') + f'#plan-content-{plan.year_month}'
+                    response_data['target_url'] = target_url
+                elif not is_past_month:
+                    # 通常の月次計画ページで過去月以外
                     target_url = reverse('budget_app:index') + f'#plan-{plan.year_month}'
                     response_data['target_url'] = target_url
                 return JsonResponse(response_data)
@@ -3278,12 +3284,12 @@ def past_transactions_list(request):
         yearly_data[year]['total_credit'] += estimate.amount
 
     # クレカ見積りの月別データをリストに変換してソート
-    # billing_month（引き落とし月）でソート（昇順 = 古い順）
+    # billing_month（引き落とし月）でソート（降順 = 新しい順）
     for year in yearly_data:
         credit_months_list = sorted(
             yearly_data[year]['credit_months'].values(),
             key=lambda x: x['year_month'],  # year_monthはbilling_monthが入っている
-            reverse=False
+            reverse=True
         )
         # 各月のカード別データをリストに変換
         for month_data in credit_months_list:
@@ -3313,6 +3319,14 @@ def past_transactions_list(request):
             )
 
         yearly_data[year]['credit_months'] = credit_months_list
+
+    # 月次計画データを降順にソート（新しい月が上に来るように）
+    for year in yearly_data:
+        yearly_data[year]['months'] = sorted(
+            yearly_data[year]['months'],
+            key=lambda x: x['year_month'],
+            reverse=True
+        )
 
     # 給与データ以外（支出データ）がない年を除外
     filtered_yearly_data = {}

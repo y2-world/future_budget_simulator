@@ -616,47 +616,73 @@
             });
         });
 
-        // URLのハッシュ（アンカー）をチェックして、該当する月のセクションを自動的に開く
-        const hash = window.location.hash;
-        if (hash && hash.startsWith('#estimate-content-')) {
-            // ハッシュから年月を抽出（例：#estimate-content-2025-12 → 2025-12）
-            const yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
+        // セクションを開く関数
+        function expandEstimateSection(hash) {
+            if (hash && hash.startsWith('#estimate-content-')) {
+                // ハッシュから年月を抽出（例：#estimate-content-2025-12 → 2025-12）
+                const yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
 
-            // デスクトップ版とモバイル版の両方を開く
-            const desktopContent = document.getElementById('estimate-content-' + yearMonth);
-            const mobileContent = document.getElementById('estimate-content-mobile-' + yearMonth);
-            const icon = document.getElementById('collapse-icon-' + yearMonth);
+                // デスクトップ版とモバイル版の両方を開く
+                const desktopContent = document.getElementById('estimate-content-' + yearMonth);
+                const mobileContent = document.getElementById('estimate-content-mobile-' + yearMonth);
+                const icon = document.getElementById('collapse-icon-' + yearMonth);
 
-            if (desktopContent) {
-                desktopContent.style.display = '';
-            }
-            if (mobileContent) {
-                mobileContent.style.display = '';
-            }
-            if (icon) {
-                icon.classList.add('rotate-180');
-            }
+                if (desktopContent) {
+                    desktopContent.style.display = '';
+                }
+                if (mobileContent) {
+                    mobileContent.style.display = '';
+                }
+                if (icon) {
+                    icon.classList.add('rotate-180');
+                }
 
-            // 要素にスクロール（ヘッダー分のオフセットを考慮）
-            const targetElement = document.querySelector(hash);
-            if (targetElement) {
-                setTimeout(() => {
-                    // ヘッダーの高さを取得
-                    const header = document.querySelector('nav');
-                    const headerHeight = header ? header.offsetHeight : 0;
+                // 要素にスクロール（ヘッダー分のオフセットを考慮）
+                const targetElement = document.querySelector(hash);
+                if (targetElement) {
+                    setTimeout(() => {
+                        // ヘッダーの高さを取得
+                        const header = document.querySelector('nav');
+                        const headerHeight = header ? header.offsetHeight : 0;
 
-                    // 要素の位置を取得してヘッダー分を引く
-                    const elementPosition = targetElement.getBoundingClientRect().top;
-                    const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 120; // 120pxの余白を追加
+                        // 要素の位置を取得してヘッダー分を引く
+                        const elementPosition = targetElement.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 120; // 120pxの余白を追加
 
-                    // スムーズスクロール
-                    window.scrollTo({
-                        top: offsetPosition,
-                        behavior: 'smooth'
-                    });
-                }, 200); // 少し遅延させて、表示が完了してからスクロール
+                        // スムーズスクロール
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                    }, 200); // 少し遅延させて、表示が完了してからスクロール
+                }
             }
         }
+
+        // sessionStorageからアンカーを取得（common.jsでリロード前に保存される）
+        const savedAnchor = sessionStorage.getItem('scrollToAnchor');
+        if (savedAnchor) {
+            // URLのハッシュを更新
+            window.location.hash = savedAnchor;
+            // sessionStorageをクリア（base.htmlでもクリアされるが、念のため）
+            sessionStorage.removeItem('scrollToAnchor');
+            // セクションを展開
+            expandEstimateSection(savedAnchor);
+        } else {
+            // URLのハッシュ（アンカー）をチェックして、該当する月のセクションを自動的に開く
+            expandEstimateSection(window.location.hash);
+        }
+
+        // ページ読み込み完了後もチェック（base.htmlのスクロール処理の後に実行）
+        window.addEventListener('load', function() {
+            // 少し遅延させて、base.htmlのスクロールが完了してから実行
+            setTimeout(() => {
+                const hash = window.location.hash;
+                if (hash) {
+                    expandEstimateSection(hash);
+                }
+            }, 400);
+        });
 
         // ボーナス払いと分割払いチェックボックスの表示制御（新規追加フォーム）
         const createCardTypeSelect = document.getElementById('create_card_type');
@@ -799,13 +825,8 @@
             const formData = new FormData(editForm);
 
             await window.sendAjaxRequest(editForm.action, formData, {
-                closeModal: closeEditModal,
-                onSuccess: (data) => {
-                    // target_urlがある場合はリダイレクト（セクション展開のため）
-                    if (data.target_url) {
-                        window.location.href = data.target_url;
-                    }
-                }
+                closeModal: closeEditModal
+                // target_urlの処理はsendAjaxRequest内で自動的に行われる（sessionStorage保存→リダイレクト）
             });
         });
 

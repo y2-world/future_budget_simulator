@@ -14,8 +14,8 @@
     </div>
 </div>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-4">
-    <div class="mb-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+    <div class="mb-4 md:mb-6">
         <h1 class="text-2xl md:text-3xl font-bold">過去の明細</h1>
     </div>
 
@@ -74,7 +74,7 @@
                                         </td>
                                     </tr>
                                     <tr id="desktop-plan-{{ year }}-{{ forloop.counter }}" class="hidden bg-gray-50">
-                                        <td colspan="4" class="px-4 py-4">
+                                        <td colspan="4" class="px-4 py-4" id="plan-content-{{ item.year_month }}">
                                             <div class="text-xs space-y-2">
                                                 <div class="font-semibold text-blue-700 mb-2">明細一覧</div>
                                                 {% for trans in item.transactions %}
@@ -236,7 +236,7 @@
                     <div class="space-y-4">
                         <h3 class="font-semibold text-blue-800 bg-blue-100 px-3 py-2 rounded">月次計画</h3>
                         {% for item in yearly_data|get_item:year|get_item:'months' %}
-                            <div class="bg-white rounded-lg shadow p-4">
+                            <div class="bg-white rounded-lg shadow p-4" id="plan-content-mobile-{{ item.year_month }}">
                                 <div class="font-semibold text-gray-800 mb-3 pb-2 border-b flex justify-between items-center">
                                     <span class="cursor-pointer" onclick="toggleDetails('mobile-plan-{{ year }}-{{ forloop.counter }}')">
                                         {{ item.year_month|format_year_month }}
@@ -964,61 +964,94 @@ document.querySelectorAll('.delete-estimate-form').forEach(deleteForm => {
     });
 });
 
-// セクションを開く関数
+// セクションを開く関数（クレカ見積もりと月次計画の両方に対応）
 function expandEstimateSection(hash) {
-    if (hash && hash.startsWith('#estimate-content-')) {
-        // ハッシュから年月を抽出（例：#estimate-content-2025-12 → 2025-12）
-        const yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
+    if (!hash) return;
 
-        // デスクトップ版とモバイル版の両方の要素を探す
-        let targetElement = document.querySelector(hash);
+    let yearMonth, targetElement, isEstimateSection = false, isPlanSection = false;
+
+    // クレカ見積もりセクションの場合
+    if (hash.startsWith('#estimate-content-')) {
+        isEstimateSection = true;
+        yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
+        targetElement = document.querySelector(hash);
         if (!targetElement) {
-            // デスクトップ版が見つからない場合、モバイル版を探す
             targetElement = document.querySelector(`#estimate-content-mobile-${yearMonth}`);
         }
+    }
+    // 月次計画セクションの場合
+    else if (hash.startsWith('#plan-content-')) {
+        isPlanSection = true;
+        yearMonth = hash.replace('#plan-content-', '').replace('-mobile', '');
+        targetElement = document.querySelector(hash);
+        if (!targetElement) {
+            targetElement = document.querySelector(`#plan-content-mobile-${yearMonth}`);
+        }
+    }
 
-        if (targetElement) {
+    if (targetElement && yearMonth) {
+        // クレカ見積もりセクションの展開
+        if (isEstimateSection) {
             // 親要素のtrを探す（デスクトップ版の場合）
             const parentTr = targetElement.closest('tr');
-            if (parentTr && parentTr.id) {
-                // 詳細セクションが折りたたまれている場合は開く
-                if (parentTr.classList.contains('hidden')) {
-                    parentTr.classList.remove('hidden');
-                }
+            if (parentTr && parentTr.id && parentTr.classList.contains('hidden')) {
+                parentTr.classList.remove('hidden');
             }
 
-            // モバイル版の場合（div要素）
+            // モバイル版の詳細セクションを展開
             const mobileDetails = document.getElementById(`mobile-credit-${yearMonth}`);
             if (mobileDetails && mobileDetails.classList.contains('hidden')) {
                 mobileDetails.classList.remove('hidden');
             }
 
-            // デスクトップ版の場合（tr要素で探す）
-            // 年ごとにループして該当する月を探す
+            // デスクトップ版の詳細セクションを展開
             document.querySelectorAll('[id^="desktop-credit-"]').forEach(element => {
                 const tdWithAnchor = element.querySelector(`#estimate-content-${yearMonth}`);
-                if (tdWithAnchor) {
+                if (tdWithAnchor && element.classList.contains('hidden')) {
+                    element.classList.remove('hidden');
+                }
+            });
+        }
+        // 月次計画セクションの展開
+        else if (isPlanSection) {
+            // 親要素のtrを探す（デスクトップ版の場合）
+            const parentTr = targetElement.closest('tr');
+            if (parentTr && parentTr.id && parentTr.classList.contains('hidden')) {
+                parentTr.classList.remove('hidden');
+            }
+
+            // デスクトップ版の詳細セクションを展開
+            document.querySelectorAll('[id^="desktop-plan-"]').forEach(element => {
+                const tdWithAnchor = element.querySelector(`#plan-content-${yearMonth}`);
+                if (tdWithAnchor && element.classList.contains('hidden')) {
                     element.classList.remove('hidden');
                 }
             });
 
-            // 要素にスクロール（ヘッダー分のオフセットを考慮）
-            setTimeout(() => {
-                // ヘッダーの高さを取得
-                const header = document.querySelector('nav');
-                const headerHeight = header ? header.offsetHeight : 0;
-
-                // 要素の位置を取得してヘッダー分を引く
-                const elementPosition = targetElement.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 100; // 100pxの余白を追加
-
-                // スムーズスクロール
-                window.scrollTo({
-                    top: offsetPosition,
-                    behavior: 'smooth'
-                });
-            }, 200); // 少し遅延させて、表示が完了してからスクロール
+            // モバイル版の詳細セクションを展開
+            // モバイル版では親divに年月のIDが付いているので、そこから詳細divを探す
+            const mobileParent = document.getElementById(`plan-content-mobile-${yearMonth}`);
+            if (mobileParent) {
+                // 該当する詳細divを探して展開（id^="mobile-plan-"で始まるdiv）
+                const mobileDetails = mobileParent.querySelector('[id^="mobile-plan-"]');
+                if (mobileDetails && mobileDetails.classList.contains('hidden')) {
+                    mobileDetails.classList.remove('hidden');
+                }
+            }
         }
+
+        // 要素にスクロール（ヘッダー分のオフセットを考慮）
+        setTimeout(() => {
+            const header = document.querySelector('nav');
+            const headerHeight = header ? header.offsetHeight : 0;
+            const elementPosition = targetElement.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 100;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
+        }, 200);
     }
 }
 
@@ -1028,16 +1061,31 @@ document.addEventListener('DOMContentLoaded', function() {
         window.showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
     {% endfor %}
 
-    // URLのハッシュ（アンカー）をチェックして、該当する月のセクションを自動的に開く
-    expandEstimateSection(window.location.hash);
+    // sessionStorageからアンカーを取得（common.jsでリロード前に保存される）
+    const savedAnchor = sessionStorage.getItem('scrollToAnchor');
+    if (savedAnchor) {
+        // URLのハッシュを更新
+        window.location.hash = savedAnchor;
+        // sessionStorageをクリア（base.htmlでもクリアされるが、念のため）
+        sessionStorage.removeItem('scrollToAnchor');
+        // セクションを展開
+        expandEstimateSection(savedAnchor);
+    } else {
+        // URLのハッシュ（アンカー）をチェックして、該当する月のセクションを自動的に開く
+        expandEstimateSection(window.location.hash);
+    }
 });
 
-// ページ読み込み完了後もチェック（sessionStorageからアンカーを取得した場合など）
+// ページ読み込み完了後もチェック（base.htmlのスクロール処理の後に実行）
 window.addEventListener('load', function() {
-    // 少し遅延させて、sessionStorageからのスクロールが完了してから実行
+    // 少し遅延させて、base.htmlのスクロールが完了してから実行
     setTimeout(() => {
-        expandEstimateSection(window.location.hash);
-    }, 300);
+        // URLのハッシュまたはsessionStorageから取得したアンカーで展開
+        const hash = window.location.hash;
+        if (hash) {
+            expandEstimateSection(hash);
+        }
+    }, 400);
 });
 
 // 定期項目の金額を編集する関数
