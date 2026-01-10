@@ -64,38 +64,38 @@
                     </div>
 
                     <!-- モバイル表示 -->
-                    <div class="xl:hidden grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                    <div class="xl:hidden grid grid-cols-2 gap-2">
                     <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">給与総支給額</div>
-                        <div class="text-sm sm:text-base font-bold text-green-700">{{ annual_summary.total_gross|yen }}</div>
+                        <div class="text-base font-bold text-green-700">{{ annual_summary.total_gross|yen }}</div>
                     </div>
                     <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">賞与総支給額</div>
-                        <div class="text-sm sm:text-base font-bold text-emerald-700">{{ annual_summary.total_bonus_gross|yen }}</div>
+                        <div class="text-base font-bold text-emerald-700">{{ annual_summary.total_bonus_gross|yen }}</div>
                     </div>
                     <div class="bg-white p-3 rounded-lg col-span-2">
                         <div class="text-xs text-gray-600 mb-1">合計総支給額</div>
-                        <div class="text-base sm:text-lg font-bold text-green-800">{{ annual_summary.total_all_gross|yen }}</div>
+                        <div class="text-lg font-bold text-green-800">{{ annual_summary.total_all_gross|yen }}</div>
                     </div>
                     <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">総支給額-交通費</div>
-                        <div class="text-sm sm:text-base font-bold text-blue-700">{{ annual_summary.gross_minus_transport|yen }}</div>
+                        <div class="text-base font-bold text-blue-700">{{ annual_summary.gross_minus_transport|yen }}</div>
                     </div>
                     <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">差引支給額合計</div>
-                        <div class="text-sm sm:text-base font-bold text-purple-700">{{ annual_summary.total_all_net|yen }}</div>
+                        <div class="text-base font-bold text-purple-700">{{ annual_summary.total_all_net|yen }}</div>
                     </div>
                     <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">交通費</div>
-                        <div class="text-sm sm:text-base font-bold text-teal-700">{{ annual_summary.total_transportation|yen }}</div>
+                        <div class="text-base font-bold text-teal-700">{{ annual_summary.total_transportation|yen }}</div>
                     </div>
                     <div class="bg-white p-3 rounded-lg">
                         <div class="text-xs text-gray-600 mb-1">控除合計</div>
-                        <div class="text-sm sm:text-base font-bold text-red-700">{{ annual_summary.total_all_deductions|yen }}</div>
+                        <div class="text-base font-bold text-red-700">{{ annual_summary.total_all_deductions|yen }}</div>
                     </div>
-                    <div class="bg-white p-3 rounded-lg col-span-2 sm:col-span-4 lg:col-span-8">
+                    <div class="bg-white p-3 rounded-lg col-span-2">
                         <div class="text-xs text-gray-600 mb-1">平均控除率</div>
-                        <div class="text-base sm:text-lg font-bold text-orange-700">{{ annual_summary.avg_deduction_rate }}%</div>
+                        <div class="text-lg font-bold text-orange-700">{{ annual_summary.avg_deduction_rate }}%</div>
                     </div>
                     </div>
                 </div>
