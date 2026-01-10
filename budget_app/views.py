@@ -3297,13 +3297,11 @@ def past_transactions_list(request):
             key=lambda x: x['year_month'],  # year_monthはbilling_monthが入っている
             reverse=True
         )
-        # Debug: ソート順を確認
-        print(f"Year {year} credit months order: {[m['year_month'] for m in credit_months_list]}")
         # 各月のカード別データをリストに変換
         for month_data in credit_months_list:
             cards_list = []
             for card_name, card_data in month_data['cards'].items():
-                # 各カードの明細を利用日順にソート（昇順 = 古い順）
+                # 各カードの明細を利用日順にソート（降順 = 新しい順）
                 def get_sort_key(est):
                     # purchase_dateを優先、なければdue_date、それもなければyear_month
                     purchase = est['estimate'].purchase_date
@@ -3314,7 +3312,7 @@ def past_transactions_list(request):
                     date_key = purchase if purchase else (due if due else dt_date.max)
                     return (date_key, is_bonus, est['estimate'].id if hasattr(est['estimate'], 'id') else 0)
 
-                card_data['estimates'] = sorted(card_data['estimates'], key=get_sort_key)
+                card_data['estimates'] = sorted(card_data['estimates'], key=get_sort_key, reverse=True)
                 cards_list.append(card_data)
 
             # カードの表示順をモデルの定義順に合わせる
