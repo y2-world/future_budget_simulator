@@ -3284,12 +3284,12 @@ def past_transactions_list(request):
         yearly_data[year]['total_credit'] += estimate.amount
 
     # クレカ見積りの月別データをリストに変換してソート
-    # billing_month（引き落とし月）でソート（昇順 = 古い順）
+    # billing_month（引き落とし月）でソート（降順 = 新しい順）
     for year in yearly_data:
         credit_months_list = sorted(
             yearly_data[year]['credit_months'].values(),
             key=lambda x: x['year_month'],  # year_monthはbilling_monthが入っている
-            reverse=False
+            reverse=True
         )
         # 各月のカード別データをリストに変換
         for month_data in credit_months_list:
