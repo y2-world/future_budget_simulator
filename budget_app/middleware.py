@@ -18,7 +18,9 @@ class BasicAuthMiddleware:
 
         # セッションに認証済みフラグがあればスキップ
         if request.session.get('basic_auth_verified', False):
-            return self.get_response(request)
+            response = self.get_response(request)
+            request.session.modified = True  # セッションの更新を明示
+            return response
 
         # 認証ヘッダーを確認
         if 'HTTP_AUTHORIZATION' in request.META:
@@ -30,9 +32,8 @@ class BasicAuthMiddleware:
                         password == settings.BASIC_AUTH_PASSWORD):
                         # 認証成功をセッションに保存
                         request.session['basic_auth_verified'] = True
-                        # レスポンスを取得してからセッションを保存
+                        request.session.modified = True  # セッションの更新を明示
                         response = self.get_response(request)
-                        request.session.save()  # セッションを明示的に保存
                         return response
                 except Exception:
                     pass
