@@ -13,9 +13,9 @@ class BasicAuthMiddleware:
     def __call__(self, request):
         # Basic認証が有効な場合のみチェック
         enabled = getattr(settings, 'BASIC_AUTH_ENABLED', False)
-        logger.info(f"BASIC_AUTH_ENABLED: {enabled}, Path: {request.path}")
+        print(f"[MIDDLEWARE] BASIC_AUTH_ENABLED: {enabled}, Path: {request.path}")
         if not enabled:
-            logger.info("Basic auth is disabled, skipping")
+            print("[MIDDLEWARE] Basic auth is disabled, skipping")
             return self.get_response(request)
 
         # 静的ファイルとメディアファイルは認証をスキップ
@@ -24,9 +24,9 @@ class BasicAuthMiddleware:
 
         # セッションに認証済みフラグがあればスキップ
         session_verified = request.session.get('basic_auth_verified', False)
-        logger.info(f"Session verified: {session_verified}")
+        print(f"[MIDDLEWARE] Session verified: {session_verified}")
         if session_verified:
-            logger.info("Already authenticated via session")
+            print("[MIDDLEWARE] Already authenticated via session")
             return self.get_response(request)
 
         # 認証ヘッダーを確認
