@@ -1895,6 +1895,10 @@ def credit_estimate_list(request):
                 return JsonResponse(response_data)
             else:
                 messages.success(request, success_message)
+                # リファラーをチェックして適切なページにリダイレクト
+                referer = request.META.get('HTTP_REFERER', '')
+                if 'past-transactions' in referer:
+                    return redirect('budget_app:past_transactions')
                 return redirect('budget_app:credit_estimates')
 
         elif action == 'reflect':

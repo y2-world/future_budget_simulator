@@ -598,8 +598,18 @@
 
                 // デスクトップとモバイルの両方を同時にトグル
                 if (desktopContent && mobileContent) {
-                    desktopContent.classList.toggle('hidden');
-                    mobileContent.classList.toggle('hidden');
+                    // 現在開いているかチェック（モバイルコンテンツにhiddenがない = 開いている）
+                    const isOpen = !mobileContent.classList.contains('hidden');
+
+                    if (isOpen) {
+                        // 閉じる：両方にhiddenを追加
+                        desktopContent.classList.add('hidden');
+                        mobileContent.classList.add('hidden');
+                    } else {
+                        // 開く：両方からhiddenを削除
+                        desktopContent.classList.remove('hidden');
+                        mobileContent.classList.remove('hidden');
+                    }
                 }
 
                 if (icon) {
@@ -608,35 +618,21 @@
             });
         });
 
-        // セクションを開く関数
+        // セクションを開く関数（クレカ見積もりページでは初期状態で全て開いているのでスクロールのみ）
         function expandEstimateSection(hash) {
             if (hash && hash.startsWith('#estimate-content-')) {
                 // ハッシュから年月を抽出（例：#estimate-content-2025-12 → 2025-12）
                 const yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
 
-                // デスクトップ版とモバイル版の両方を開く
-                const desktopContent = document.getElementById('estimate-content-' + yearMonth);
-                const mobileContent = document.getElementById('estimate-content-mobile-' + yearMonth);
-                const icon = document.getElementById('collapse-icon-' + yearMonth);
+                // ヘッダー要素をスクロール先にする（常に表示されているため）
+                const targetElement = document.querySelector(`[data-toggle-estimate="${yearMonth}"]`);
 
-                if (desktopContent) {
-                    desktopContent.classList.remove('hidden');
-                }
-                if (mobileContent) {
-                    mobileContent.classList.remove('hidden');
-                }
-                if (icon) {
-                    icon.classList.add('rotate-180');
-                }
-
-                // 要素にスクロール（ヘッダー分のオフセットを考慮）
-                const targetElement = document.querySelector(hash);
                 if (targetElement) {
                     setTimeout(() => {
                         const header = document.querySelector('nav');
                         const headerHeight = header ? header.offsetHeight : 0;
                         const elementPosition = targetElement.getBoundingClientRect().top;
-                        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 100;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20;
 
                         window.scrollTo({
                             top: offsetPosition,
