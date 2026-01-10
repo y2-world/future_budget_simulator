@@ -2669,7 +2669,9 @@ def salary_create(request):
         )
 
         messages.success(request, f'{year}年{int(month)}月の給与明細を登録しました。')
-        return JsonResponse({'status': 'success'})
+        # モバイル表示時に対象月にスクロールするためのアンカーを追加
+        target_url = reverse('budget_app:salary_list') + f'#salary-{year_month}'
+        return JsonResponse({'status': 'success', 'target_url': target_url})
 
     except Exception as e:
         return JsonResponse({
@@ -2703,7 +2705,9 @@ def salary_edit(request, salary_id):
         salary.save()
 
         messages.success(request, f'{salary.year_month}の給与明細を更新しました。')
-        return JsonResponse({'status': 'success'})
+        # モバイル表示時に対象月にスクロールするためのアンカーを追加
+        target_url = reverse('budget_app:salary_list') + f'#salary-{salary.year_month}'
+        return JsonResponse({'status': 'success', 'target_url': target_url})
 
     except Salary.DoesNotExist:
         return JsonResponse({
@@ -2733,7 +2737,9 @@ def salary_edit_bonus(request, salary_id):
         salary.save()
 
         messages.success(request, f'{salary.year_month}のボーナス明細を更新しました。')
-        return JsonResponse({'status': 'success'})
+        # モバイル表示時に対象月にスクロールするためのアンカーを追加
+        target_url = reverse('budget_app:salary_list') + f'#salary-{salary.year_month}'
+        return JsonResponse({'status': 'success', 'target_url': target_url})
 
     except Salary.DoesNotExist:
         return JsonResponse({

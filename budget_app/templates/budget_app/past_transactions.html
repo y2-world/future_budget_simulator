@@ -178,7 +178,18 @@
                                                                                 <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
                                                                                 {% if est.estimate.pk %}
                                                                                 <div class="flex gap-1">
-                                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }}, {{ est.estimate.is_default|lower }}, {{ est.estimate.default_id|default:'null' }})" class="text-blue-600 hover:text-blue-800 cursor-pointer">
+                                                                                    <button type="button" class="edit-estimate-btn text-blue-600 hover:text-blue-800 cursor-pointer"
+                                                                                        data-pk="{{ est.estimate.pk }}"
+                                                                                        data-year-month="{{ est.estimate.year_month }}"
+                                                                                        data-card-type="{{ est.estimate.card_type }}"
+                                                                                        data-description="{{ est.estimate.description }}"
+                                                                                        data-amount="{{ est.estimate.amount|stringformat:'d' }}"
+                                                                                        data-due-date="{{ est.estimate.due_date|date:'Y-m-d' }}"
+                                                                                        data-purchase-date="{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}"
+                                                                                        data-is-split-payment="{{ est.estimate.is_split_payment|lower }}"
+                                                                                        data-is-bonus-payment="{{ est.estimate.is_bonus_payment|lower }}"
+                                                                                        data-is-default="{{ est.estimate.is_default|lower }}"
+                                                                                        data-default-id="{{ est.estimate.default_id|default:'' }}">
                                                                                         <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                                                         </svg>
@@ -366,7 +377,18 @@
                                                                 </div>
                                                                 {% if est.estimate.pk %}
                                                                 <div class="flex gap-2 justify-end">
-                                                                    <button type="button" onclick="openEditModal({{ est.estimate.pk }}, '{{ est.estimate.year_month }}', '{{ est.estimate.card_type }}', '{{ est.estimate.description|escapejs }}', {{ est.estimate.amount|stringformat:'d' }}, '{{ est.estimate.due_date|date:'Y-m-d' }}', '{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}', {{ est.estimate.is_split_payment|lower }}, {{ est.estimate.is_bonus_payment|lower }}, {{ est.estimate.is_default|lower }}, {{ est.estimate.default_id|default:'null' }})" class="text-blue-600 hover:text-blue-800 cursor-pointer">
+                                                                    <button type="button" class="edit-estimate-btn text-blue-600 hover:text-blue-800 cursor-pointer"
+                                                                        data-pk="{{ est.estimate.pk }}"
+                                                                        data-year-month="{{ est.estimate.year_month }}"
+                                                                        data-card-type="{{ est.estimate.card_type }}"
+                                                                        data-description="{{ est.estimate.description }}"
+                                                                        data-amount="{{ est.estimate.amount|stringformat:'d' }}"
+                                                                        data-due-date="{{ est.estimate.due_date|date:'Y-m-d' }}"
+                                                                        data-purchase-date="{{ est.estimate.purchase_date|date:'Y-m-d'|default:'' }}"
+                                                                        data-is-split-payment="{{ est.estimate.is_split_payment|lower }}"
+                                                                        data-is-bonus-payment="{{ est.estimate.is_bonus_payment|lower }}"
+                                                                        data-is-default="{{ est.estimate.is_default|lower }}"
+                                                                        data-default-id="{{ est.estimate.default_id|default:'' }}">
                                                                         <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                                         </svg>
@@ -587,6 +609,25 @@
 <script>
 // 分割払いとボーナス払いを排他的にする
 document.addEventListener('DOMContentLoaded', function() {
+    // 編集ボタンのイベントリスナーを設定
+    document.querySelectorAll('.edit-estimate-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const pk = this.dataset.pk;
+            const yearMonth = this.dataset.yearMonth;
+            const cardType = this.dataset.cardType;
+            const description = this.dataset.description;
+            const amount = parseInt(this.dataset.amount);
+            const dueDate = this.dataset.dueDate;
+            const purchaseDate = this.dataset.purchaseDate;
+            const isSplitPayment = this.dataset.isSplitPayment === 'true';
+            const isBonusPayment = this.dataset.isBonusPayment === 'true';
+            const isDefault = this.dataset.isDefault === 'true';
+            const defaultId = this.dataset.defaultId ? parseInt(this.dataset.defaultId) : null;
+
+            openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment, isDefault, defaultId);
+        });
+    });
+
     const splitCheckbox = document.getElementById('edit_is_split_payment');
     const bonusCheckbox = document.getElementById('edit_is_bonus_payment');
 
@@ -606,8 +647,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment, isDefault = false, defaultId = null) {
+    console.log('openEditModal called with:', { pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment, isDefault, defaultId });
     const modal = document.getElementById('editModal');
     const form = document.getElementById('editForm');
+
+    if (!modal) {
+        console.error('editModal not found');
+        return;
+    }
+    if (!form) {
+        console.error('editForm not found');
+        return;
+    }
+
+    console.log('Modal and form found', { modal, form });
+
+    // フォーム内のすべてのinputをログ出力
+    const allInputs = form.querySelectorAll('input');
+    console.log('All inputs in form:', Array.from(allInputs).map(i => ({ id: i.id, name: i.name, type: i.type })));
 
     // 定期項目の場合は過去の明細のエンドポイントを使用
     if (isDefault) {
@@ -648,12 +705,15 @@ function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, pu
         if (formActionInput) formActionInput.remove();
         const defaultIdInput = form.querySelector('input[name="default_id"]');
         if (defaultIdInput) defaultIdInput.remove();
-        const yearMonthInput = form.querySelector('input[name="year_month"]');
-        if (yearMonthInput) yearMonthInput.remove();
     }
 
-    // 年月をhiddenフィールドに設定
-    document.getElementById('edit_year_month_hidden').value = yearMonth;
+    // 年月をhiddenフィールドに設定（常に必要）
+    const yearMonthHidden = form.querySelector('input[name="year_month"]');
+    if (!yearMonthHidden) {
+        console.error('year_month input not found');
+        return;
+    }
+    yearMonthHidden.value = yearMonth;
 
     // カード種別を設定
     document.querySelectorAll('#editModal .card-type-radio').forEach(radio => {
@@ -682,20 +742,34 @@ function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, pu
     const numericAmount = typeof amount === 'string' ? parseInt(amount.replace(/,/g, ''), 10) : amount;
 
     // その他のフィールドを設定
-    document.getElementById('edit_description').value = description || '';
-    document.getElementById('edit_amount').value = numericAmount || '';
+    const editDescription = form.querySelector('input[name="description"]');
+    const editAmount = form.querySelector('input[name="amount"]');
+    const editPurchaseDate = form.querySelector('input[name="purchase_date"]');
+    const editIsSplitPayment = form.querySelector('input[name="is_split_payment"]');
+    const editIsBonusPayment = form.querySelector('input[name="is_bonus_payment"]');
 
-    // 利用日を設定（purchase_dateを優先、なければdue_date）
-    document.getElementById('edit_purchase_date').value = purchaseDate || dueDate || '';
+    if (!editDescription || !editAmount || !editPurchaseDate || !editIsSplitPayment || !editIsBonusPayment) {
+        console.error('One or more edit form fields not found', {
+            editDescription: !!editDescription,
+            editAmount: !!editAmount,
+            editPurchaseDate: !!editPurchaseDate,
+            editIsSplitPayment: !!editIsSplitPayment,
+            editIsBonusPayment: !!editIsBonusPayment
+        });
+        return;
+    }
 
-    document.getElementById('edit_is_split_payment').checked = isSplitPayment;
-    document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
+    editDescription.value = description || '';
+    editAmount.value = numericAmount || '';
+    editPurchaseDate.value = purchaseDate || dueDate || '';
+    editIsSplitPayment.checked = isSplitPayment;
+    editIsBonusPayment.checked = isBonusPayment;
 
     // 定期項目の場合は項目名と支払種別を無効化
-    document.getElementById('edit_description').disabled = isDefault;
-    document.getElementById('edit_is_split_payment').disabled = isDefault;
-    document.getElementById('edit_is_bonus_payment').disabled = isDefault;
-    document.getElementById('edit_purchase_date').disabled = isDefault;
+    editDescription.disabled = isDefault;
+    editIsSplitPayment.disabled = isDefault;
+    editIsBonusPayment.disabled = isDefault;
+    editPurchaseDate.disabled = isDefault;
 
     // カード種別に応じて分割払い・ボーナス払いの表示を更新
     togglePaymentOptions();
