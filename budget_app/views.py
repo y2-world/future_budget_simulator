@@ -1332,13 +1332,25 @@ def credit_estimate_list(request):
                         year, month = map(int, usage_ym.split('-'))
 
                         if card_plan_info and not card_plan_info.get('is_end_of_month') and card_plan_info.get('closing_day'):
-                            # 指定日締めの場合：締め日をpurchase_dateとする
-                            closing_month = month + 1
-                            closing_year = year
-                            if closing_month > 12:
-                                closing_month = 1
-                                closing_year += 1
-                            self.purchase_date = date(closing_year, closing_month, card_plan_info['closing_day'])
+                            # 指定日締めの場合：payment_dayと締め日を比較
+                            closing_day = card_plan_info['closing_day']
+                            payment_day = default_obj.payment_day
+
+                            if payment_day > closing_day:
+                                # payment_dayが締め日より大きい：year_monthの月のpayment_day日
+                                max_day = calendar.monthrange(year, month)[1]
+                                actual_day = min(payment_day, max_day)
+                                self.purchase_date = date(year, month, actual_day)
+                            else:
+                                # payment_dayが締め日以下：year_month+1の月のpayment_day日
+                                closing_month = month + 1
+                                closing_year = year
+                                if closing_month > 12:
+                                    closing_month = 1
+                                    closing_year += 1
+                                max_day = calendar.monthrange(closing_year, closing_month)[1]
+                                actual_day = min(payment_day, max_day)
+                                self.purchase_date = date(closing_year, closing_month, actual_day)
                         else:
                             # 月末締めの場合：year_monthのpayment_day日
                             max_day = calendar.monthrange(year, month)[1]
@@ -2995,8 +3007,17 @@ def past_transactions_list(request):
                 actual_day_usage = min(payment_day, max_day_usage)
                 purchase_date = dt_date(year, month, actual_day_usage)
             else:
-                # 指定日締めの場合：締め日をpurchase_dateとする
-                purchase_date = closing_date
+                # 指定日締めの場合：payment_dayと締め日を比較
+                if payment_day > card_plan.closing_day:
+                    # payment_dayが締め日より大きい：year_monthの月のpayment_day日
+                    max_day_usage = calendar.monthrange(year, month)[1]
+                    actual_day_usage = min(payment_day, max_day_usage)
+                    purchase_date = dt_date(year, month, actual_day_usage)
+                else:
+                    # payment_dayが締め日以下：締め日の月のpayment_day日
+                    max_day_usage = calendar.monthrange(closing_year, closing_month)[1]
+                    actual_day_usage = min(payment_day, max_day_usage)
+                    purchase_date = dt_date(closing_year, closing_month, actual_day_usage)
 
             # 引き落とし日を計算（billing_monthのwithdrawal_day日）
             max_day_billing = calendar.monthrange(billing_year, billing_month_num)[1]
