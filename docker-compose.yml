@@ -25,14 +25,10 @@ services:
       - static_volume:/app/staticfiles
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - DEBUG=False
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/budget_simulator
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here-change-in-production}
-      - ALLOWED_HOSTS=localhost,127.0.0.1
-      - BASIC_AUTH_ENABLED=${BASIC_AUTH_ENABLED:-False}
-      - BASIC_AUTH_USERNAME=${BASIC_AUTH_USERNAME:-admin}
-      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD:-password}
     depends_on:
       db:
         condition: service_healthy
