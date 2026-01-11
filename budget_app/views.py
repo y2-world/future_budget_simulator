@@ -254,7 +254,7 @@ def plan_list(request):
             if amount == 0:
                 continue
 
-            # 引き落とし日/振込日を計算
+            # 引落日 / 振込日を計算
             day = get_day_for_field(key, year, month)
             item_date = date(year, month, clamp_day(day))
 
@@ -2883,7 +2883,7 @@ def past_transactions_list(request):
 
             value = current_month_plan.get_item(item.key)
             if value and value != 0:
-                # 引き落とし日/振込日を計算
+                # 引落日 / 振込日を計算
                 year, month = map(int, current_month_plan.year_month.split('-'))
 
                 if item.is_withdrawal_end_of_month:
@@ -3035,7 +3035,7 @@ def past_transactions_list(request):
                     actual_day_usage = min(payment_day, max_day_usage)
                     purchase_date = dt_date(closing_year, closing_month, actual_day_usage)
 
-            # 引き落とし日を計算（billing_monthのwithdrawal_day日）
+            # 引落日を計算（billing_monthのwithdrawal_day日）
             max_day_billing = calendar.monthrange(billing_year, billing_month_num)[1]
             actual_day_billing = min(card_plan.withdrawal_day, max_day_billing)
             due_date = dt_date(billing_year, billing_month_num, actual_day_billing)
@@ -3050,7 +3050,7 @@ def past_transactions_list(request):
                     self.card_type = card_type
                     self.description = override_obj.default.label
                     self.amount = override_obj.amount
-                    self.due_date = due_date  # 引き落とし日
+                    self.due_date = due_date  # 引落日
                     self.purchase_date = purchase_date  # 利用日（利用月のpayment_day）
                     self.is_bonus_payment = False
                     self.is_split_payment = override_obj.is_split_payment
@@ -3118,7 +3118,7 @@ def past_transactions_list(request):
             if amount == 0:
                 continue
 
-            # 引き落とし日/振込日を計算
+            # 引落日 / 振込日を計算
             day = get_day_for_field(key, plan_year, plan_month)
             item_date = date(plan_year, plan_month, clamp_day(day))
 

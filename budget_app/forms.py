@@ -998,15 +998,15 @@ class MonthlyPlanDefaultForm(forms.ModelForm):
             'title': '項目名',
             'amount': 'デフォルト金額（円）',
             'payment_type': '種別',
-            'withdrawal_day': '引き落とし日/振込日',
-            'is_withdrawal_end_of_month': '引き落とし日/振込日を月末にする',
+            'withdrawal_day': '引落日 / 振込日',
+            'is_withdrawal_end_of_month': '引落日 / 振込日を月末にする',
             'consider_holidays': '休日を考慮',
             'closing_day': '締め日（クレカの場合）',
             'is_end_of_month': '締め日を月末にする',
         }
 
     def clean_withdrawal_day(self):
-        """引き落とし日のバリデーション"""
+        """引落日のバリデーション"""
         day = self.cleaned_data.get('withdrawal_day')
         if day is not None and (day < 1 or day > 31):
             raise forms.ValidationError('1から31の範囲で入力してください。')

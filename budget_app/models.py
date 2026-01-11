@@ -489,13 +489,13 @@ class MonthlyPlanDefault(models.Model):
     withdrawal_day = models.IntegerField(
         null=True,
         blank=True,
-        verbose_name="引き落とし日/振込日",
-        help_text="1-31の数値。引き落とし日または振込日を設定"
+        verbose_name="引落日 / 振込日",
+        help_text="1-31の数値。引落日または振込日を設定"
     )
     is_withdrawal_end_of_month = models.BooleanField(
         default=False,
-        verbose_name="引き落とし日/振込日を月末にする",
-        help_text="チェックすると引き落とし日/振込日が月末になります"
+        verbose_name="引落日 / 振込日を月末にする",
+        help_text="チェックすると引落日 / 振込日が月末になります"
     )
     consider_holidays = models.BooleanField(
         default=False,

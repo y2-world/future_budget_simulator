@@ -2,22 +2,12 @@
 {% load humanize budget_filters %}
 
 {% block content %}
-<div class="bg-white rounded-lg shadow-md p-4 md:p-6 max-w-5xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl md:text-3xl font-bold text-gray-800">月次計画デフォルト項目</h2>
+<div class="bg-white rounded-lg shadow-md p-6 md:p-8 max-w-7xl mx-auto">
+    <div class="mb-4 md:mb-6 flex justify-between items-center">
+        <h2 class="text-2xl md:text-3xl font-bold">月次計画デフォルト項目</h2>
         <button onclick="openCreateModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
             新規追加
         </button>
-    </div>
-
-    <!-- ボーナス払いの注意書き -->
-    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
-        <p class="text-sm text-blue-800">
-            <strong>※ボーナス払い項目の特例:</strong> 締め日は使用せず、対象期間は以下の通り<br>
-            <span class="ml-4">・12/6〜6/5の購入 → 8/4請求</span><br>
-            <span class="ml-4">・7/6〜11/5の購入 → 1/4請求</span><br>
-            <span class="ml-4">・6/6〜7/5、11/6〜12/5はボーナス払い不可</span>
-        </p>
     </div>
 
     <!-- デフォルト金額が登録されている項目 -->
@@ -31,7 +21,7 @@
                     <th class="px-3 py-2 text-left whitespace-nowrap">項目名</th>
                     <th class="px-3 py-2 text-right whitespace-nowrap">デフォルト金額</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">種別</th>
-                    <th class="px-3 py-2 text-center whitespace-nowrap">引き落とし日/振込日</th>
+                    <th class="px-3 py-2 text-center whitespace-nowrap">引落日 / 振込日</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">休日考慮</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">締め日</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">操作</th>
@@ -103,7 +93,7 @@
                 <tr class="bg-gray-100 text-gray-600 uppercase text-xs leading-normal">
                     <th class="px-3 py-2 text-left whitespace-nowrap">項目名</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">種別</th>
-                    <th class="px-3 py-2 text-center whitespace-nowrap">引き落とし日/振込日</th>
+                    <th class="px-3 py-2 text-center whitespace-nowrap">引落日 / 振込日</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">休日考慮</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">締め日</th>
                     <th class="px-3 py-2 text-center whitespace-nowrap">操作</th>
@@ -182,9 +172,9 @@
                         {% endif %}
                     </p>
                     {% if d.is_withdrawal_end_of_month %}
-                        <p>引き落とし日/振込日: <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">末日</span></p>
+                        <p>引落日 / 振込日: <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">末日</span></p>
                     {% elif d.withdrawal_day %}
-                        <p>引き落とし日/振込日: {{ d.withdrawal_day }}日</p>
+                        <p>引落日 / 振込日: {{ d.withdrawal_day }}日</p>
                     {% endif %}
                     {% if d.is_end_of_month %}
                         <p>締め日: <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">末日</span></p>
@@ -237,9 +227,9 @@
                         {% endif %}
                     </p>
                     {% if d.is_withdrawal_end_of_month %}
-                        <p>引き落とし日/振込日: <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">末日</span></p>
+                        <p>引落日 / 振込日: <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">末日</span></p>
                     {% elif d.withdrawal_day %}
-                        <p>引き落とし日/振込日: {{ d.withdrawal_day }}日</p>
+                        <p>引落日 / 振込日: {{ d.withdrawal_day }}日</p>
                     {% endif %}
                     {% if d.is_end_of_month %}
                         <p>締め日: <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">末日</span></p>
@@ -313,7 +303,7 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.withdrawal_day.label }}</label>
                 {{ form.withdrawal_day }}
-                <p class="text-xs text-gray-500 mt-1">引き落とし日または振込日を設定する場合は1-31の数値を入力</p>
+                <p class="text-xs text-gray-500 mt-1">引落日または振込日を設定する場合は1-31の数値を入力</p>
             </div>
 
             <div>
@@ -321,7 +311,7 @@
                     {{ form.is_withdrawal_end_of_month }}
                     <span class="ml-2 text-sm font-medium text-gray-700">{{ form.is_withdrawal_end_of_month.label }}</span>
                 </label>
-                <p class="text-xs text-gray-500 mt-1">チェックすると引き落とし日/振込日が月末になります</p>
+                <p class="text-xs text-gray-500 mt-1">チェックすると引落日 / 振込日が月末になります</p>
             </div>
 
             <div>
@@ -399,20 +389,20 @@
                 <p class="text-xs text-gray-500 mt-1">振込（給与など）または引き落とし（家賃など）</p>
             </div>
 
-            <!-- 引き落とし日/振込日 -->
+            <!-- 引落日 / 振込日 -->
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">引き落とし日/振込日</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">引落日 / 振込日</label>
                 <input type="number" name="withdrawal_day" id="default_edit_withdrawal_day" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" min="1" max="31" placeholder="1-31">
-                <p class="text-xs text-gray-500 mt-1">引き落とし日または振込日を設定する場合は1-31の数値を入力</p>
+                <p class="text-xs text-gray-500 mt-1">引落日または振込日を設定する場合は1-31の数値を入力</p>
             </div>
 
-            <!-- 引き落とし日/振込日を月末にする -->
+            <!-- 引落日 / 振込日を月末にする -->
             <div>
                 <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
                     <input type="checkbox" name="is_withdrawal_end_of_month" id="default_edit_is_withdrawal_end_of_month" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
-                    <span class="ml-2 text-sm font-medium text-gray-700">引き落とし日/振込日を月末にする</span>
+                    <span class="ml-2 text-sm font-medium text-gray-700">引落日 / 振込日を月末にする</span>
                 </label>
-                <p class="text-xs text-gray-500 mt-1 ml-6">チェックすると引き落とし日/振込日が月末になります</p>
+                <p class="text-xs text-gray-500 mt-1 ml-6">チェックすると引落日 / 振込日が月末になります</p>
             </div>
 
             <!-- 休日を考慮 -->
@@ -421,7 +411,7 @@
                     <input type="checkbox" name="consider_holidays" id="default_edit_consider_holidays" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                     <span class="ml-2 text-sm font-medium text-gray-700">休日を考慮</span>
                 </label>
-                <p class="text-xs text-gray-500 mt-1 ml-6">引き落とし日/振込日が休日の場合、翌営業日に調整</p>
+                <p class="text-xs text-gray-500 mt-1 ml-6">引落日 / 振込日が休日の場合、翌営業日に調整</p>
             </div>
 
             <!-- 締め日 -->
@@ -453,7 +443,46 @@
     </div>
 </div>
 
+<!-- ボーナス払い情報モーダル -->
+<div id="bonusInfoModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+    <div class="relative w-full max-w-lg bg-white shadow-2xl rounded-2xl transform transition-all">
+        <!-- ヘッダー -->
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-t-2xl px-4 py-3 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-white">ボーナス払い情報</h3>
+            <button type="button" onclick="closeBonusInfoModal()" class="text-white hover:text-gray-200 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- ボディ -->
+        <div class="p-6">
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                <p class="text-sm text-blue-900 leading-relaxed">
+                    <strong class="text-base">※ボーナス払い項目の特例:</strong><br>
+                    締め日は使用せず、対象期間は以下の通り<br><br>
+                    <span class="ml-4">・12/6〜6/5の購入 → 8/4請求</span><br>
+                    <span class="ml-4">・7/6〜11/5の購入 → 1/4請求</span><br>
+                    <span class="ml-4">・6/6〜7/5、11/6〜12/5はボーナス払い不可</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// ボーナス払い情報モーダル制御関数
+function openBonusInfoModal() {
+    const modal = document.getElementById('bonusInfoModal');
+    modal.classList.remove('hidden');
+}
+
+function closeBonusInfoModal() {
+    const modal = document.getElementById('bonusInfoModal');
+    modal.classList.add('hidden');
+}
+
 // 新規作成モーダル制御関数
 function openCreateModal() {
     const modal = document.getElementById('createModal');
@@ -500,7 +529,7 @@ function openDefaultEditModal(id, title, amount, paymentType, withdrawalDay, isW
     document.getElementById('default_edit_closing_day').value = closingDay !== null ? closingDay : '';
     document.getElementById('default_edit_is_end_of_month').checked = isEndOfMonth;
 
-    // 引き落とし日入力フォームの有効/無効を設定
+    // 引落日入力フォームの有効/無効を設定
     toggleWithdrawalDayInput();
     // 締め日入力フォームの有効/無効を設定
     toggleClosingDayInput();
@@ -549,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createModal = document.getElementById('createModal');
     const editModal = document.getElementById('defaultEditModal');
 
-    // 編集モーダルの引き落とし日チェックボックス
+    // 編集モーダルの引落日チェックボックス
     const editIsWithdrawalEndOfMonthCheckbox = document.getElementById('default_edit_is_withdrawal_end_of_month');
     if (editIsWithdrawalEndOfMonthCheckbox) {
         editIsWithdrawalEndOfMonthCheckbox.addEventListener('change', toggleWithdrawalDayInput);
@@ -561,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editIsEndOfMonthCheckbox.addEventListener('change', toggleClosingDayInput);
     }
 
-    // 新規作成フォームの引き落とし日チェックボックス
+    // 新規作成フォームの引落日チェックボックス
     const createIsWithdrawalEndOfMonthCheckbox = document.getElementById('id_is_withdrawal_end_of_month');
     const createWithdrawalDayInput = document.getElementById('id_withdrawal_day');
 
