@@ -878,13 +878,24 @@ function toggleDetails(id) {
     const element = document.getElementById(id);
     if (element) {
         element.classList.toggle('hidden');
-        // 矢印アイコンを探して向きを変更
+
+        // テキスト矢印アイコンを探して向きを変更
         const arrow = document.querySelector(`[onclick*="toggleDetails('${id}')"] .arrow-icon`);
         if (arrow) {
             if (element.classList.contains('hidden')) {
                 arrow.textContent = '▼';
             } else {
                 arrow.textContent = '▲';
+            }
+        }
+
+        // SVG矢印アイコンを探して向きを変更
+        const svgArrow = document.getElementById('arrow-' + id);
+        if (svgArrow) {
+            if (element.classList.contains('hidden')) {
+                svgArrow.classList.remove('rotate-180');
+            } else {
+                svgArrow.classList.add('rotate-180');
             }
         }
     }
