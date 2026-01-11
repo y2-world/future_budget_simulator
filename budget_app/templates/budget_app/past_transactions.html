@@ -335,7 +335,10 @@
                                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
                                     <div class="bg-purple-50 px-3 py-2.5 cursor-pointer flex justify-between items-center" onclick="toggleDetails('mobile-credit-{{ month_data.year_month }}')">
                                         <div class="flex items-center gap-2">
-                                            <span class="font-bold text-gray-800">📅{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}</span>
+                                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="font-bold text-gray-800">{{ month_data.year_month|format_year_month }}</span>
                                             <svg class="w-3 h-3 text-gray-400 transition-transform" id="arrow-mobile-credit-{{ month_data.year_month }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                             </svg>
