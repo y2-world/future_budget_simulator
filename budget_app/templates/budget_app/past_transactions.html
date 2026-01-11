@@ -349,7 +349,7 @@
                                         {% for card in month_data.cards %}
                                             <div class="bg-white rounded-lg shadow-lg overflow-hidden">
                                                 <div class="bg-blue-500 px-4 py-3 flex justify-between items-center">
-                                                    <span class="font-bold text-white">📅{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}</span>
+                                                    <span class="font-bold text-white">{{ card.card_name }}</span>
                                                     <span class="font-bold text-white text-lg">{{ card.total_amount|yen }}</span>
                                                 </div>
                                                 <div class="p-3 bg-blue-50">
@@ -372,11 +372,11 @@
                                                         <h3 class="text-lg font-bold text-gray-900">{{ est.memo|default:"（明細名なし）" }}</h3>
                                                         <div class="text-sm text-gray-600 mt-1">
                                                             {% if est.estimate.purchase_date %}
-                                                                📅{{ est.estimate.purchase_date|date:"Y/m/d" }}
+                                                                📅 {{ est.estimate.purchase_date|date:"Y/m/d" }}
                                                             {% elif est.estimate.due_date %}
-                                                                📅{{ est.estimate.due_date|date:"Y/m/d" }}
+                                                                📅 {{ est.estimate.due_date|date:"Y/m/d" }}
                                                             {% else %}
-                                                                📅{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}/01
+                                                                📅 {{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}/01
                                                             {% endif %}
                                                         </div>
                                                     </div>
