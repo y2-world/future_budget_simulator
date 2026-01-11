@@ -365,19 +365,16 @@
                                                 <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 {% if est.estimate.is_default %}border-green-500{% else %}border-blue-500{% endif %}">
                                             <div class="p-4">
                                                 <div class="flex justify-between items-start mb-3">
-                                                    <h3 class="text-lg font-bold text-gray-900">{{ est.memo|default:"（明細名なし）" }}</h3>
+                                                    <h3 class="text-lg font-bold text-gray-900">
+                                                        {% if est.estimate.purchase_date %}
+                                                            📅{{ est.estimate.purchase_date|date:"Y/m/d" }}
+                                                        {% elif est.estimate.due_date %}
+                                                            📅{{ est.estimate.due_date|date:"Y/m/d" }}
+                                                        {% else %}
+                                                            📅{{ month_data.year_month|slice:":4" }}/{{ month_data.year_month|slice:"5:7" }}/01
+                                                        {% endif %}
+                                                    </h3>
                                                     <span class="text-xl font-bold text-red-600">{{ est.amount|yen }}</span>
-                                                </div>
-
-                                                <div class="text-sm text-gray-600 mb-1">{{ card.card_name }}</div>
-                                                <div class="text-sm text-gray-600 mb-3">
-                                                    {% if est.estimate.purchase_date %}
-                                                        {{ est.estimate.purchase_date|date:"Y年n月j日" }}に利用
-                                                    {% elif est.estimate.due_date %}
-                                                        {{ est.estimate.due_date|date:"n月j日" }}に請求
-                                                    {% else %}
-                                                        {{ month_data.year_month|format_year_month }}
-                                                    {% endif %}
                                                 </div>
 
                                                 {% if est.estimate.is_split_payment %}
