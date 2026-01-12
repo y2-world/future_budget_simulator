@@ -2963,7 +2963,9 @@ def past_transactions_list(request):
                     past_credit_estimates.append(est)
 
     # 定期項目（DefaultChargeOverride）も過去の明細に追加
-    all_overrides = DefaultChargeOverride.objects.all().select_related('default')
+    # 現在月以前のデータのみを取得（未来月のデータは除外）
+    current_year_month = current_date.strftime('%Y-%m')
+    all_overrides = DefaultChargeOverride.objects.filter(year_month__lte=current_year_month).select_related('default')
 
     # DefaultChargeOverrideを year_month ごとにグループ化
     for override in all_overrides:
