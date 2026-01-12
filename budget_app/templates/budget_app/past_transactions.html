@@ -187,7 +187,7 @@
                                                                                 <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
                                                                                 {% if est.estimate.pk %}
                                                                                 <div class="flex gap-1">
-                                                                                    <button type="button" class="edit-estimate-btn text-blue-600 hover:text-blue-800 cursor-pointer"
+                                                                                    <button type="button" class="edit-estimate-btn text-blue-600 hover:text-blue-800 cursor-pointer w-6 h-6 flex items-center justify-center"
                                                                                         data-pk="{{ est.estimate.pk }}"
                                                                                         data-year-month="{{ est.estimate.year_month }}"
                                                                                         data-card-type="{{ est.estimate.card_type }}"
@@ -199,24 +199,24 @@
                                                                                         data-is-bonus-payment="{{ est.estimate.is_bonus_payment|lower }}"
                                                                                         data-is-default="{{ est.estimate.is_default|lower }}"
                                                                                         data-default-id="{{ est.estimate.default_id|default:'' }}">
-                                                                                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                                                         </svg>
                                                                                     </button>
                                                                                     {% if est.estimate.is_default %}
-                                                                                    <button type="button" disabled class="text-gray-400 cursor-not-allowed" title="定期項目は削除できません">
-                                                                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                                                    </svg>
-                                                                                </button>
-                                                                                    {% else %}
-                                                                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
-                                                                                        {% csrf_token %}
-                                                                                        <button type="submit" class="text-red-600 hover:text-red-800">
-                                                                                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <button type="button" disabled class="text-gray-400 cursor-not-allowed w-6 h-6 flex items-center justify-center" title="定期項目は削除できません">
+                                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                                                         </svg>
                                                                                     </button>
+                                                                                    {% else %}
+                                                                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
+                                                                                        {% csrf_token %}
+                                                                                        <button type="submit" class="text-red-600 hover:text-red-800 w-6 h-6 flex items-center justify-center">
+                                                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                                            </svg>
+                                                                                        </button>
                                                                                     </form>
                                                                                     {% endif %}
                                                                                 </div>
@@ -402,7 +402,7 @@
 
                                                 <div class="flex gap-2">
                                                     {% if est.estimate.pk %}
-                                                    <button type="button" class="edit-estimate-btn flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2"
+                                                    <button type="button" class="edit-estimate-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2 font-medium"
                                                         data-pk="{{ est.estimate.pk }}"
                                                         data-year-month="{{ est.estimate.year_month }}"
                                                         data-card-type="{{ est.estimate.card_type }}"
@@ -414,27 +414,27 @@
                                                         data-is-bonus-payment="{{ est.estimate.is_bonus_payment|lower }}"
                                                         data-is-default="{{ est.estimate.is_default|lower }}"
                                                         data-default-id="{{ est.estimate.default_id|default:'' }}">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                         </svg>
                                                         編集
                                                     </button>
                                                     {% if est.estimate.is_default %}
-                                                    <button type="button" disabled class="flex-1 bg-gray-300 text-gray-500 px-4 py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2" title="定期項目は削除できません">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <button type="button" disabled class="flex-1 bg-gray-300 text-gray-500 text-sm px-3 py-2.5 rounded-lg cursor-not-allowed flex items-center justify-center gap-2 font-medium" title="定期項目は削除できません">
+                                                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                         </svg>
                                                         削除
                                                     </button>
                                                     {% else %}
-                                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="flex-1 delete-estimate-form">
+                                                    <button type="submit" form="delete-estimate-form-{{ est.estimate.pk }}" class="flex-1 bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2 font-medium">
+                                                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                        </svg>
+                                                        削除
+                                                    </button>
+                                                    <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" id="delete-estimate-form-{{ est.estimate.pk }}" class="delete-estimate-form" style="display:none;">
                                                         {% csrf_token %}
-                                                        <button type="submit" class="w-full bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                            </svg>
-                                                            削除
-                                                        </button>
                                                     </form>
                                                     {% endif %}
                                                     {% endif %}
