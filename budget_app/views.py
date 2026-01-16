@@ -2803,21 +2803,28 @@ def past_transactions_list(request):
             year_month = request.POST.get('year_month')
             card_type = request.POST.get('card_type')
             amount = request.POST.get('amount')
+            purchase_date = request.POST.get('purchase_date')  # 利用日を取得
 
             # デバッグ: 受信したパラメータをログ出力
-            print(f"DEBUG: default_id={default_id}, year_month={year_month}, card_type={card_type}, amount={amount}")
+            print(f"DEBUG: default_id={default_id}, year_month={year_month}, card_type={card_type}, amount={amount}, purchase_date={purchase_date}")
 
             try:
                 # DefaultChargeOverrideを取得または作成
+                defaults_dict = {'card_type': card_type, 'amount': amount}
+                if purchase_date:
+                    defaults_dict['purchase_date_override'] = purchase_date
+
                 override, created = DefaultChargeOverride.objects.get_or_create(
                     default_id=default_id,
                     year_month=year_month,
-                    defaults={'card_type': card_type, 'amount': amount}
+                    defaults=defaults_dict
                 )
                 if not created:
-                    # 既存の場合は金額とカード種別を更新
+                    # 既存の場合は金額、カード種別、利用日を更新
                     override.amount = amount
                     override.card_type = card_type
+                    if purchase_date:
+                        override.purchase_date_override = purchase_date
                     override.save()
 
                 # Ajaxリクエストの場合はJSONレスポンスを返す
@@ -3017,25 +3024,28 @@ def past_transactions_list(request):
                 billing_year += 1
             billing_month = f"{billing_year}-{billing_month_num:02d}"
 
-            # 利用日を計算
-            payment_day = override.default.payment_day
-            if card_plan.is_end_of_month:
-                # 月末締めの場合：year_monthのpayment_day日
-                max_day_usage = calendar.monthrange(year, month)[1]
-                actual_day_usage = min(payment_day, max_day_usage)
-                purchase_date = dt_date(year, month, actual_day_usage)
+            # 利用日を計算（purchase_date_overrideがあればそれを使用）
+            if override.purchase_date_override:
+                purchase_date = override.purchase_date_override
             else:
-                # 指定日締めの場合：payment_dayと締め日を比較
-                if payment_day > card_plan.closing_day:
-                    # payment_dayが締め日より大きい：year_monthの月のpayment_day日
+                payment_day = override.default.payment_day
+                if card_plan.is_end_of_month:
+                    # 月末締めの場合：year_monthのpayment_day日
                     max_day_usage = calendar.monthrange(year, month)[1]
                     actual_day_usage = min(payment_day, max_day_usage)
                     purchase_date = dt_date(year, month, actual_day_usage)
                 else:
-                    # payment_dayが締め日以下：締め日の月のpayment_day日
-                    max_day_usage = calendar.monthrange(closing_year, closing_month)[1]
-                    actual_day_usage = min(payment_day, max_day_usage)
-                    purchase_date = dt_date(closing_year, closing_month, actual_day_usage)
+                    # 指定日締めの場合：payment_dayと締め日を比較
+                    if payment_day > card_plan.closing_day:
+                        # payment_dayが締め日より大きい：year_monthの月のpayment_day日
+                        max_day_usage = calendar.monthrange(year, month)[1]
+                        actual_day_usage = min(payment_day, max_day_usage)
+                        purchase_date = dt_date(year, month, actual_day_usage)
+                    else:
+                        # payment_dayが締め日以下：締め日の月のpayment_day日
+                        max_day_usage = calendar.monthrange(closing_year, closing_month)[1]
+                        actual_day_usage = min(payment_day, max_day_usage)
+                        purchase_date = dt_date(closing_year, closing_month, actual_day_usage)
 
             # 引落日を計算（billing_monthのwithdrawal_day日）
             max_day_billing = calendar.monthrange(billing_year, billing_month_num)[1]

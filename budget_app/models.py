@@ -451,6 +451,12 @@ class DefaultChargeOverride(models.Model):
         verbose_name='2回払い',
         help_text='この月だけ2回払いにする場合にチェック'
     )
+    purchase_date_override = models.DateField(
+        '利用日上書き',
+        null=True,
+        blank=True,
+        help_text='この月だけ利用日を変更する場合に指定'
+    )
 
     class Meta:
         verbose_name = '定期デフォルトの上書き'

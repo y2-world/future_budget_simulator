@@ -864,11 +864,10 @@ function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, pu
     editIsSplitPayment.checked = isSplitPayment;
     editIsBonusPayment.checked = isBonusPayment;
 
-    // 定期項目の場合は項目名と支払種別を無効化
+    // 定期項目の場合は項目名と支払種別を無効化（利用日は編集可能にする）
     editDescription.disabled = isDefault;
     editIsSplitPayment.disabled = isDefault;
     editIsBonusPayment.disabled = isDefault;
-    editPurchaseDate.disabled = isDefault;
 
     // カード種別に応じて分割払い・ボーナス払いの表示を更新
     togglePaymentOptions();
