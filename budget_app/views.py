@@ -1766,12 +1766,9 @@ def credit_estimate_list(request):
 
             # フロントエンドから送られた金額を使用（過去の明細画面で既に計算済み）
             if total_amount_str:
-                print(f"DEBUG: total_amount_str received = {total_amount_str}")
                 try:
                     total_amount = int(total_amount_str)
-                    print(f"DEBUG: total_amount parsed = {total_amount}")
                 except (ValueError, TypeError):
-                    print(f"DEBUG: Failed to parse total_amount_str = {total_amount_str}")
                     total_amount = 0
             else:
                 # total_amountが送られていない場合は従来通り再計算（後方互換性のため）
