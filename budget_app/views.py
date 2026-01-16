@@ -3044,15 +3044,24 @@ def past_transactions_list(request):
 
             # 疑似CreditEstimateオブジェクトを作成
             class DefaultEstimate:
-                def __init__(self, override_obj, year_month, billing_month, purchase_date, due_date, card_type, split_part=None):
+                def __init__(self, override_obj, year_month, billing_month, purchase_date, due_date, card_type, split_part=None, total_amount=None):
                     self.id = override_obj.id  # DefaultChargeOverrideのID
                     self.pk = override_obj.id  # DefaultChargeOverrideのID
                     self.year_month = year_month
                     self.billing_month = billing_month
                     self.card_type = card_type
                     self.description = override_obj.default.label
-                    # 分割支払いの場合は金額を2で割る
-                    self.amount = override_obj.amount // 2 if override_obj.is_split_payment else override_obj.amount
+                    # 分割支払いの場合は金額を正しく計算
+                    if split_part and total_amount is not None:
+                        # 2回目の金額を10の位まで0にする（100で切り捨て）
+                        second_payment = (total_amount // 2) // 100 * 100
+                        if split_part == 2:
+                            self.amount = second_payment
+                        else:
+                            # 1回目: 残り
+                            self.amount = total_amount - second_payment
+                    else:
+                        self.amount = override_obj.amount
                     self.due_date = due_date  # 引落日
                     self.purchase_date = purchase_date  # 利用日（利用月のpayment_day）
                     self.is_bonus_payment = False
@@ -3066,8 +3075,9 @@ def past_transactions_list(request):
 
             # 分割支払いの場合は2回分のエントリを作成
             if override.is_split_payment:
+                total_amount = override.amount
                 # 1回目
-                default_est_1 = DefaultEstimate(override, year_month, billing_month, purchase_date, due_date, override.card_type, split_part=1)
+                default_est_1 = DefaultEstimate(override, year_month, billing_month, purchase_date, due_date, override.card_type, split_part=1, total_amount=total_amount)
                 past_credit_estimates.append(default_est_1)
 
                 # 2回目（翌月引き落とし）
@@ -3082,7 +3092,7 @@ def past_transactions_list(request):
                 actual_day_billing_2 = min(card_plan.withdrawal_day, max_day_billing_2)
                 due_date_2 = dt_date(billing_year_2, billing_month_num_2, actual_day_billing_2)
 
-                default_est_2 = DefaultEstimate(override, year_month, billing_month_2, purchase_date, due_date_2, override.card_type, split_part=2)
+                default_est_2 = DefaultEstimate(override, year_month, billing_month_2, purchase_date, due_date_2, override.card_type, split_part=2, total_amount=total_amount)
                 past_credit_estimates.append(default_est_2)
             else:
                 default_est = DefaultEstimate(override, year_month, billing_month, purchase_date, due_date, override.card_type)
