@@ -1800,39 +1800,84 @@ def credit_estimate_list(request):
 
             regular_total = 0
             if card_plan and not is_bonus:  # ボーナス払いは定期項目対象外
-                # billing_monthからyear_monthを逆算
-                billing_year, billing_month_num = map(int, year_month.split('-'))
+                # 反映対象のbilling_month
+                target_billing_month = year_month
 
-                if card_plan.is_end_of_month:
-                    # 月末締め: billing_month = year_month + 1 → year_month = billing_month - 1
-                    usage_month_num = billing_month_num - 1
-                else:
-                    # 指定日締め: billing_month = year_month + 2 → year_month = billing_month - 2
-                    usage_month_num = billing_month_num - 2
-
-                usage_year = billing_year
-                if usage_month_num < 1:
-                    usage_month_num += 12
-                    usage_year -= 1
-
-                usage_year_month = f"{usage_year}-{usage_month_num:02d}"
-
-                # 該当するDefaultChargeOverrideを取得
-                overrides = DefaultChargeOverride.objects.filter(
-                    year_month=usage_year_month,
+                # 過去の明細表示と同じロジックで、該当する定期項目をすべて取得
+                # 反映対象月以前のすべての定期項目を取得（分割支払いで翌月に影響するため）
+                all_overrides = DefaultChargeOverride.objects.filter(
+                    year_month__lte=target_billing_month,
                     card_type=actual_card_id
-                ).select_related('default')
+                ).select_related('default').order_by('year_month')
 
-                # 奇数月のみ適用フラグのチェック
-                usage_month_int = int(usage_month_num)
-                is_odd_month = (usage_month_int % 2 == 1)
+                import calendar
+                from datetime import date as dt_date
 
-                for override in overrides:
-                    # 奇数月のみ適用フラグが立っている場合、偶数月はスキップ
-                    if override.default.apply_odd_months_only and not is_odd_month:
+                for override in all_overrides:
+                    # year_monthから年月を取得
+                    year, month = map(int, override.year_month.split('-'))
+
+                    # 奇数月のみ適用フラグのチェック
+                    if override.default.apply_odd_months_only and (month % 2 == 0):
                         continue
 
-                    regular_total += override.amount
+                    # 締め日の年月を計算
+                    if card_plan.is_end_of_month:
+                        closing_year = year
+                        closing_month = month
+                    else:
+                        closing_day = card_plan.closing_day
+                        payment_day = override.default.payment_day
+
+                        if payment_day > closing_day:
+                            closing_year = year
+                            closing_month = month
+                        else:
+                            closing_month = month + 1
+                            closing_year = year
+                            if closing_month > 12:
+                                closing_month = 1
+                                closing_year += 1
+
+                    # 引き落とし月を計算
+                    if card_plan.is_end_of_month:
+                        billing_month_num = closing_month + 1
+                        billing_year = closing_year
+                    else:
+                        billing_month_num = closing_month + 1
+                        billing_year = closing_year
+
+                    if billing_month_num > 12:
+                        billing_month_num = 1
+                        billing_year += 1
+
+                    billing_month = f"{billing_year}-{billing_month_num:02d}"
+
+                    # 分割支払いの場合は2回に分ける
+                    if override.is_split_payment:
+                        # 2回目の金額を100円単位で切り捨て
+                        total_amount_split = override.amount
+                        second_payment = (total_amount_split // 2) // 100 * 100
+                        first_payment = total_amount_split - second_payment
+
+                        # 1回目の引き落とし月
+                        if billing_month == target_billing_month:
+                            regular_total += first_payment
+
+                        # 2回目の引き落とし月（翌月）
+                        second_billing_month_num = billing_month_num + 1
+                        second_billing_year = billing_year
+                        if second_billing_month_num > 12:
+                            second_billing_month_num = 1
+                            second_billing_year += 1
+                        second_billing_month = f"{second_billing_year}-{second_billing_month_num:02d}"
+
+                        if second_billing_month == target_billing_month:
+                            regular_total += second_payment
+                    else:
+                        # 通常支払いの場合
+                        if billing_month == target_billing_month:
+                            regular_total += override.amount
 
             # 合計額
             total_amount = manual_total + regular_total
