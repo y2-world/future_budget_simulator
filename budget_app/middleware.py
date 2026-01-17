@@ -15,8 +15,8 @@ class BasicAuthMiddleware:
         if not getattr(settings, 'BASIC_AUTH_ENABLED', False):
             return self.get_response(request)
 
-        # 静的ファイルとメディアファイルは認証をスキップ
-        if request.path.startswith('/static/') or request.path.startswith('/media/'):
+        # 静的ファイル、メディアファイル、ヘルスチェックは認証をスキップ
+        if request.path.startswith('/static/') or request.path.startswith('/media/') or request.path == '/health/':
             return self.get_response(request)
 
         # セッションに認証済みフラグがあればスキップ
