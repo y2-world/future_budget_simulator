@@ -1,1 +1,1 @@
-web: gunicorn future_budget_simulator.wsgi
+web: gunicorn future_budget_simulator.wsgi --timeout 60
