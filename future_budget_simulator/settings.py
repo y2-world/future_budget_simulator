@@ -79,10 +79,11 @@ WSGI_APPLICATION = 'future_budget_simulator.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# HerokuのDATABASE_URL環境変数を使用
+# NEON_DATABASE_URLを優先、なければDATABASE_URLを使用
+DATABASE_URL = os.environ.get('NEON_DATABASE_URL') or os.environ.get('DATABASE_URL')
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://budget_user:your_strong_password@localhost:5432/future_budget_simulator',
+        default=DATABASE_URL or 'postgresql://budget_user:your_strong_password@localhost:5432/future_budget_simulator',
         conn_max_age=600,
         conn_health_checks=True,
     )
