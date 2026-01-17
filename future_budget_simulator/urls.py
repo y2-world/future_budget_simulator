@@ -21,9 +21,10 @@ from django.http import JsonResponse
 
 def health_check(request):
     """ヘルスチェック用エンドポイント（DBクエリを実行してウォームアップ）"""
-    from django.db import connection
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT 1")
+    from budget_app.models import MonthlyPlan, SimulationConfig
+    # 実際のテーブルにアクセスしてDBをウォームアップ
+    MonthlyPlan.objects.first()
+    SimulationConfig.objects.first()
     return JsonResponse({"status": "ok"})
 
 
