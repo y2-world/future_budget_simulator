@@ -79,8 +79,8 @@ WSGI_APPLICATION = 'future_budget_simulator.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# SUPABASE_DATABASE_URLを優先、なければDATABASE_URLを使用
-DATABASE_URL = os.environ.get('SUPABASE_DATABASE_URL') or os.environ.get('DATABASE_URL')
+# DATABASE_URLを使用（Heroku Postgres）
+DATABASE_URL = os.environ.get('DATABASE_URL')
 DATABASES = {
     'default': dj_database_url.config(
         default=DATABASE_URL or 'postgresql://budget_user:your_strong_password@localhost:5432/future_budget_simulator',
