@@ -158,6 +158,9 @@
                 // sessionStorageをクリア
                 sessionStorage.removeItem('scrollToAnchor');
 
+                // URLハッシュを設定（フラッシュ効果などページ固有の処理のため）
+                window.location.hash = scrollToAnchor;
+
                 // 少し遅延させて要素が確実にレンダリングされるのを待つ
                 setTimeout(function() {
                     scrollToAnchorWithOffset(scrollToAnchor);
