@@ -871,14 +871,18 @@ document.addEventListener('DOMContentLoaded', function() {
             closeModal: closeSalaryModal
         });
     });
+});
 
-    // URLハッシュがあればスクロール
-    if (window.location.hash) {
+// フラッシュ効果（loadイベントで実行してbase.htmlのハッシュ設定後に動作させる）
+window.addEventListener('load', function() {
+    // URLハッシュまたはsessionStorageからアンカーを取得
+    const scrollToAnchor = sessionStorage.getItem('scrollToAnchor') || window.location.hash;
+
+    if (scrollToAnchor) {
         setTimeout(() => {
-            const targetId = window.location.hash.substring(1);
+            const targetId = scrollToAnchor.replace('#', '');
             const targetElement = document.getElementById(targetId);
             if (targetElement) {
-                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 // ハイライト効果
                 targetElement.style.transition = 'background-color 0.5s';
                 const originalBg = targetElement.style.backgroundColor;
@@ -887,7 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     targetElement.style.backgroundColor = originalBg;
                 }, 1500);
             }
-        }, 300);
+        }, 400);
     }
 });
 </script>
