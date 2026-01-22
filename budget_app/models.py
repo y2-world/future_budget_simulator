@@ -28,8 +28,8 @@ class Salary(models.Model):
         return f"{self.year_month}"
 
     def get_net_salary(self):
-        """手取り給与を計算"""
-        return self.gross_salary - self.deductions + self.transportation
+        """手取り給与を計算（差引支給額 = 総支給額 - 控除額）"""
+        return self.gross_salary - self.deductions
 
     def get_net_bonus(self):
         """手取りボーナスを計算"""
