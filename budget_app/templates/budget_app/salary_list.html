@@ -867,32 +867,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData(salaryForm);
         const url = salaryForm.action;
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                closeSalaryModal();
-                // target_urlがあればリダイレクト
-                if (data.target_url) {
-                    window.location.href = data.target_url;
-                } else {
-                    window.location.reload();
-                }
-            } else {
-                alert(data.message || '登録に失敗しました');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('通信エラーが発生しました');
-        }
+        await window.sendAjaxRequest(url, formData, {
+            closeModal: closeSalaryModal
+        });
     });
 
     // URLハッシュがあればスクロール

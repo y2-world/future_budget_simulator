@@ -1082,49 +1082,13 @@ editForm.addEventListener('submit', async function(e) {
 // 月次計画モーダルフォームの送信処理（AJAX）
 const planForm = document.getElementById('planForm');
 if (planForm) {
-    planForm.addEventListener('submit', function(e) {
+    planForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const formData = new FormData(this);
 
-        fetch(this.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            return response.json().then(data => ({
-                ok: response.ok,
-                status: response.status,
-                data: data
-            }));
-        })
-        .then(result => {
-            if (result.ok && result.data.status === 'success') {
-                showToast(result.data.message);
-                closePlanModal();
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            } else {
-                let errorMsg = '更新に失敗しました。';
-                if (result.data.errors) {
-                    const errorList = [];
-                    for (const [field, errors] of Object.entries(result.data.errors)) {
-                        errorList.push(...errors);
-                    }
-                    if (errorList.length > 0) {
-                        errorMsg = errorList.join(', ');
-                    }
-                }
-                showToast(errorMsg, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('エラーが発生しました。', 'error');
+        await window.sendAjaxRequest(this.action, formData, {
+            closeModal: closePlanModal
         });
     });
 }
