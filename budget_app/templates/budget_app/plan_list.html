@@ -178,55 +178,20 @@
 
 <script>
     function openInitialBalanceModal() {
-        console.log('openInitialBalanceModal called');
         const modal = document.getElementById('initialBalanceModal');
-        const input = document.getElementById('initial_balance_input');
-
-        console.log('modal found:', !!modal);
-        console.log('input found:', !!input);
-
-        // 現在の残高を取得してinput要素に設定
-        {% if plans and plans.0.current_balance is not None %}
-        const currentBalance = {{ plans.0.current_balance }};
-        {% else %}
-        const currentBalance = {{ initial_balance|default:0 }};
-        {% endif %}
-
-        console.log('currentBalance:', currentBalance);
-
-        if (input) {
-            input.value = currentBalance;
-            console.log('Set input value to:', currentBalance);
-        }
-
-        if (modal) {
-            // hiddenクラスを削除してモーダルを表示
-            modal.classList.remove('hidden');
-            console.log('Removed hidden class');
-            console.log('Modal classes after remove:', modal.className);
-
-            // 念のため、displayスタイルを直接設定
-            modal.style.display = 'flex';
-            console.log('Modal display style set to flex');
-        } else {
-            console.error('Modal element not found!');
-        }
+        modal.classList.remove('hidden');
     }
 
     function closeInitialBalanceModal(event) {
-        console.log('closeInitialBalanceModal called');
         if (event && event.target !== event.currentTarget && event !== undefined) return;
         const modal = document.getElementById('initialBalanceModal');
-        if (modal) {
-            modal.classList.add('hidden');
-            modal.style.display = '';
-        }
+        modal.classList.add('hidden');
     }
 
 </script>
 
 <!-- 現在残高編集モーダル -->
-<div id="initialBalanceModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 items-center justify-center p-4" onclick="closeInitialBalanceModal(event)">
+<div id="initialBalanceModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" onclick="closeInitialBalanceModal(event)">
     <div class="relative w-full max-w-md bg-white shadow-2xl rounded-2xl transform transition-all my-4 max-h-[85vh] overflow-y-auto overflow-x-hidden" onclick="event.stopPropagation()">
         <!-- ヘッダー -->
         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-2xl px-4 py-3 flex justify-between items-center sticky top-0 z-10">
@@ -243,7 +208,7 @@
             {% csrf_token %}
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">現在残高（円）</label>
-                <input type="number" name="initial_balance" id="initial_balance_input" value="{{ initial_balance|default:0 }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
+                <input type="number" name="initial_balance" value="{{ initial_balance|default:0 }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
             </div>
 
             <!-- ボタン -->
