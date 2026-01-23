@@ -179,6 +179,19 @@
 <script>
     function openInitialBalanceModal() {
         const modal = document.getElementById('initialBalanceModal');
+        const input = document.getElementById('initial_balance_input');
+
+        // 現在の残高を取得してinput要素に設定
+        {% if plans and plans.0.current_balance is not None %}
+        const currentBalance = {{ plans.0.current_balance }};
+        {% else %}
+        const currentBalance = {{ initial_balance|default:0 }};
+        {% endif %}
+
+        if (input) {
+            input.value = currentBalance;
+        }
+
         modal.classList.remove('hidden');
     }
 
@@ -208,7 +221,7 @@
             {% csrf_token %}
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">現在残高（円）</label>
-                <input type="number" name="initial_balance" value="{{ initial_balance }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
+                <input type="number" name="initial_balance" id="initial_balance_input" value="{{ initial_balance|default:0 }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
             </div>
 
             <!-- ボタン -->
