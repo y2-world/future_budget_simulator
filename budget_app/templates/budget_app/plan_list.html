@@ -193,12 +193,14 @@
         }
 
         modal.classList.remove('hidden');
+        modal.classList.add('flex');
     }
 
     function closeInitialBalanceModal(event) {
         if (event && event.target !== event.currentTarget && event !== undefined) return;
         const modal = document.getElementById('initialBalanceModal');
         modal.classList.add('hidden');
+        modal.classList.remove('flex');
     }
 
 </script>
