@@ -178,8 +178,12 @@
 
 <script>
     function openInitialBalanceModal() {
+        console.log('openInitialBalanceModal called');
         const modal = document.getElementById('initialBalanceModal');
         const input = document.getElementById('initial_balance_input');
+
+        console.log('modal:', modal);
+        console.log('input:', input);
 
         // 現在の残高を取得してinput要素に設定
         {% if plans and plans.0.current_balance is not None %}
@@ -188,19 +192,29 @@
         const currentBalance = {{ initial_balance|default:0 }};
         {% endif %}
 
+        console.log('currentBalance:', currentBalance);
+
         if (input) {
             input.value = currentBalance;
         }
 
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            console.log('Modal should be visible now');
+        } else {
+            console.error('Modal element not found!');
+        }
     }
 
     function closeInitialBalanceModal(event) {
+        console.log('closeInitialBalanceModal called');
         if (event && event.target !== event.currentTarget && event !== undefined) return;
         const modal = document.getElementById('initialBalanceModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
     }
 
 </script>
