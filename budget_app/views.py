@@ -1764,41 +1764,58 @@ def credit_estimate_list(request):
                     messages.error(request, error_message)
                     return redirect('budget_app:credit_estimates')
 
-            # フロントエンドから送られた金額を使用（過去の明細画面で既に計算済み）
+            # 内訳計算用に手動入力と定期項目を分けて計算
+            from django.db.models import Sum
+
+            # 該当するCreditEstimateを検索
+            estimates_query = CreditEstimate.objects.filter(
+                card_type=actual_card_id,
+                is_bonus_payment=is_bonus
+            )
+
+            # ボーナス払いの場合は支払月（due_date）でフィルタ
+            if is_bonus:
+                estimates_query = estimates_query.filter(
+                    due_date__year=int(year_month.split('-')[0]),
+                    due_date__month=int(year_month.split('-')[1])
+                )
+            else:
+                # 通常払いの場合はbilling_monthでフィルタ
+                estimates_query = estimates_query.filter(billing_month=year_month)
+
+            # 手動入力データの合計額を計算
+            result = estimates_query.aggregate(total=Sum('amount'))
+            manual_total = result['total'] or 0
+
+            # 定期項目の合計額を計算
+            # 該当する定期項目を取得
+            defaults = CreditDefault.objects.filter(
+                card_type=actual_card_id,
+                is_active=True
+            )
+            regular_total = 0
+            for default_item in defaults:
+                # 上書きがあるか確認
+                override = DefaultChargeOverride.objects.filter(
+                    default=default_item,
+                    year_month=year_month
+                ).first()
+
+                if override:
+                    # 上書きがある場合はその金額を使用
+                    regular_total += override.amount
+                else:
+                    # 上書きがない場合はデフォルト金額を使用
+                    regular_total += default_item.amount
+
+            # フロントエンドから送られた金額を使用（優先）
             if total_amount_str:
                 try:
                     total_amount = int(total_amount_str)
                 except (ValueError, TypeError):
-                    total_amount = 0
+                    total_amount = manual_total + regular_total
             else:
-                # total_amountが送られていない場合は従来通り再計算（後方互換性のため）
-                from django.db.models import Sum
-
-                # 該当するCreditEstimateを検索
-                estimates_query = CreditEstimate.objects.filter(
-                    card_type=actual_card_id,
-                    is_bonus_payment=is_bonus
-                )
-
-                # ボーナス払いの場合は支払月（due_date）でフィルタ
-                if is_bonus:
-                    estimates_query = estimates_query.filter(
-                        due_date__year=int(year_month.split('-')[0]),
-                        due_date__month=int(year_month.split('-')[1])
-                    )
-                else:
-                    # 通常払いの場合はbilling_monthでフィルタ
-                    estimates_query = estimates_query.filter(billing_month=year_month)
-
-                # 手動入力データの合計額を計算
-                result = estimates_query.aggregate(total=Sum('amount'))
-                manual_total = result['total'] or 0
-
-                # 定期項目は計算が複雑なので、フロントエンドから送られた金額を使用することを推奨
-                # ここでは簡易的に0とする
-                regular_total = 0
-
-                # 合計額
+                # total_amountが送られていない場合は再計算
                 total_amount = manual_total + regular_total
 
             if total_amount == 0:
@@ -1830,19 +1847,14 @@ def credit_estimate_list(request):
             plan.set_item(monthly_plan_key, total_amount)
             plan.save()
 
-            # 内訳を含むメッセージ作成（フロントエンドから金額を受け取った場合は内訳なし）
-            if total_amount_str:
-                # フロントエンドから金額を受け取った場合
-                success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（合計: {total_amount:,}円）'
-            else:
-                # 再計算した場合は内訳を表示
-                breakdown = []
-                if manual_total > 0:
-                    breakdown.append(f'手動入力: {manual_total:,}円')
-                if regular_total > 0:
-                    breakdown.append(f'定期項目: {regular_total:,}円')
-                breakdown_text = ' (' + ', '.join(breakdown) + ')' if breakdown else ''
-                success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（合計: {total_amount:,}円{breakdown_text}）'
+            # 内訳を含むメッセージ作成
+            breakdown = []
+            if manual_total > 0:
+                breakdown.append(f'手動入力: {manual_total:,}円')
+            if regular_total > 0:
+                breakdown.append(f'定期項目: {regular_total:,}円')
+            breakdown_text = ' (' + ', '.join(breakdown) + ')' if breakdown else ''
+            success_message = f'{format_year_month_display(year_month)}の「{card_label}」を{format_year_month_display(target_year_month)}の月次計画に反映しました（合計: {total_amount:,}円{breakdown_text}）'
 
             if is_ajax:
                 response_data = {
