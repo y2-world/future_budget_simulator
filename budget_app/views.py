@@ -1111,11 +1111,14 @@ def credit_estimate_list(request):
         card_group = month_group.setdefault(card_key, {
             'label': card_label,
             'total': 0,
+            'manual_total': 0,  # 手動入力の合計
+            'default_total': 0,  # 定期項目の合計
             'entries': [],
             'year_month': display_month,  # 表示月（支払月＝billing_month）
             'is_bonus_section': est.is_bonus_payment,  # ボーナス払いかどうか
         })
         card_group['total'] += est.amount
+        card_group['manual_total'] += est.amount  # 手動入力として加算
         # 通常のCreditEstimateオブジェクトにis_defaultフラグを追加
         est.is_default = False
         card_group['entries'].append(est)
@@ -1276,6 +1279,8 @@ def credit_estimate_list(request):
             card_group = month_group.setdefault(actual_card_type, {
                 'label': default_label,
                 'total': 0,
+                'manual_total': 0,  # 手動入力の合計
+                'default_total': 0,  # 定期項目の合計
                 'entries': [],
                 # 反映機能で billing_month が参照される
                 'year_month': billing_month,
@@ -1404,6 +1409,7 @@ def credit_estimate_list(request):
                     if default_entry_1.amount > 0:
                         card_group['entries'].append(default_entry_1)
                         card_group['total'] += default_entry_1.amount
+                        card_group['default_total'] += default_entry_1.amount
 
                 # 2回目の引き落とし月を計算（1回目のbilling_month + 1ヶ月）
                 billing_date = datetime.strptime(billing_month, '%Y-%m')
@@ -1429,6 +1435,8 @@ def credit_estimate_list(request):
                     next_card_group = next_month_group.setdefault(actual_card_type, {
                         'label': next_label,
                         'total': 0,
+                        'manual_total': 0,  # 手動入力の合計
+                        'default_total': 0,  # 定期項目の合計
                         'entries': [],
                         'year_month': next_billing_month,
                         'is_bonus_section': False,
@@ -1440,6 +1448,7 @@ def credit_estimate_list(request):
                     if default_entry_2.amount > 0:
                         next_card_group['entries'].append(default_entry_2)
                         next_card_group['total'] += default_entry_2.amount
+                        next_card_group['default_total'] += default_entry_2.amount
             else:
                 # 通常の1回払い
                 # 締め日チェック（過去月の場合はスキップ）
@@ -1476,6 +1485,7 @@ def credit_estimate_list(request):
                     if default_entry.amount > 0:
                         card_group['entries'].append(default_entry)
                         card_group['total'] += default_entry.amount
+                        card_group['default_total'] += default_entry.amount
 
     # 各カードのエントリーを利用日順にソート（日付は降順＝新しい順）
     for year_month, month_group in summary.items():
@@ -1764,49 +1774,62 @@ def credit_estimate_list(request):
                     messages.error(request, error_message)
                     return redirect('budget_app:credit_estimates')
 
-            # 内訳計算用に手動入力と定期項目を分けて計算
-            from django.db.models import Sum
+            # フロントエンドから内訳が送られている場合はそれを使用（再計算しない）
+            manual_total_str = request.POST.get('manual_total')
+            default_total_str = request.POST.get('default_total')
 
-            # 該当するCreditEstimateを検索
-            estimates_query = CreditEstimate.objects.filter(
-                card_type=actual_card_id,
-                is_bonus_payment=is_bonus
-            )
-
-            # ボーナス払いの場合は支払月（due_date）でフィルタ
-            if is_bonus:
-                estimates_query = estimates_query.filter(
-                    due_date__year=int(year_month.split('-')[0]),
-                    due_date__month=int(year_month.split('-')[1])
-                )
+            if manual_total_str and default_total_str:
+                # フロントエンドから内訳が送られている場合
+                try:
+                    manual_total = int(manual_total_str)
+                    regular_total = int(default_total_str)
+                except (ValueError, TypeError):
+                    manual_total = 0
+                    regular_total = 0
             else:
-                # 通常払いの場合はbilling_monthでフィルタ
-                estimates_query = estimates_query.filter(billing_month=year_month)
+                # 内訳が送られていない場合は再計算（後方互換性のため）
+                from django.db.models import Sum
 
-            # 手動入力データの合計額を計算
-            result = estimates_query.aggregate(total=Sum('amount'))
-            manual_total = result['total'] or 0
+                # 該当するCreditEstimateを検索
+                estimates_query = CreditEstimate.objects.filter(
+                    card_type=actual_card_id,
+                    is_bonus_payment=is_bonus
+                )
 
-            # 定期項目の合計額を計算
-            # 該当する定期項目を取得
-            defaults = CreditDefault.objects.filter(
-                card_type=actual_card_id,
-                is_active=True
-            )
-            regular_total = 0
-            for default_item in defaults:
-                # 上書きがあるか確認
-                override = DefaultChargeOverride.objects.filter(
-                    default=default_item,
-                    year_month=year_month
-                ).first()
-
-                if override:
-                    # 上書きがある場合はその金額を使用
-                    regular_total += override.amount
+                # ボーナス払いの場合は支払月（due_date）でフィルタ
+                if is_bonus:
+                    estimates_query = estimates_query.filter(
+                        due_date__year=int(year_month.split('-')[0]),
+                        due_date__month=int(year_month.split('-')[1])
+                    )
                 else:
-                    # 上書きがない場合はデフォルト金額を使用
-                    regular_total += default_item.amount
+                    # 通常払いの場合はbilling_monthでフィルタ
+                    estimates_query = estimates_query.filter(billing_month=year_month)
+
+                # 手動入力データの合計額を計算
+                result = estimates_query.aggregate(total=Sum('amount'))
+                manual_total = result['total'] or 0
+
+                # 定期項目の合計額を計算
+                # 該当する定期項目を取得
+                defaults = CreditDefault.objects.filter(
+                    card_type=actual_card_id,
+                    is_active=True
+                )
+                regular_total = 0
+                for default_item in defaults:
+                    # 上書きがあるか確認
+                    override = DefaultChargeOverride.objects.filter(
+                        default=default_item,
+                        year_month=year_month
+                    ).first()
+
+                    if override:
+                        # 上書きがある場合はその金額を使用
+                        regular_total += override.amount
+                    else:
+                        # 上書きがない場合はデフォルト金額を使用
+                        regular_total += default_item.amount
 
             # フロントエンドから送られた金額を使用（優先）
             if total_amount_str:
@@ -3309,7 +3332,9 @@ def past_transactions_list(request):
                 'card_name': card_name,
                 'card_type': f"{estimate.card_type}{'_bonus' if estimate.is_bonus_payment else ''}",
                 'estimates': [],
-                'total_amount': 0
+                'total_amount': 0,
+                'manual_amount': 0,
+                'default_amount': 0
             }
 
         # is_default属性を追加（過去の明細では通常の見積もりはFalse）
@@ -3324,6 +3349,11 @@ def past_transactions_list(request):
             'estimate': estimate
         })
         yearly_data[year]['credit_months'][billing_month]['cards'][card_name]['total_amount'] += estimate.amount
+        # 手動入力と定期項目を分けて集計
+        if hasattr(estimate, 'is_default') and estimate.is_default:
+            yearly_data[year]['credit_months'][billing_month]['cards'][card_name]['default_amount'] += estimate.amount
+        else:
+            yearly_data[year]['credit_months'][billing_month]['cards'][card_name]['manual_amount'] += estimate.amount
         yearly_data[year]['credit_months'][billing_month]['total_amount'] += estimate.amount
         yearly_data[year]['total_credit'] += estimate.amount
 

@@ -41,6 +41,8 @@
                                         <input type="hidden" name="year_month" value="{% if '_bonus' in ym %}{{ ym|slice:':-6' }}{% else %}{{ ym }}{% endif %}">
                                         <input type="hidden" name="card_type" value="{{ card_type }}">
                                         <input type="hidden" name="total_amount" value="{{ data.total|stringformat:'d' }}">
+                                        <input type="hidden" name="manual_total" value="{{ data.manual_total|stringformat:'d' }}">
+                                        <input type="hidden" name="default_total" value="{{ data.default_total|stringformat:'d' }}">
                                         <button type="submit" class="bg-green-500 text-white text-xs px-3 py-1 rounded hover:bg-green-600">反映</button>
                                     </form>
                                 </td>
@@ -134,6 +136,8 @@
                             <input type="hidden" name="year_month" value="{% if '_bonus' in ym %}{{ ym|slice:':-6' }}{% else %}{{ ym }}{% endif %}">
                             <input type="hidden" name="card_type" value="{{ card_type }}">
                             <input type="hidden" name="total_amount" value="{{ data.total|stringformat:'d' }}">
+                            <input type="hidden" name="manual_total" value="{{ data.manual_total|stringformat:'d' }}">
+                            <input type="hidden" name="default_total" value="{{ data.default_total|stringformat:'d' }}">
                             <button type="submit" class="w-full bg-white text-blue-600 text-sm px-4 py-2 rounded-md font-semibold hover:bg-blue-50 transition">
                                 月次計画に反映
                             </button>
