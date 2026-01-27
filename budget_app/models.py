@@ -105,31 +105,7 @@ class MonthlyPlan(models.Model):
     def save(self, *args, **kwargs):
         """
         保存時に自動処理を実行
-        - マネーアシスト借入があった翌月に、自動的に返済額を設定
         """
-        # マネーアシスト返済の自動設定
-        from datetime import datetime
-        from dateutil.relativedelta import relativedelta
-
-        try:
-            current_date = datetime.strptime(self.year_month, '%Y-%m')
-            previous_date = current_date - relativedelta(months=1)
-            previous_year_month = previous_date.strftime('%Y-%m')
-
-            # 前月のプランを取得
-            try:
-                previous_plan = MonthlyPlan.objects.get(year_month=previous_year_month)
-                # 前月にマネーアシスト借入があるかチェック
-                borrowing_amount = previous_plan.get_item('item_15')
-                if borrowing_amount > 0:
-                    # 当月の返済額を自動設定（借入額と同額）
-                    if 'item_14' not in self.items or self.items.get('item_14', 0) == 0:
-                        self.items['item_14'] = borrowing_amount
-            except MonthlyPlan.DoesNotExist:
-                pass
-        except (ValueError, AttributeError):
-            pass
-
         super().save(*args, **kwargs)
 
     def get_item(self, field_name):
@@ -201,8 +177,8 @@ class MonthlyPlan(models.Model):
             # 引落項目の場合
             amount = self.get_item(field_name)
 
-            # クレカ項目またはマネーアシスト返済（item_14）の場合、繰上げ返済フラグをチェック
-            if default_item.is_credit_card() or field_name == 'item_14':
+            # クレカ項目の場合、繰上げ返済フラグをチェック
+            if default_item.is_credit_card():
                 if not self.get_exclusion(field_name):
                     total += amount
             else:
@@ -213,9 +189,6 @@ class MonthlyPlan(models.Model):
 
         return total
     
-    def get_total_borrowing(self):
-        """月次総借入を計算"""
-        return self.get_item('item_15')  # マネーアシスト借入
 
     def get_net_income(self):
         """月次収支を計算"""

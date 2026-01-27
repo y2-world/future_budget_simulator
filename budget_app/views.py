@@ -255,12 +255,7 @@ def plan_list(request):
                 continue
 
             # 引落日 / 振込日を計算
-            # item_15（マネーアシスト借入）の場合、個別日付を優先
-            if key == 'item_15':
-                custom_day = plan.get_item('item_15_date')
-                day = custom_day if custom_day else get_day_for_field(key, year, month)
-            else:
-                day = get_day_for_field(key, year, month)
+            day = get_day_for_field(key, year, month)
             item_date = date(year, month, clamp_day(day))
 
             # 休日を考慮して日付を調整
@@ -286,44 +281,8 @@ def plan_list(request):
             # VIEWカードかどうかを判定（item_6がVIEWカード）
             is_view_card = (key == 'item_6') and item.is_credit_card()
 
-            # item_14（マネーアシスト返済）の場合、借入月情報を追加
+            # 項目名を表示用に設定
             display_name = item.title
-            if key == 'item_14':
-                # 前月の借入情報を取得
-                from datetime import datetime
-                from dateutil.relativedelta import relativedelta
-                try:
-                    current_date = datetime.strptime(plan.year_month, '%Y-%m')
-                    previous_date = current_date - relativedelta(months=1)
-                    previous_year_month = previous_date.strftime('%Y-%m')
-                    previous_plan = MonthlyPlan.objects.filter(year_month=previous_year_month).first()
-
-                    if previous_plan:
-                        borrowing_amount = previous_plan.get_item('item_15')
-                        if borrowing_amount > 0:
-                            # item_15（借入）の依存元キーを動的に取得
-                            # depends_on_keyがitem_14を参照している項目を探す
-                            borrowing_item = None
-                            for default_item in default_items:
-                                if default_item.depends_on_key == key and default_item.key != key:
-                                    borrowing_item = default_item
-                                    break
-
-                            # 見つからない場合はitem_15を直接検索（後方互換性）
-                            if not borrowing_item:
-                                borrowing_item = MonthlyPlanDefault.objects.filter(key='item_15').first()
-
-                            if borrowing_item:
-                                # 借入日を計算（個別日付を優先）
-                                if borrowing_item.key == 'item_15':
-                                    custom_borrowing_day = previous_plan.get_item('item_15_date')
-                                    borrowing_day = custom_borrowing_day if custom_borrowing_day else get_day_for_field(borrowing_item.key, previous_date.year, previous_date.month)
-                                else:
-                                    borrowing_day = get_day_for_field(borrowing_item.key, previous_date.year, previous_date.month)
-                                prev_month = previous_date.month
-                                display_name = f"{item.title} ({prev_month}/{borrowing_day}借入分)"
-                except Exception:
-                    pass
 
             transactions.append({
                 'date': item_date,
@@ -525,38 +484,6 @@ def plan_create(request):
 
         if form.is_valid():
             plan = form.save()
-
-            # item_15の日付を保存
-            item_15_date = request.POST.get('item_15_date')
-            if item_15_date:
-                plan.set_item('item_15_date', int(item_15_date))
-                plan.save()
-
-            # マネーアシスト借入がある場合、翌月末に自動で返済を登録
-            loan_borrowing = plan.get_item('item_15')  # マネーアシスト借入
-            if loan_borrowing > 0:
-                current_date = datetime.strptime(plan.year_month, '%Y-%m')
-                # 翌月の1日を計算（月末の28日後 + 数日）
-                next_month = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
-                next_month_str = next_month.strftime('%Y-%m')
-
-                # 翌月の計画を取得または作成
-                # MonthlyPlanDefaultからデフォルト値を取得
-                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
-                items_defaults = {}
-                for item in default_items:
-                    if item.key:
-                        items_defaults[item.key] = item.amount or 0
-
-                next_plan, _ = MonthlyPlan.objects.get_or_create(
-                    year_month=next_month_str,
-                    defaults={'items': items_defaults}
-                )
-
-                # 翌月の返済額に借入額を加算
-                loan_value = next_plan.get_item('item_14')  # マネーアシスト返済
-                next_plan.set_item('item_14', loan_value + loan_borrowing)
-                next_plan.save()
 
             # 成功メッセージを年月付きで作成
             year_month_display = format_year_month_display(plan.year_month)
@@ -806,9 +733,6 @@ def plan_edit(request, pk):
     is_past_month = plan.year_month < current_year_month
 
     if request.method == 'POST':
-        # 編集前の借入額を保存
-        old_loan_borrowing = plan.get_item('item_15')  # マネーアシスト借入
-
         # デバッグ: POSTデータを確認
         logger.info(f"POST data: bonus_gross_salary={request.POST.get('bonus_gross_salary')}, bonus_deductions={request.POST.get('bonus_deductions')}")
 
@@ -862,11 +786,6 @@ def plan_edit(request, pk):
         if form.is_valid():
             plan = form.save()
 
-            # item_15の日付を保存
-            item_15_date = request.POST.get('item_15_date')
-            if item_15_date:
-                plan.set_item('item_15_date', int(item_15_date))
-
             # 臨時項目を処理
             temporary_items = []
             for key in request.POST:
@@ -898,31 +817,6 @@ def plan_edit(request, pk):
             temporary_items.sort(key=lambda x: x['date'])
             plan.temporary_items = temporary_items
             plan.save()
-
-            # マネーアシスト借入額が変更された場合、翌月の返済額を更新
-            new_loan_borrowing = plan.get_item('item_15')  # マネーアシスト借入
-            if new_loan_borrowing != old_loan_borrowing:
-                current_date = datetime.strptime(plan.year_month, '%Y-%m')
-                next_month = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)
-                next_month_str = next_month.strftime('%Y-%m')
-
-                # 翌月の計画を取得または作成
-                # MonthlyPlanDefaultからデフォルト値を取得
-                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
-                items_defaults = {}
-                for item in default_items:
-                    if item.key:
-                        items_defaults[item.key] = item.amount or 0
-
-                next_plan, _ = MonthlyPlan.objects.get_or_create(
-                    year_month=next_month_str,
-                    defaults={'items': items_defaults}
-                )
-
-                # 翌月の返済額を調整（古い借入額を引いて、新しい借入額を加算）
-                loan_value = next_plan.get_item('item_14')  # マネーアシスト返済
-                next_plan.set_item('item_14', loan_value - old_loan_borrowing + new_loan_borrowing)
-                next_plan.save()
 
             display_month = format_year_month_display(plan.year_month)
             if is_ajax:
