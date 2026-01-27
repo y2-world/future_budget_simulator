@@ -205,8 +205,6 @@ window.sendAjaxRequest = async function(url, formData, options = {}) {
                         'paypay_card': 'PayPayカード',
                         'vermillion_card': 'VERMILLION CARD',
                         'amazon_card': 'Amazonカード',
-                        'loan': 'マネーアシスト返済',
-                        'loan_borrowing': 'マネーアシスト借入',
                         'other': 'ジム',
                         'initial_balance': '初期残高',
                         'default_salary': 'デフォルト給与',
