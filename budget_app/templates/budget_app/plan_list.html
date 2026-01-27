@@ -679,13 +679,16 @@ function addTemporaryItemRow(name, amount, date, index) {
     row.id = `temporary-item-${index}`;
     row.innerHTML = `
         <div class="flex-1 min-w-[100px]">
-            <input type="text" name="temp_name_${index}" value="${name}" placeholder="項目名" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            <label class="block text-xs text-gray-500 mb-0.5">項目名</label>
+            <input type="text" name="temp_name_${index}" value="${name}" placeholder="例: 旅行" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
         </div>
-        <div class="w-24">
-            <input type="number" name="temp_amount_${index}" value="${amount}" placeholder="金額" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+        <div class="w-28">
+            <label class="block text-xs text-gray-500 mb-0.5">金額（収入は+）</label>
+            <input type="number" name="temp_amount_${index}" value="${amount}" placeholder="-50000" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
         </div>
         <div class="w-16">
-            <input type="number" name="temp_date_${index}" value="${date}" min="1" max="31" placeholder="日" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            <label class="block text-xs text-gray-500 mb-0.5">日</label>
+            <input type="number" name="temp_date_${index}" value="${date}" min="1" max="31" placeholder="15" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
         </div>
         <button type="button" onclick="removeTemporaryItem(${index})" class="text-red-500 hover:text-red-700">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
