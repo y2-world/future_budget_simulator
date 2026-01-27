@@ -855,17 +855,21 @@ def plan_edit(request, pk):
                     name = request.POST.get(f'temp_name_{index}', '')
                     amount_str = request.POST.get(f'temp_amount_{index}', '0')
                     date_str = request.POST.get(f'temp_date_{index}', '1')
+                    item_type = request.POST.get(f'temp_type_{index}', 'expense')
 
                     if name.strip():  # 名前が空でない場合のみ追加
                         try:
                             amount = int(amount_str) if amount_str else 0
+                            # 支出の場合はマイナスに変換
+                            if item_type == 'expense' and amount > 0:
+                                amount = -amount
                             date = int(date_str) if date_str else 1
                             date = max(1, min(31, date))  # 1-31の範囲に制限
                             temporary_items.append({
                                 'name': name,
                                 'amount': amount,
                                 'date': date,
-                                'type': 'income' if amount > 0 else 'expense'
+                                'type': item_type
                             })
                         except ValueError:
                             pass
