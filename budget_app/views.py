@@ -255,7 +255,12 @@ def plan_list(request):
                 continue
 
             # 引落日 / 振込日を計算
-            day = get_day_for_field(key, year, month)
+            # item_15（マネーアシスト借入）の場合、個別日付を優先
+            if key == 'item_15':
+                custom_day = plan.get_item('item_15_date')
+                day = custom_day if custom_day else get_day_for_field(key, year, month)
+            else:
+                day = get_day_for_field(key, year, month)
             item_date = date(year, month, clamp_day(day))
 
             # 休日を考慮して日付を調整
@@ -309,8 +314,12 @@ def plan_list(request):
                                 borrowing_item = MonthlyPlanDefault.objects.filter(key='item_15').first()
 
                             if borrowing_item:
-                                # 借入日を計算
-                                borrowing_day = get_day_for_field(borrowing_item.key, previous_date.year, previous_date.month)
+                                # 借入日を計算（個別日付を優先）
+                                if borrowing_item.key == 'item_15':
+                                    custom_borrowing_day = previous_plan.get_item('item_15_date')
+                                    borrowing_day = custom_borrowing_day if custom_borrowing_day else get_day_for_field(borrowing_item.key, previous_date.year, previous_date.month)
+                                else:
+                                    borrowing_day = get_day_for_field(borrowing_item.key, previous_date.year, previous_date.month)
                                 prev_month = previous_date.month
                                 display_name = f"{item.title} ({prev_month}/{borrowing_day}借入分)"
                 except Exception:
@@ -516,6 +525,12 @@ def plan_create(request):
 
         if form.is_valid():
             plan = form.save()
+
+            # item_15の日付を保存
+            item_15_date = request.POST.get('item_15_date')
+            if item_15_date:
+                plan.set_item('item_15_date', int(item_15_date))
+                plan.save()
 
             # マネーアシスト借入がある場合、翌月末に自動で返済を登録
             loan_borrowing = plan.get_item('item_15')  # マネーアシスト借入
@@ -846,6 +861,11 @@ def plan_edit(request, pk):
             logger.info("Using MonthlyPlanForm (default)")
         if form.is_valid():
             plan = form.save()
+
+            # item_15の日付を保存
+            item_15_date = request.POST.get('item_15_date')
+            if item_15_date:
+                plan.set_item('item_15_date', int(item_15_date))
 
             # 臨時項目を処理
             temporary_items = []

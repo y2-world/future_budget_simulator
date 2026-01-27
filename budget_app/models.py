@@ -201,8 +201,8 @@ class MonthlyPlan(models.Model):
             # 引落項目の場合
             amount = self.get_item(field_name)
 
-            # クレカ項目の場合、繰上げ返済フラグをチェック
-            if default_item.is_credit_card():
+            # クレカ項目またはマネーアシスト返済（item_14）の場合、繰上げ返済フラグをチェック
+            if default_item.is_credit_card() or field_name == 'item_14':
                 if not self.get_exclusion(field_name):
                     total += amount
             else:

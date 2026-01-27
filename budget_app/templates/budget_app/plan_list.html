@@ -447,15 +447,28 @@ function generateFormFields() {
     // withdrawal（引き落とし）タイプの動的項目
     defaultItems.forEach(item => {
         if (item.payment_type === 'withdrawal') {
-            // item_14（マネーアシスト返済）はスキップ（自動登録されるため）
-            if (item.key === 'item_14') {
-                return;
-            }
             const div = document.createElement('div');
-            div.innerHTML = `
-                <label class="block text-sm font-semibold text-gray-700 mb-1">${item.title}（円）</label>
-                <input type="number" name="${item.key}" value="${item.amount || 0}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
-            `;
+
+            // item_15（マネーアシスト借入）の場合、日付入力欄も追加
+            if (item.key === 'item_15') {
+                div.innerHTML = `
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">${item.title}</label>
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <input type="number" name="${item.key}" value="${item.amount || 0}" placeholder="金額" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
+                        </div>
+                        <div class="w-20">
+                            <input type="number" name="${item.key}_date" value="${item.withdrawal_day || 1}" min="1" max="31" placeholder="日" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-0.5">借入日を1-31で指定</p>
+                `;
+            } else {
+                div.innerHTML = `
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">${item.title}（円）</label>
+                    <input type="number" name="${item.key}" value="${item.amount || 0}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
+                `;
+            }
             expenseGrid.appendChild(div);
         }
     });
@@ -530,29 +543,56 @@ function loadExistingPlanData(planData) {
     // withdrawal（引き落とし）タイプの動的項目
     defaultItems.forEach(item => {
         if (item.payment_type === 'withdrawal') {
-            // item_14（マネーアシスト返済）はスキップ
-            if (item.key === 'item_14') {
-                return;
-            }
             // 編集時は既存の値のみ使用（デフォルト値は使わない）
             const value = planData.items[item.key] !== undefined ? planData.items[item.key] : 0;
             const isExcluded = planData.exclusions && planData.exclusions[item.key] ? true : false;
             const div = document.createElement('div');
 
-            let html = `
-                <label class="block text-sm font-semibold text-gray-700 mb-1">${item.title}（円）</label>
-                <input type="number" name="${item.key}" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
-            `;
+            let html = '';
 
-            // クレジットカード項目の場合、繰上げ返済チェックボックスを追加
-            if (item.is_credit_card) {
-                html += `
+            // item_14（マネーアシスト返済）の場合は読み取り専用で表示
+            if (item.key === 'item_14') {
+                html = `
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">${item.title}（円）</label>
+                    <input type="number" name="${item.key}" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed text-sm" readonly>
+                    <p class="text-xs text-gray-500 mt-0.5">※前月の借入額に基づいて自動設定されます</p>
                     <label class="flex items-center mt-1 text-xs text-gray-600">
                         <input type="hidden" name="exclude_${item.key}" value="false">
                         <input type="checkbox" name="exclude_${item.key}" value="true" ${isExcluded ? 'checked' : ''} class="mr-1">
-                        繰上げ返済
+                        繰上げ返済（支出から除外）
                     </label>
                 `;
+            } else if (item.key === 'item_15') {
+                // item_15（マネーアシスト借入）の場合、日付入力欄も追加
+                const dateValue = planData.items[item.key + '_date'] !== undefined ? planData.items[item.key + '_date'] : (item.withdrawal_day || 1);
+                html = `
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">${item.title}</label>
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <input type="number" name="${item.key}" value="${value}" placeholder="金額" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
+                        </div>
+                        <div class="w-20">
+                            <input type="number" name="${item.key}_date" value="${dateValue}" min="1" max="31" placeholder="日" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-0.5">借入日を1-31で指定</p>
+                `;
+            } else {
+                html = `
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">${item.title}（円）</label>
+                    <input type="number" name="${item.key}" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-sm">
+                `;
+
+                // クレジットカード項目の場合、繰上げ返済チェックボックスを追加
+                if (item.is_credit_card) {
+                    html += `
+                        <label class="flex items-center mt-1 text-xs text-gray-600">
+                            <input type="hidden" name="exclude_${item.key}" value="false">
+                            <input type="checkbox" name="exclude_${item.key}" value="true" ${isExcluded ? 'checked' : ''} class="mr-1">
+                            繰上げ返済
+                        </label>
+                    `;
+                }
             }
 
             div.innerHTML = html;
@@ -675,37 +715,43 @@ function addTemporaryItemRow(name, amount, date, index) {
     if (!container) return;
 
     const row = document.createElement('div');
-    row.className = 'flex flex-wrap gap-2 items-center bg-white p-2 rounded border border-purple-200';
+    row.className = 'bg-white p-3 rounded border border-purple-200 space-y-2';
     row.id = `temporary-item-${index}`;
     const numAmount = Number(amount) || 0;
     const isExpense = numAmount <= 0;
     const absAmount = numAmount !== 0 ? Math.abs(numAmount) : '';
     const dateValue = date !== '' ? date : '';
     row.innerHTML = `
-        <div class="flex-1 min-w-[80px]">
-            <label class="block text-xs text-gray-500 mb-0.5">項目名</label>
-            <input type="text" name="temp_name_${index}" value="${name}" placeholder="旅行" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+        <!-- 1行目：項目名 + 種別 -->
+        <div class="flex gap-2">
+            <div class="flex-1">
+                <label class="block text-xs text-gray-500 mb-0.5">項目名</label>
+                <input type="text" name="temp_name_${index}" value="${name}" placeholder="旅行" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div class="w-20">
+                <label class="block text-xs text-gray-500 mb-0.5">種別</label>
+                <select name="temp_type_${index}" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <option value="expense" ${isExpense ? 'selected' : ''}>支出</option>
+                    <option value="income" ${!isExpense ? 'selected' : ''}>収入</option>
+                </select>
+            </div>
         </div>
-        <div class="w-20">
-            <label class="block text-xs text-gray-500 mb-0.5">種別</label>
-            <select name="temp_type_${index}" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                <option value="expense" ${isExpense ? 'selected' : ''}>支出</option>
-                <option value="income" ${!isExpense ? 'selected' : ''}>収入</option>
-            </select>
+        <!-- 2行目：金額 + 日付 + 削除 -->
+        <div class="flex gap-2 items-end">
+            <div class="flex-1">
+                <label class="block text-xs text-gray-500 mb-0.5">金額</label>
+                <input type="number" name="temp_amount_${index}" value="${absAmount}" min="0" placeholder="50000" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div class="w-16">
+                <label class="block text-xs text-gray-500 mb-0.5">日</label>
+                <input type="number" name="temp_date_${index}" value="${dateValue}" min="1" max="31" placeholder="15" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <button type="button" onclick="removeTemporaryItem(${index})" class="text-red-500 hover:text-red-700 p-1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
-        <div class="w-24">
-            <label class="block text-xs text-gray-500 mb-0.5">金額</label>
-            <input type="number" name="temp_amount_${index}" value="${absAmount}" min="0" placeholder="50000" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-        </div>
-        <div class="w-14">
-            <label class="block text-xs text-gray-500 mb-0.5">日</label>
-            <input type="number" name="temp_date_${index}" value="${dateValue}" min="1" max="31" placeholder="15" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-        </div>
-        <button type="button" onclick="removeTemporaryItem(${index})" class="text-red-500 hover:text-red-700">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
     `;
     container.appendChild(row);
     temporaryItemCounter = Math.max(temporaryItemCounter, index + 1);
