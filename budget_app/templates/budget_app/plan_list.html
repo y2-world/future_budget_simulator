@@ -563,6 +563,27 @@ function loadExistingPlanData(planData) {
     expenseSection.appendChild(expenseGrid);
     formFields.appendChild(expenseSection);
 
+    // 臨時項目セクション
+    const temporarySection = document.createElement('div');
+    temporarySection.className = 'bg-purple-50 p-4 rounded-lg mt-4';
+    temporarySection.innerHTML = `
+        <div class="flex justify-between items-center mb-3">
+            <h4 class="font-semibold text-sm text-purple-800">⚡ 臨時収入・支出</h4>
+            <button type="button" onclick="addTemporaryItem()" class="text-purple-600 hover:text-purple-800 text-sm font-medium">
+                + 追加
+            </button>
+        </div>
+        <div id="temporaryItemsContainer" class="space-y-2">
+        </div>
+    `;
+    formFields.appendChild(temporarySection);
+
+    // 既存の臨時項目を表示
+    const temporaryItems = planData.temporary_items || [];
+    temporaryItems.forEach((item, index) => {
+        addTemporaryItemRow(item.name, item.amount, item.date, index);
+    });
+
     // 繰上げ返済チェックボックスのイベントリスナーを設定
     setupExclusionCheckboxListeners();
 }
@@ -639,6 +660,47 @@ function updateYearMonth() {
         const year = yearSelect.value;
         const month = monthSelect.value;
         yearMonthInput.value = `${year}-${month}`;
+    }
+}
+
+// 臨時項目の行を追加
+let temporaryItemCounter = 0;
+
+function addTemporaryItem() {
+    addTemporaryItemRow('', 0, 1, temporaryItemCounter);
+}
+
+function addTemporaryItemRow(name, amount, date, index) {
+    const container = document.getElementById('temporaryItemsContainer');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'flex flex-wrap gap-2 items-center bg-white p-2 rounded border border-purple-200';
+    row.id = `temporary-item-${index}`;
+    row.innerHTML = `
+        <div class="flex-1 min-w-[100px]">
+            <input type="text" name="temp_name_${index}" value="${name}" placeholder="項目名" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+        </div>
+        <div class="w-24">
+            <input type="number" name="temp_amount_${index}" value="${amount}" placeholder="金額" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+        </div>
+        <div class="w-16">
+            <input type="number" name="temp_date_${index}" value="${date}" min="1" max="31" placeholder="日" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+        </div>
+        <button type="button" onclick="removeTemporaryItem(${index})" class="text-red-500 hover:text-red-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+    container.appendChild(row);
+    temporaryItemCounter = Math.max(temporaryItemCounter, index + 1);
+}
+
+function removeTemporaryItem(index) {
+    const row = document.getElementById(`temporary-item-${index}`);
+    if (row) {
+        row.remove();
     }
 }
 

@@ -75,6 +75,13 @@ class MonthlyPlan(models.Model):
         help_text="クレカ項目の繰上げ返済フラグ 例: {'view_card': True, 'rakuten_card': False}"
     )
 
+    # 臨時収入・支出（JSONフィールド）
+    temporary_items = models.JSONField(
+        default=list,
+        verbose_name="臨時項目",
+        help_text="臨時収入・支出のリスト 例: [{'name': '旅行', 'amount': -50000, 'date': 15, 'type': 'expense'}]"
+    )
+
     # 給与明細の詳細（itemsとは別に管理）
     gross_salary = models.IntegerField(default=0, verbose_name="総支給額")
     deductions = models.IntegerField(default=0, verbose_name="控除額")
@@ -154,7 +161,7 @@ class MonthlyPlan(models.Model):
         self.exclusions[field_name] = value
 
     def get_total_income(self):
-        """月次総収入を計算"""
+        """月次総収入を計算（臨時収入を含む）"""
         total = 0
         # MonthlyPlanDefaultから入金項目を取得
         from .models import MonthlyPlanDefault
@@ -169,10 +176,13 @@ class MonthlyPlan(models.Model):
             if field_name:
                 total += self.get_item(field_name)
 
+        # 臨時収入を加算
+        total += self.get_temporary_income()
+
         return total
 
     def get_total_expenses(self):
-        """月次総支出を計算（除外フラグがチェックされたクレカ項目は含まない）"""
+        """月次総支出を計算（除外フラグがチェックされたクレカ項目は含まない、臨時支出を含む）"""
         total = 0
         # MonthlyPlanDefaultから項目を取得
         from .models import MonthlyPlanDefault
@@ -198,6 +208,9 @@ class MonthlyPlan(models.Model):
             else:
                 total += amount
 
+        # 臨時支出を加算
+        total += self.get_temporary_expenses()
+
         return total
     
     def get_total_borrowing(self):
@@ -207,6 +220,46 @@ class MonthlyPlan(models.Model):
     def get_net_income(self):
         """月次収支を計算"""
         return self.get_total_income() - self.get_total_expenses()
+
+    def get_temporary_items(self):
+        """臨時項目のリストを取得"""
+        if not isinstance(self.temporary_items, list):
+            return []
+        return self.temporary_items
+
+    def get_temporary_income(self):
+        """臨時収入の合計を取得"""
+        total = 0
+        for item in self.get_temporary_items():
+            amount = item.get('amount', 0)
+            if amount > 0:
+                total += amount
+        return total
+
+    def get_temporary_expenses(self):
+        """臨時支出の合計を取得"""
+        total = 0
+        for item in self.get_temporary_items():
+            amount = item.get('amount', 0)
+            if amount < 0:
+                total += abs(amount)
+        return total
+
+    def add_temporary_item(self, name, amount, date, item_type='expense'):
+        """臨時項目を追加"""
+        if not isinstance(self.temporary_items, list):
+            self.temporary_items = []
+        self.temporary_items.append({
+            'name': name,
+            'amount': amount,
+            'date': date,
+            'type': item_type
+        })
+
+    def remove_temporary_item(self, index):
+        """臨時項目を削除"""
+        if isinstance(self.temporary_items, list) and 0 <= index < len(self.temporary_items):
+            self.temporary_items.pop(index)
 
 
 class CreditEstimate(models.Model):

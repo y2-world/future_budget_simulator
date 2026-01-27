@@ -324,6 +324,24 @@ def plan_list(request):
                 'is_excluded': is_excluded
             })
 
+        # 臨時項目をトランザクションに追加
+        temporary_items = plan.get_temporary_items()
+        for temp_item in temporary_items:
+            temp_day = temp_item.get('date', 1)
+            temp_amount = temp_item.get('amount', 0)
+            if temp_amount == 0:
+                continue
+
+            temp_date = date(year, month, clamp_day(temp_day))
+            transactions.append({
+                'date': temp_date,
+                'name': f"⚡ {temp_item.get('name', '臨時項目')}",
+                'amount': temp_amount,  # 既に正負が設定されている
+                'is_view_card': False,
+                'is_excluded': False,
+                'is_temporary': True
+            })
+
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, -x['amount']))
 
@@ -444,6 +462,7 @@ def plan_list(request):
             'bonus_deductions': plan.bonus_deductions or 0,
             'items': plan.items or {},
             'exclusions': plan.exclusions or {},
+            'temporary_items': plan.temporary_items or [],
         }
 
     return render(request, 'budget_app/plan_list.html', {
@@ -827,6 +846,34 @@ def plan_edit(request, pk):
             logger.info("Using MonthlyPlanForm (default)")
         if form.is_valid():
             plan = form.save()
+
+            # 臨時項目を処理
+            temporary_items = []
+            for key in request.POST:
+                if key.startswith('temp_name_'):
+                    index = key.replace('temp_name_', '')
+                    name = request.POST.get(f'temp_name_{index}', '')
+                    amount_str = request.POST.get(f'temp_amount_{index}', '0')
+                    date_str = request.POST.get(f'temp_date_{index}', '1')
+
+                    if name.strip():  # 名前が空でない場合のみ追加
+                        try:
+                            amount = int(amount_str) if amount_str else 0
+                            date = int(date_str) if date_str else 1
+                            date = max(1, min(31, date))  # 1-31の範囲に制限
+                            temporary_items.append({
+                                'name': name,
+                                'amount': amount,
+                                'date': date,
+                                'type': 'income' if amount > 0 else 'expense'
+                            })
+                        except ValueError:
+                            pass
+
+            # 日付順にソート
+            temporary_items.sort(key=lambda x: x['date'])
+            plan.temporary_items = temporary_items
+            plan.save()
 
             # マネーアシスト借入額が変更された場合、翌月の返済額を更新
             new_loan_borrowing = plan.get_item('item_15')  # マネーアシスト借入
