@@ -13,21 +13,26 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 import dj_database_url
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env.local (for local development) or .env
+load_dotenv(BASE_DIR / '.env.local')
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3=pz*p7ct1dk)ffc+nc3#y6&pa(tn^iy_-rpby!m!cyzk=la!e'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-only-for-local-development')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['future-budget-simulator.com', 'www.future-budget-simulator.com', 'future-budget-simulator-b9ef5003e4b5.herokuapp.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -148,3 +153,22 @@ SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF攻撃を防ぐ
 BASIC_AUTH_ENABLED = os.environ.get('BASIC_AUTH_ENABLED', 'False') == 'True'
 BASIC_AUTH_USERNAME = os.environ.get('BASIC_AUTH_USERNAME', 'admin')
 BASIC_AUTH_PASSWORD = os.environ.get('BASIC_AUTH_PASSWORD', 'password')
+
+# セキュリティ設定（本番環境用）
+if not DEBUG:
+    # HTTPS設定
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    # HSTS（HTTP Strict Transport Security）
+    SECURE_HSTS_SECONDS = 31536000  # 1年
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # セキュアクッキー
+    CSRF_COOKIE_SECURE = True
+
+    # その他のセキュリティヘッダー
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
