@@ -321,6 +321,12 @@
                 <input type="number" name="amount" id="default_edit_amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm" min="0" placeholder="30000">
             </div>
 
+            <!-- 利用日 -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">利用日</label>
+                <input type="date" name="purchase_date" id="default_edit_purchase_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-sm" required>
+            </div>
+
             <!-- チェックボックス -->
             <div>
                 <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
@@ -447,13 +453,13 @@
         document.getElementById('editModal').classList.add('hidden');
     }
 
-    function openDefaultEditModal(id, label, amount, cardType, yearMonth, isSplitPayment) {
+    function openDefaultEditModal(id, label, amount, cardType, yearMonth, isSplitPayment, purchaseDate) {
         const modal = document.getElementById('defaultEditModal');
 
         // 金額を数値に変換（文字列として渡された場合）
         const numericAmount = typeof amount === 'string' ? parseInt(amount.replace(/,/g, ''), 10) : amount;
 
-        console.log('openDefaultEditModal called with:', { id, label, amount, cardType, yearMonth, isSplitPayment, numericAmount });
+        console.log('openDefaultEditModal called with:', { id, label, amount, cardType, yearMonth, isSplitPayment, purchaseDate, numericAmount });
 
         // カード種別を設定（ラジオボタン形式）
         document.querySelectorAll('#defaultEditModal .default-card-type-radio').forEach(radio => {
@@ -485,6 +491,7 @@
         document.getElementById('default_edit_hidden_label').value = label; // hiddenフィールドにも値を設定
         document.getElementById('default_edit_amount').value = numericAmount;
         document.getElementById('default_edit_is_split_payment').checked = isSplitPayment || false;
+        document.getElementById('default_edit_purchase_date').value = purchaseDate || '';
 
         // 最後にモーダルを表示
         modal.classList.remove('hidden');
@@ -778,9 +785,10 @@
                 const cardType = this.dataset.cardType;
                 const yearMonth = this.dataset.yearMonth;
                 const isSplit = this.dataset.split === 'true';
+                const purchaseDate = this.dataset.purchaseDate;
 
-                console.log('取得したcardType:', cardType);
-                openDefaultEditModal(id, label, amount, cardType, yearMonth, isSplit);
+                console.log('取得したcardType:', cardType, 'purchaseDate:', purchaseDate);
+                openDefaultEditModal(id, label, amount, cardType, yearMonth, isSplit, purchaseDate);
             });
         });
 

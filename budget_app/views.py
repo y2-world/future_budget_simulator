@@ -1620,6 +1620,7 @@ def credit_estimate_list(request):
             amount_str = request.POST.get('amount')
             card_type = request.POST.get('card_type')
             is_split_payment = request.POST.get('is_split_payment') == 'on'
+            purchase_date_str = request.POST.get('purchase_date')
 
             try:
                 amount = int(amount_str)
@@ -1632,6 +1633,11 @@ def credit_estimate_list(request):
                     defaults_dict['card_type'] = card_type
                 # 2回払いフラグを保存
                 defaults_dict['is_split_payment'] = is_split_payment
+                # 利用日を保存
+                if purchase_date_str:
+                    from datetime import datetime
+                    purchase_date = datetime.strptime(purchase_date_str, '%Y-%m-%d').date()
+                    defaults_dict['purchase_date_override'] = purchase_date
 
                 override, created = DefaultChargeOverride.objects.update_or_create(
                     default=default_instance,
