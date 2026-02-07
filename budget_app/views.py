@@ -2108,9 +2108,15 @@ def credit_estimate_list(request):
     if 'form' not in locals():
         form = CreditEstimateForm(initial=initial_data)
 
+    # カード選択肢を取得（新規追加モーダル用）
+    card_choices = MonthlyPlanDefault.objects.filter(
+        card_id__isnull=False
+    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
+
     context = {
         'form': form,
         'card_labels': card_labels,
+        'card_choices': card_choices,
         'current_month_summary': current_month_summary,
         'future_summary': future_summary,
         'past_summary': past_summary,
