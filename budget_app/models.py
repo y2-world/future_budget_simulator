@@ -270,6 +270,8 @@ class CreditEstimate(models.Model):
     card_type = models.CharField(max_length=50, verbose_name="カード")
     description = models.CharField(max_length=100, blank=True, verbose_name="メモ")
     amount = models.IntegerField(verbose_name="見積額（円）")
+    is_usd = models.BooleanField(default=False, verbose_name="ドル入力")
+    usd_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="金額（ドル）")
     due_date = models.DateField(
         null=True,
         blank=True,
@@ -431,6 +433,8 @@ class CreditDefault(models.Model):
     label = models.CharField(max_length=100, verbose_name="項目名")
     card_type = models.CharField(max_length=50, verbose_name="カード種別")  # choicesはフォームで動的に設定
     amount = models.IntegerField(default=0, verbose_name="金額（円）")
+    is_usd = models.BooleanField(default=False, verbose_name="ドル入力")
+    usd_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="金額（ドル）")
     is_active = models.BooleanField(default=True, verbose_name="有効")
     apply_odd_months_only = models.BooleanField(default=False, verbose_name="奇数月のみ適用")
     payment_day = models.IntegerField(
@@ -464,6 +468,8 @@ class DefaultChargeOverride(models.Model):
     default = models.ForeignKey(CreditDefault, on_delete=models.CASCADE, related_name='overrides')
     year_month = models.CharField('対象年月', max_length=7, help_text='YYYY-MM形式')
     amount = models.PositiveIntegerField('上書き金額')
+    is_usd = models.BooleanField(default=False, verbose_name="ドル入力")
+    usd_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="金額（ドル）")
     card_type = models.CharField(
         'カード種別',
         max_length=20,

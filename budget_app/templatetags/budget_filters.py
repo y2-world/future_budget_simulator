@@ -115,3 +115,27 @@ def call(obj, method_name):
     except Exception:
         return None
 
+
+@register.filter
+def usd_display(obj):
+    """ドル金額を $XX.XX (¥XX,XXX) 形式で表示"""
+    try:
+        from budget_app.utils.currency import format_usd_with_jpy
+
+        # オブジェクトからis_usd, usd_amount, amountを取得
+        is_usd = getattr(obj, 'is_usd', False)
+        if not is_usd:
+            # ドル入力でない場合は通常の円表示
+            amount = getattr(obj, 'amount', 0)
+            return f'¥{amount:,}'
+
+        usd_amount = getattr(obj, 'usd_amount', None)
+        jpy_amount = getattr(obj, 'amount', 0)
+
+        if usd_amount:
+            return format_usd_with_jpy(usd_amount, jpy_amount)
+        else:
+            return f'¥{jpy_amount:,}'
+    except Exception as e:
+        return str(obj)
+

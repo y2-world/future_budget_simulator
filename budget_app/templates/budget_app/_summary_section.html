@@ -77,7 +77,12 @@
                                     {% endif %}
                                 </td>
                                 <td class="px-3 py-2 text-right">
-                                    {{ item.amount|yen }}
+                                    {% if item.is_usd and item.usd_amount %}
+                                        <span class="text-gray-900">${{ item.usd_amount }}</span>
+                                        <span class="text-xs text-gray-500">({{ item.amount|yen }})</span>
+                                    {% else %}
+                                        {{ item.amount|yen }}
+                                    {% endif %}
                                 </td>
                                 <td class="px-3 py-2 text-center">
                                     {% if not item.is_default %}
@@ -181,7 +186,14 @@
                                     </div>
                                 </div>
                                 <div class="text-right ml-3">
-                                    <div class="text-xl font-bold text-blue-600">{{ item.amount|yen }}</div>
+                                    <div class="text-xl font-bold text-blue-600">
+                                        {% if item.is_usd and item.usd_amount %}
+                                            <span class="text-gray-900">${{ item.usd_amount }}</span>
+                                            <span class="text-sm text-gray-500">({{ item.amount|yen }})</span>
+                                        {% else %}
+                                            {{ item.amount|yen }}
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
 

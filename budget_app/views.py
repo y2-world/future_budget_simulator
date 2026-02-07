@@ -937,9 +937,9 @@ def credit_estimate_list(request):
     from collections import OrderedDict
     from django.http import JsonResponse
 
-    # 事前に上書きデータを取得して辞書に格納（金額、カード種別、2回払い、利用日）
+    # 事前に上書きデータを取得して辞書に格納（金額、カード種別、2回払い、利用日、USD情報）
     overrides = DefaultChargeOverride.objects.all()
-    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment, 'purchase_date_override': ov.purchase_date_override} for ov in overrides}
+    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment, 'purchase_date_override': ov.purchase_date_override, 'is_usd': ov.is_usd, 'usd_amount': ov.usd_amount} for ov in overrides}
     estimates = list(CreditEstimate.objects.all().order_by('-year_month', 'card_type', 'due_date', 'created_at'))
     credit_defaults = list(CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id'))
 
@@ -1188,14 +1188,18 @@ def credit_estimate_list(request):
                     year_month=year_month,
                     amount=default.amount,
                     card_type=default.card_type,
-                    is_split_payment=False  # 初回はデフォルトで分割払いなし
+                    is_split_payment=False,  # 初回はデフォルトで分割払いなし
+                    is_usd=default.is_usd if hasattr(default, 'is_usd') else False,
+                    usd_amount=default.usd_amount if hasattr(default, 'usd_amount') else None
                 )
                 # override_mapとoverride_dataを更新
                 override_data = {
                     'amount': new_override.amount,
                     'card_type': new_override.card_type,
                     'is_split_payment': new_override.is_split_payment,
-                    'purchase_date_override': new_override.purchase_date_override
+                    'purchase_date_override': new_override.purchase_date_override,
+                    'is_usd': new_override.is_usd,
+                    'usd_amount': new_override.usd_amount
                 }
                 override_map[(default.id, year_month)] = override_data
 
@@ -1284,6 +1288,15 @@ def credit_estimate_list(request):
                         self.amount = override_data.get('amount') if override_data else default_obj.amount
                         # 元の金額も同じ
                         self.original_amount = self.amount
+
+                    # USD情報を追加
+                    if override_data:
+                        self.is_usd = override_data.get('is_usd', False)
+                        self.usd_amount = override_data.get('usd_amount')
+                    else:
+                        self.is_usd = default_obj.is_usd if hasattr(default_obj, 'is_usd') else False
+                        self.usd_amount = default_obj.usd_amount if hasattr(default_obj, 'usd_amount') else None
+
                     self.is_overridden = override_data is not None # 上書きされているかどうかのフラグ
                     # due_dateを計算（請求年月 + payment_day）
                     # entry_year_month は請求月（billing_month）なので、その月のpayment_day日をdue_dateとする
@@ -1621,17 +1634,45 @@ def credit_estimate_list(request):
         if action == 'edit_default':
             default_id = request.POST.get('id')
             year_month = request.POST.get('year_month')
-            amount_str = request.POST.get('amount')
             card_type = request.POST.get('card_type')
             is_split_payment = request.POST.get('is_split_payment') == 'on'
             purchase_date_str = request.POST.get('purchase_date')
 
             try:
-                amount = int(amount_str)
                 default_instance = get_object_or_404(CreditDefault, pk=default_id)
 
-                # 上書きオブジェクトを取得または作成
-                defaults_dict = {'amount': amount}
+                # ドル入力の場合、円に変換
+                is_usd = request.POST.get('is_usd') == 'on'
+                if is_usd:
+                    from budget_app.utils.currency import convert_usd_to_jpy
+                    from decimal import Decimal
+
+                    usd_amount_str = request.POST.get('usd_amount')
+                    if usd_amount_str:
+                        usd_amount = Decimal(usd_amount_str)
+                        amount = convert_usd_to_jpy(usd_amount)
+                        defaults_dict = {
+                            'amount': amount,
+                            'is_usd': True,
+                            'usd_amount': usd_amount
+                        }
+                    else:
+                        amount_str = request.POST.get('amount')
+                        amount = int(amount_str)
+                        defaults_dict = {
+                            'amount': amount,
+                            'is_usd': False,
+                            'usd_amount': None
+                        }
+                else:
+                    amount_str = request.POST.get('amount')
+                    amount = int(amount_str)
+                    defaults_dict = {
+                        'amount': amount,
+                        'is_usd': False,
+                        'usd_amount': None
+                    }
+
                 # カード種別は常に保存する（上書きで管理）
                 if card_type:
                     defaults_dict['card_type'] = card_type
@@ -1680,16 +1721,29 @@ def credit_estimate_list(request):
                 default_instance = get_object_or_404(CreditDefault, pk=default_id)
                 default_label = default_instance.label
 
-                # 金額を0にする上書きを作成（実質的に非表示）
-                DefaultChargeOverride.objects.update_or_create(
+                # DefaultChargeOverrideを完全に削除
+                deleted_count, _ = DefaultChargeOverride.objects.filter(
                     default=default_instance,
-                    year_month=year_month,
-                    defaults={'amount': 0}
-                )
+                    year_month=year_month
+                ).delete()
+
+                if deleted_count > 0:
+                    message = f'{format_year_month_display(year_month)}の「{default_label}」を削除しました。'
+                else:
+                    # 上書きデータが存在しない場合、金額0の上書きを作成して非表示化
+                    DefaultChargeOverride.objects.create(
+                        default=default_instance,
+                        year_month=year_month,
+                        amount=0,
+                        card_type=default_instance.card_type,
+                        is_usd=False,
+                        usd_amount=None
+                    )
+                    message = f'{format_year_month_display(year_month)}の「{default_label}」を非表示にしました。'
 
                 return JsonResponse({
                     'status': 'success',
-                    'message': f'{format_year_month_display(year_month)}の「{default_label}」を削除しました。'
+                    'message': message
                 })
             except CreditDefault.DoesNotExist:
                 return JsonResponse({'status': 'error', 'message': '削除対象の定期項目が見つかりません。'}, status=404)
@@ -2029,6 +2083,25 @@ def credit_estimate_list(request):
             if form.is_valid():
                 estimate = form.save(commit=False)
 
+                # ドル入力の場合、円に変換
+                is_usd = request.POST.get('is_usd') == 'on'
+                if is_usd:
+                    from budget_app.utils.currency import convert_usd_to_jpy
+                    from decimal import Decimal
+
+                    usd_amount_str = request.POST.get('usd_amount')
+                    if usd_amount_str:
+                        usd_amount = Decimal(usd_amount_str)
+                        estimate.is_usd = True
+                        estimate.usd_amount = usd_amount
+                        estimate.amount = convert_usd_to_jpy(usd_amount)
+                    else:
+                        estimate.is_usd = False
+                        estimate.usd_amount = None
+                else:
+                    estimate.is_usd = False
+                    estimate.usd_amount = None
+
                 # ボーナス払いの場合、年月を直近の1月/8月に変更
                 if estimate.is_bonus_payment:
                     estimate.year_month = get_next_bonus_month(estimate.year_month)
@@ -2159,8 +2232,29 @@ def credit_estimate_edit(request, pk):
 
         form = CreditEstimateForm(request.POST, instance=estimate)
         if form.is_valid():
+            updated_estimate = form.save(commit=False)
+
+            # ドル入力の場合、円に変換
+            is_usd = request.POST.get('is_usd') == 'on'
+            if is_usd:
+                from budget_app.utils.currency import convert_usd_to_jpy
+                from decimal import Decimal
+
+                usd_amount_str = request.POST.get('usd_amount')
+                if usd_amount_str:
+                    usd_amount = Decimal(usd_amount_str)
+                    updated_estimate.is_usd = True
+                    updated_estimate.usd_amount = usd_amount
+                    updated_estimate.amount = convert_usd_to_jpy(usd_amount)
+                else:
+                    updated_estimate.is_usd = False
+                    updated_estimate.usd_amount = None
+            else:
+                updated_estimate.is_usd = False
+                updated_estimate.usd_amount = None
+
             # フォームのsave()メソッドで分割払いとボーナス払いの処理を含めて保存
-            updated_estimate = form.save()
+            updated_estimate.save()
 
             # 更新後の見積もりが表示される年月を取得
             target_month = None
@@ -2349,7 +2443,29 @@ def credit_default_list(request):
         if action == 'create':
             form = CreditDefaultForm(request.POST)
             if form.is_valid():
-                instance = form.save()
+                instance = form.save(commit=False)
+
+                # ドル入力の場合、円に変換
+                is_usd = request.POST.get('is_usd') == 'on'
+                if is_usd:
+                    from budget_app.utils.currency import convert_usd_to_jpy
+                    from decimal import Decimal
+
+                    usd_amount_str = request.POST.get('usd_amount')
+                    if usd_amount_str:
+                        usd_amount = Decimal(usd_amount_str)
+                        instance.is_usd = True
+                        instance.usd_amount = usd_amount
+                        instance.amount = convert_usd_to_jpy(usd_amount)
+                    else:
+                        instance.is_usd = False
+                        instance.usd_amount = None
+                else:
+                    instance.is_usd = False
+                    instance.usd_amount = None
+
+                instance.save()
+
                 if is_ajax:
                     return JsonResponse({
                         'status': 'success',
@@ -2380,7 +2496,28 @@ def credit_default_list(request):
             form = CreditDefaultForm(request.POST, instance=instance)
             print(f"DEBUG UPDATE: Form card_type choices = {form.fields['card_type'].choices}")  # デバッグ用
             if form.is_valid():
-                instance = form.save()
+                instance = form.save(commit=False)
+
+                # ドル入力の場合、円に変換
+                is_usd = request.POST.get('is_usd') == 'on'
+                if is_usd:
+                    from budget_app.utils.currency import convert_usd_to_jpy
+                    from decimal import Decimal
+
+                    usd_amount_str = request.POST.get('usd_amount')
+                    if usd_amount_str:
+                        usd_amount = Decimal(usd_amount_str)
+                        instance.is_usd = True
+                        instance.usd_amount = usd_amount
+                        instance.amount = convert_usd_to_jpy(usd_amount)
+                    else:
+                        instance.is_usd = False
+                        instance.usd_amount = None
+                else:
+                    instance.is_usd = False
+                    instance.usd_amount = None
+
+                instance.save()
 
                 # 今月以降の上書きデータを更新
                 from datetime import datetime
@@ -2396,12 +2533,14 @@ def credit_default_list(request):
                 updated_count = 0
                 for override in future_overrides:
                     needs_update = False
-                    # 金額が変更された場合、元の金額と同じ場合のみ更新（手動変更を尊重）
-                    if old_amount != instance.amount and override.amount == old_amount:
+                    # 金額が変更された場合、全て更新
+                    if old_amount != instance.amount:
                         override.amount = instance.amount
+                        override.is_usd = instance.is_usd
+                        override.usd_amount = instance.usd_amount
                         needs_update = True
-                    # カード種別が変更された場合、元のカード種別と同じ場合のみ更新
-                    if old_card_type != instance.card_type and override.card_type == old_card_type:
+                    # カード種別が変更された場合、全て更新
+                    if old_card_type != instance.card_type:
                         override.card_type = instance.card_type
                         needs_update = True
 
@@ -2531,16 +2670,41 @@ def monthly_plan_default_list(request):
             instance = get_object_or_404(MonthlyPlanDefault, pk=target_id)
             # 現在のorderを保存
             current_order = instance.order
+            # 元の金額を保存（auto-propagation用）
+            old_amount = instance.amount
+            old_key = instance.key
+
             form = MonthlyPlanDefaultForm(request.POST, instance=instance)
             if form.is_valid():
                 instance = form.save(commit=False)
                 # orderを復元（フォームに含まれていないため）
                 instance.order = current_order
                 instance.save()
+
+                # Auto-propagation: 今月以降の月次計画に反映
+                from datetime import date
+                current_year_month = date.today().strftime('%Y-%m')
+                updated_count = 0
+
+                if old_amount != instance.amount:
+                    # 今月以降のMonthlyPlanを取得
+                    future_plans = MonthlyPlan.objects.filter(year_month__gte=current_year_month)
+
+                    for plan in future_plans:
+                        # itemsの中に該当キーがあり、金額が古い金額と一致する場合のみ更新
+                        if old_key in plan.items and plan.items[old_key] == old_amount:
+                            plan.items[old_key] = instance.amount
+                            plan.save()
+                            updated_count += 1
+
+                message = f'{instance.title} を更新しました。'
+                if updated_count > 0:
+                    message += f' ({updated_count}件の月次計画を更新しました)'
+
                 if is_ajax:
                     return JsonResponse({
                         'status': 'success',
-                        'message': f'{instance.title} を更新しました。',
+                        'message': message,
                         'default': {
                             'id': instance.id,
                             'title': instance.title,
@@ -2552,7 +2716,7 @@ def monthly_plan_default_list(request):
                             'is_end_of_month': instance.is_end_of_month,
                         }
                     })
-                messages.success(request, f'{instance.title} を更新しました。')
+                messages.success(request, message)
             else:
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)

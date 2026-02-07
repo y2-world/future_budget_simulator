@@ -187,7 +187,14 @@
                                                                                 {% endif %}
                                                                             </div>
                                                                             <div class="flex items-center gap-2">
-                                                                                <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
+                                                                                <span class="text-red-600 font-medium">
+                                                                                    {% if est.estimate.is_usd and est.estimate.usd_amount %}
+                                                                                        <span class="text-gray-900">${{ est.estimate.usd_amount }}</span>
+                                                                                        <span class="text-xs text-gray-500">({{ est.amount|yen }})</span>
+                                                                                    {% else %}
+                                                                                        {{ est.amount|yen }}
+                                                                                    {% endif %}
+                                                                                </span>
                                                                                 {% if est.estimate.pk %}
                                                                                 <div class="flex gap-1">
                                                                                     <button type="button" class="edit-estimate-btn text-blue-600 hover:text-blue-800 cursor-pointer w-6 h-6 flex items-center justify-center"
@@ -207,11 +214,17 @@
                                                                                         </svg>
                                                                                     </button>
                                                                                     {% if est.estimate.is_default %}
-                                                                                    <button type="button" disabled class="text-gray-400 cursor-not-allowed w-6 h-6 flex items-center justify-center" title="定期項目は削除できません">
-                                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                                                        </svg>
-                                                                                    </button>
+                                                                                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline delete-default-form">
+                                                                                        {% csrf_token %}
+                                                                                        <input type="hidden" name="action" value="delete_default_for_month">
+                                                                                        <input type="hidden" name="default_id" value="{{ est.estimate.default_id }}">
+                                                                                        <input type="hidden" name="year_month" value="{{ est.estimate.year_month }}">
+                                                                                        <button type="submit" class="text-red-600 hover:text-red-800 w-6 h-6 flex items-center justify-center">
+                                                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                                            </svg>
+                                                                                        </button>
+                                                                                    </form>
                                                                                     {% else %}
                                                                                     <form method="post" action="{% url 'budget_app:credit_estimate_delete' est.estimate.pk %}" class="inline delete-estimate-form">
                                                                                         {% csrf_token %}
@@ -392,7 +405,14 @@
                                                             {% endif %}
                                                         </div>
                                                     </div>
-                                                    <span class="text-xl font-bold text-red-600">{{ est.amount|yen }}</span>
+                                                    <span class="text-xl font-bold text-red-600">
+                                                        {% if est.estimate.is_usd and est.estimate.usd_amount %}
+                                                            <span class="text-gray-900">${{ est.estimate.usd_amount }}</span>
+                                                            <span class="text-sm text-gray-500">({{ est.amount|yen }})</span>
+                                                        {% else %}
+                                                            {{ est.amount|yen }}
+                                                        {% endif %}
+                                                    </span>
                                                 </div>
 
                                                 {% if est.estimate.is_split_payment %}
@@ -426,12 +446,18 @@
                                                         編集
                                                     </button>
                                                     {% if est.estimate.is_default %}
-                                                    <button type="button" disabled class="flex-1 bg-gray-300 text-gray-500 text-sm px-3 py-2.5 rounded-lg cursor-not-allowed flex items-center justify-center gap-2 font-medium" title="定期項目は削除できません">
+                                                    <button type="submit" form="delete-default-form-{{ est.estimate.default_id }}-{{ est.estimate.year_month }}" class="flex-1 bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2 font-medium">
                                                         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                         </svg>
                                                         削除
                                                     </button>
+                                                    <form method="post" action="{% url 'budget_app:credit_estimates' %}" id="delete-default-form-{{ est.estimate.default_id }}-{{ est.estimate.year_month }}" class="delete-default-form" style="display:none;">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="delete_default_for_month">
+                                                        <input type="hidden" name="default_id" value="{{ est.estimate.default_id }}">
+                                                        <input type="hidden" name="year_month" value="{{ est.estimate.year_month }}">
+                                                    </form>
                                                     {% else %}
                                                     <button type="submit" form="delete-estimate-form-{{ est.estimate.pk }}" class="flex-1 bg-red-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2 font-medium">
                                                         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -513,9 +539,23 @@
                 <input type="text" name="description" id="create_description" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" placeholder="例: 旅行、家電など">
             </div>
 
+            <!-- 金額入力 -->
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">金額（円）</label>
-                <input type="number" name="amount" id="create_amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" min="0" placeholder="30000">
+                <div class="flex items-center gap-2 mb-1">
+                    <label class="block text-sm font-semibold text-gray-700" id="create_past_amount_label">金額（円）</label>
+                    <label class="flex items-center cursor-pointer text-xs text-gray-600 hover:text-blue-600 transition">
+                        <input type="checkbox" name="is_usd" id="create_past_is_usd" class="w-3 h-3 text-blue-600 rounded focus:ring-blue-500 mr-1" onchange="togglePastCurrencyInput('create')">
+                        <span>💵 ドル</span>
+                    </label>
+                </div>
+                <!-- 円入力（デフォルト表示） -->
+                <div id="create_past_jpy_input">
+                    <input type="number" name="amount" id="create_amount" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" min="0" placeholder="30000">
+                </div>
+                <!-- ドル入力（非表示） -->
+                <div id="create_past_usd_input" class="hidden">
+                    <input type="number" name="usd_amount" id="create_amount_usd" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm" min="0" placeholder="19.99">
+                </div>
             </div>
 
             <div>
@@ -1124,6 +1164,19 @@ document.querySelectorAll('.delete-estimate-form').forEach(deleteForm => {
     });
 });
 
+// --- 定期デフォルト項目の削除フォームの非同期処理 ---
+document.querySelectorAll('.delete-default-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!confirm('この月の定期項目を削除しますか？')) return;
+
+        await window.sendAjaxRequest("{% url 'budget_app:credit_estimates' %}", new FormData(form), {
+            reloadOnSuccess: true  // 削除成功後にページをリロード
+        });
+    });
+});
+
 // セクションを開く関数（クレカ見積もりと月次計画の両方に対応）
 function expandEstimateSection(hash) {
     if (!hash) return;
@@ -1299,6 +1352,27 @@ window.addEventListener('load', function() {
         }
     }, 400);
 });
+
+// 通貨入力切り替え関数
+function togglePastCurrencyInput(mode) {
+    // mode: 'create'
+    const isUsdCheckbox = document.getElementById(`${mode}_past_is_usd`);
+    const jpyInput = document.getElementById(`${mode}_past_jpy_input`);
+    const usdInput = document.getElementById(`${mode}_past_usd_input`);
+    const label = document.getElementById(`${mode}_past_amount_label`);
+
+    if (isUsdCheckbox && jpyInput && usdInput) {
+        if (isUsdCheckbox.checked) {
+            jpyInput.classList.add('hidden');
+            usdInput.classList.remove('hidden');
+            if (label) label.textContent = '金額（ドル）';
+        } else {
+            jpyInput.classList.remove('hidden');
+            usdInput.classList.add('hidden');
+            if (label) label.textContent = '金額（円）';
+        }
+    }
+}
 
 // 新規作成モーダルを開く
 function openCreateModal() {
