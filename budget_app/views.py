@@ -2533,14 +2533,14 @@ def credit_default_list(request):
                 updated_count = 0
                 for override in future_overrides:
                     needs_update = False
-                    # 金額が変更された場合、全て更新
-                    if old_amount != instance.amount:
+                    # 金額が変更された場合、元の金額と同じ場合のみ更新（手動変更を尊重）
+                    if old_amount != instance.amount and override.amount == old_amount:
                         override.amount = instance.amount
                         override.is_usd = instance.is_usd
                         override.usd_amount = instance.usd_amount
                         needs_update = True
-                    # カード種別が変更された場合、全て更新
-                    if old_card_type != instance.card_type:
+                    # カード種別が変更された場合、元のカード種別と同じ場合のみ更新
+                    if old_card_type != instance.card_type and override.card_type == old_card_type:
                         override.card_type = instance.card_type
                         needs_update = True
 
