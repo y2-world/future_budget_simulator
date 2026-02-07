@@ -596,11 +596,13 @@
                 const mobileContent = document.getElementById('estimate-content-mobile-' + ym);
                 const icon = document.getElementById('collapse-icon-' + ym);
 
-                // デスクトップとモバイルの両方を同時にトグル
-                if (desktopContent && mobileContent) {
-                    // モバイルコンテンツのhiddenだけをトグル
-                    // デスクトップは常に hidden md:block を維持（レスポンシブクラスで制御）
-                    mobileContent.classList.toggle('hidden');
+                // デスクトップ表示は常にmd:blockで制御されているので何もしない
+                // モバイル表示：個別項目リストのみをトグル（カード種別ヘッダーは常に表示）
+                if (mobileContent) {
+                    const cardDetailsMobile = mobileContent.querySelectorAll('.card-details-mobile');
+                    cardDetailsMobile.forEach(details => {
+                        details.classList.toggle('hidden');
+                    });
                 }
 
                 if (icon) {

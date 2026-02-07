@@ -124,28 +124,30 @@
             <!-- モバイル表示：カード形式 -->
             <div id="estimate-content-mobile-{{ ym }}" class="md:hidden p-4 space-y-6">
                 {% for card_type, data in cards.items %}
-                    <!-- カード種別ヘッダー -->
-                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
-                        <div class="flex justify-between items-center mb-2">
-                            <div class="font-bold whitespace-wrap">{{ data.label }}</div>
-                            <h4 class="text-2xl font-bold whitespace-wrap ml-2">{{ data.total|yen }}</h4>
+                    <!-- カード種別ヘッダー（常に表示） -->
+                    <div>
+                        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="font-bold whitespace-wrap">{{ data.label }}</div>
+                                <h4 class="text-2xl font-bold whitespace-wrap ml-2">{{ data.total|yen }}</h4>
+                            </div>
+                            <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="reflect-card-form" onclick="event.stopPropagation()">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="reflect_card">
+                                <input type="hidden" name="year_month" value="{% if '_bonus' in ym %}{{ ym|slice:':-6' }}{% else %}{{ ym }}{% endif %}">
+                                <input type="hidden" name="card_type" value="{{ card_type }}">
+                                <input type="hidden" name="total_amount" value="{{ data.total|stringformat:'d' }}">
+                                <input type="hidden" name="manual_total" value="{{ data.manual_total|stringformat:'d' }}">
+                                <input type="hidden" name="default_total" value="{{ data.default_total|stringformat:'d' }}">
+                                <button type="submit" class="w-full bg-white text-blue-600 text-sm px-4 py-2 rounded-md font-semibold hover:bg-blue-50 transition">
+                                    月次計画に反映
+                                </button>
+                            </form>
                         </div>
-                        <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="reflect-card-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="reflect_card">
-                            <input type="hidden" name="year_month" value="{% if '_bonus' in ym %}{{ ym|slice:':-6' }}{% else %}{{ ym }}{% endif %}">
-                            <input type="hidden" name="card_type" value="{{ card_type }}">
-                            <input type="hidden" name="total_amount" value="{{ data.total|stringformat:'d' }}">
-                            <input type="hidden" name="manual_total" value="{{ data.manual_total|stringformat:'d' }}">
-                            <input type="hidden" name="default_total" value="{{ data.default_total|stringformat:'d' }}">
-                            <button type="submit" class="w-full bg-white text-blue-600 text-sm px-4 py-2 rounded-md font-semibold hover:bg-blue-50 transition">
-                                月次計画に反映
-                            </button>
-                        </form>
                     </div>
 
                     <!-- 個別項目 -->
-                    <div class="space-y-3 ml-2">
+                    <div class="space-y-3 ml-2 card-details-mobile" id="card-details-mobile-{{ ym }}">
                         {% for item in data.entries %}
                         <div class="border-l-4 {% if item.is_default %}border-gray-400 bg-gray-50{% else %}border-blue-300 bg-white{% endif %} rounded-r-lg shadow-sm p-4">
                             <div class="flex justify-between items-start mb-3">
