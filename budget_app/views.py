@@ -1630,13 +1630,6 @@ def credit_estimate_list(request):
                 amount = int(amount_str)
                 default_instance = get_object_or_404(CreditDefault, pk=default_id)
 
-                # 既存の上書きデータを取得（金額変更の検出用）
-                existing_override = DefaultChargeOverride.objects.filter(
-                    default=default_instance,
-                    year_month=year_month
-                ).first()
-                old_amount = existing_override.amount if existing_override else default_instance.amount
-
                 # 上書きオブジェクトを取得または作成
                 defaults_dict = {'amount': amount}
                 # カード種別は常に保存する（上書きで管理）
@@ -1656,23 +1649,9 @@ def credit_estimate_list(request):
                     defaults=defaults_dict
                 )
 
-                # 金額が変更された場合、この月より後の月も更新
-                updated_count = 0
-                if old_amount != amount:
-                    future_overrides = DefaultChargeOverride.objects.filter(
-                        default=default_instance,
-                        year_month__gt=year_month,
-                        amount=old_amount  # 元の金額と同じ場合のみ更新
-                    )
-                    updated_count = future_overrides.update(amount=amount)
-
-                message = f'{format_year_month_display(year_month)}の「{default_instance.label}」を更新しました。'
-                if updated_count > 0:
-                    message += f' {year_month}より後の{updated_count}件の見積もりにも反映しました。'
-
                 return JsonResponse({
                     'status': 'success',
-                    'message': message
+                    'message': f'{format_year_month_display(year_month)}の「{default_instance.label}」を更新しました。'
                 })
             except (ValueError, TypeError):
                 return JsonResponse({'status': 'error', 'message': '無効な金額が入力されました。'}, status=400)
