@@ -3395,10 +3395,16 @@ def past_transactions_list(request):
     # 動的フィールド（MonthlyPlanDefaultから取得）
     hardcoded_fields = [item.key for item in default_items if item.key]
 
+    # カード選択肢を取得（新規追加モーダル用）
+    card_choices = MonthlyPlanDefault.objects.filter(
+        card_id__isnull=False
+    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
+
     context = {
         'yearly_data': filtered_yearly_data,
         'sorted_years': sorted_years,
         'default_items': default_items,
         'hardcoded_fields': hardcoded_fields,
+        'card_choices': card_choices,
     }
     return render(request, 'budget_app/past_transactions.html', context)
