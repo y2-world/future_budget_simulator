@@ -2392,8 +2392,8 @@ def credit_default_list(request):
 
     # カード種別の選択肢を取得（MonthlyPlanDefaultから）
     # card_idが設定されているものをクレジットカード項目とみなす
+    # is_active=Falseのカードも含める（ユーザーが登録したカードを全て表示）
     card_choices = MonthlyPlanDefault.objects.filter(
-        is_active=True,
         card_id__isnull=False
     ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
 
