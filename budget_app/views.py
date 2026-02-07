@@ -937,9 +937,9 @@ def credit_estimate_list(request):
     from collections import OrderedDict
     from django.http import JsonResponse
 
-    # 事前に上書きデータを取得して辞書に格納（金額、カード種別、2回払い）
+    # 事前に上書きデータを取得して辞書に格納（金額、カード種別、2回払い、利用日）
     overrides = DefaultChargeOverride.objects.all()
-    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment} for ov in overrides}
+    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment, 'purchase_date_override': ov.purchase_date_override} for ov in overrides}
     estimates = list(CreditEstimate.objects.all().order_by('-year_month', 'card_type', 'due_date', 'created_at'))
     credit_defaults = list(CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id'))
 
@@ -1194,7 +1194,8 @@ def credit_estimate_list(request):
                 override_data = {
                     'amount': new_override.amount,
                     'card_type': new_override.card_type,
-                    'is_split_payment': new_override.is_split_payment
+                    'is_split_payment': new_override.is_split_payment,
+                    'purchase_date_override': new_override.purchase_date_override
                 }
                 override_map[(default.id, year_month)] = override_data
 
@@ -1301,39 +1302,42 @@ def credit_estimate_list(request):
                     self.is_default = True  # デフォルトエントリーであることを示すフラグ
                     self.default_id = default_obj.id  # デフォルト項目のID
                     self.payment_day = default_obj.payment_day  # 毎月の利用日
-                    # purchase_dateを計算
-                    # original_year_monthは「利用月」を表す（分割2回目でも同じ）
-                    try:
-                        usage_ym = original_year_month if original_year_month else self.year_month
-                        year, month = map(int, usage_ym.split('-'))
+                    # purchase_dateを計算（上書きがあればそれを使用）
+                    if override_data and override_data.get('purchase_date_override'):
+                        self.purchase_date = override_data.get('purchase_date_override')
+                    else:
+                        # original_year_monthは「利用月」を表す（分割2回目でも同じ）
+                        try:
+                            usage_ym = original_year_month if original_year_month else self.year_month
+                            year, month = map(int, usage_ym.split('-'))
 
-                        if card_plan_info and not card_plan_info.get('is_end_of_month') and card_plan_info.get('closing_day'):
-                            # 指定日締めの場合：payment_dayと締め日を比較
-                            closing_day = card_plan_info['closing_day']
-                            payment_day = default_obj.payment_day
+                            if card_plan_info and not card_plan_info.get('is_end_of_month') and card_plan_info.get('closing_day'):
+                                # 指定日締めの場合：payment_dayと締め日を比較
+                                closing_day = card_plan_info['closing_day']
+                                payment_day = default_obj.payment_day
 
-                            if payment_day > closing_day:
-                                # payment_dayが締め日より大きい：year_monthの月のpayment_day日
-                                max_day = calendar.monthrange(year, month)[1]
-                                actual_day = min(payment_day, max_day)
-                                self.purchase_date = date(year, month, actual_day)
+                                if payment_day > closing_day:
+                                    # payment_dayが締め日より大きい：year_monthの月のpayment_day日
+                                    max_day = calendar.monthrange(year, month)[1]
+                                    actual_day = min(payment_day, max_day)
+                                    self.purchase_date = date(year, month, actual_day)
+                                else:
+                                    # payment_dayが締め日以下：year_month+1の月のpayment_day日
+                                    closing_month = month + 1
+                                    closing_year = year
+                                    if closing_month > 12:
+                                        closing_month = 1
+                                        closing_year += 1
+                                    max_day = calendar.monthrange(closing_year, closing_month)[1]
+                                    actual_day = min(payment_day, max_day)
+                                    self.purchase_date = date(closing_year, closing_month, actual_day)
                             else:
-                                # payment_dayが締め日以下：year_month+1の月のpayment_day日
-                                closing_month = month + 1
-                                closing_year = year
-                                if closing_month > 12:
-                                    closing_month = 1
-                                    closing_year += 1
-                                max_day = calendar.monthrange(closing_year, closing_month)[1]
-                                actual_day = min(payment_day, max_day)
-                                self.purchase_date = date(closing_year, closing_month, actual_day)
-                        else:
-                            # 月末締めの場合：year_monthのpayment_day日
-                            max_day = calendar.monthrange(year, month)[1]
-                            actual_day = min(default_obj.payment_day, max_day)
-                            self.purchase_date = date(year, month, actual_day)
-                    except (ValueError, AttributeError):
-                        self.purchase_date = None
+                                # 月末締めの場合：year_monthのpayment_day日
+                                max_day = calendar.monthrange(year, month)[1]
+                                actual_day = min(default_obj.payment_day, max_day)
+                                self.purchase_date = date(year, month, actual_day)
+                        except (ValueError, AttributeError):
+                            self.purchase_date = None
 
             # 2回払いの場合は2つのエントリを作成
             is_split = override_data.get('is_split_payment', False) if override_data else False
