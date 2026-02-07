@@ -1630,6 +1630,13 @@ def credit_estimate_list(request):
                 amount = int(amount_str)
                 default_instance = get_object_or_404(CreditDefault, pk=default_id)
 
+                # 既存の上書きデータを取得（金額変更の検出用）
+                existing_override = DefaultChargeOverride.objects.filter(
+                    default=default_instance,
+                    year_month=year_month
+                ).first()
+                old_amount = existing_override.amount if existing_override else default_instance.amount
+
                 # 上書きオブジェクトを取得または作成
                 defaults_dict = {'amount': amount}
                 # カード種別は常に保存する（上書きで管理）
@@ -1649,9 +1656,23 @@ def credit_estimate_list(request):
                     defaults=defaults_dict
                 )
 
+                # 金額が変更された場合、この月より後の月も更新
+                updated_count = 0
+                if old_amount != amount:
+                    future_overrides = DefaultChargeOverride.objects.filter(
+                        default=default_instance,
+                        year_month__gt=year_month,
+                        amount=old_amount  # 元の金額と同じ場合のみ更新
+                    )
+                    updated_count = future_overrides.update(amount=amount)
+
+                message = f'{format_year_month_display(year_month)}の「{default_instance.label}」を更新しました。'
+                if updated_count > 0:
+                    message += f' {year_month}より後の{updated_count}件の見積もりにも反映しました。'
+
                 return JsonResponse({
                     'status': 'success',
-                    'message': f'{format_year_month_display(year_month)}の「{default_instance.label}」を更新しました。'
+                    'message': message
                 })
             except (ValueError, TypeError):
                 return JsonResponse({'status': 'error', 'message': '無効な金額が入力されました。'}, status=400)
@@ -2370,11 +2391,45 @@ def credit_default_list(request):
         elif action == 'update':
             target_id = request.POST.get('id')
             instance = get_object_or_404(CreditDefault, pk=target_id)
+
+            # 保存前の値を記録
+            old_amount = instance.amount
+            old_card_type = instance.card_type
+            old_payment_day = instance.payment_day
+
             print(f"DEBUG UPDATE: Received card_type = {request.POST.get('card_type')}")  # デバッグ用
             form = CreditDefaultForm(request.POST, instance=instance)
             print(f"DEBUG UPDATE: Form card_type choices = {form.fields['card_type'].choices}")  # デバッグ用
             if form.is_valid():
                 instance = form.save()
+
+                # 今月以降の上書きデータを更新
+                from datetime import datetime
+                today = timezone.now()
+                current_year_month = f"{today.year}-{today.month:02d}"
+
+                # 今月以降の全ての上書きデータを取得
+                future_overrides = DefaultChargeOverride.objects.filter(
+                    default=instance,
+                    year_month__gte=current_year_month
+                )
+
+                updated_count = 0
+                for override in future_overrides:
+                    needs_update = False
+                    # 金額が変更された場合、元の金額と同じ場合のみ更新（手動変更を尊重）
+                    if old_amount != instance.amount and override.amount == old_amount:
+                        override.amount = instance.amount
+                        needs_update = True
+                    # カード種別が変更された場合、元のカード種別と同じ場合のみ更新
+                    if old_card_type != instance.card_type and override.card_type == old_card_type:
+                        override.card_type = instance.card_type
+                        needs_update = True
+
+                    if needs_update:
+                        override.save()
+                        updated_count += 1
+
                 if is_ajax:
                     # Get card type display name from MonthlyPlanDefault
                     card_type_display = instance.card_type
@@ -2383,9 +2438,13 @@ def credit_default_list(request):
                         if card_item:
                             card_type_display = card_item.title
 
+                    message = f'{instance.label} を更新しました。'
+                    if updated_count > 0:
+                        message += f' 今月以降の{updated_count}件の見積もりにも反映しました。'
+
                     return JsonResponse({
                         'status': 'success',
-                        'message': f'{instance.label} を更新しました。',
+                        'message': message,
                         'default': {
                             'id': instance.id,
                             'label': instance.label,
@@ -2394,7 +2453,11 @@ def credit_default_list(request):
                             'amount': instance.amount,
                         }
                     })
-                messages.success(request, f'{instance.label} を更新しました。')
+
+                success_message = f'{instance.label} を更新しました。'
+                if updated_count > 0:
+                    success_message += f' 今月以降の{updated_count}件の見積もりにも反映しました。'
+                messages.success(request, success_message)
             else:
                 if is_ajax:
                     return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
