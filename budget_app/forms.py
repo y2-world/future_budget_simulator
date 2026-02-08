@@ -490,9 +490,6 @@ class CreditEstimateForm(forms.ModelForm):
         # カード種別のデフォルトをVIEWカードに設定
         if not self.instance.pk:
             self.fields['card_type'].initial = 'item_6'
-            # 新規作成時は利用日のデフォルトを本日に設定
-            from datetime import date
-            self.fields['purchase_date'].initial = date.today()
         else:
             # 編集時: 分割払いの場合は合計金額を表示
             if self.instance.is_split_payment and self.instance.split_payment_group:
@@ -927,9 +924,18 @@ class CreditDefaultForm(forms.ModelForm):
         if not self.instance.pk and card_choices:
             self.fields['card_type'].initial = card_choices[0][0]
 
+        # ドル入力時はamountが空でも通るようにする
+        self.fields['amount'].required = False
+
     def clean_amount(self):
         """カンマを除去して整数に変換"""
         amount_str = self.cleaned_data.get('amount', '')
+        # ドル入力時はamountが空でもOK（ビューでUSD→JPY変換して設定する）
+        is_usd = self.data.get('is_usd') == 'on'
+        if not amount_str and amount_str != 0:
+            if is_usd:
+                return 0  # ビューで上書きされる
+            raise forms.ValidationError('このフィールドは必須です。')
         if isinstance(amount_str, str):
             amount_str = amount_str.replace(',', '')
         try:
