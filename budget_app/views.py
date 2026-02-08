@@ -952,13 +952,17 @@ def credit_estimate_list(request):
     for item in MonthlyPlanDefault.objects.filter(is_active=True, card_id__isnull=False):
         if item.card_id:
             card_labels[item.card_id] = item.title
+            # keyでも引けるようにする（card_typeにはkeyが格納されるため）
+            card_labels[item.key] = item.title
             if item.withdrawal_day:
                 card_due_days[item.card_id] = item.withdrawal_day
+                card_due_days[item.key] = item.withdrawal_day
             # 締め日情報を記録
             card_info[item.card_id] = {
                 'is_end_of_month': item.is_end_of_month,
                 'closing_day': item.closing_day
             }
+            card_info[item.key] = card_info[item.card_id]
 
     # カード名に支払日を追加する関数
     def get_card_label_with_due_day(card_type, is_bonus=False, year_month=None):

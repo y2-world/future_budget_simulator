@@ -484,6 +484,9 @@ class CreditEstimateForm(forms.ModelForm):
         # purchase_dateを必須にする
         self.fields['purchase_date'].required = True
 
+        # ドル入力時はamountが空でも通るようにする（ビューでUSD→JPY変換して設定する）
+        self.fields['amount'].required = False
+
         # カード種別のデフォルトをVIEWカードに設定
         if not self.instance.pk:
             self.fields['card_type'].initial = 'item_6'
@@ -502,6 +505,12 @@ class CreditEstimateForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # ドル入力でない場合は金額が必須
+        amount = cleaned_data.get('amount')
+        is_usd = self.data.get('is_usd') == 'on'
+        if not is_usd and not amount and amount != 0:
+            self.add_error('amount', 'このフィールドは必須です。')
 
         # 分割払いとボーナス払いが同時に選択されていないかチェック
         is_split_payment = cleaned_data.get('is_split_payment')
