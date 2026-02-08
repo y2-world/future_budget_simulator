@@ -10,6 +10,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                     <span>{{ ym|format_year_month }}</span>
+                    <span class="text-sm text-gray-600 ml-2">{{ cards|cards_total|yen }}</span>
                 </div>
                 <form method="post" action="{% url 'budget_app:credit_estimates' %}" class="inline" onclick="event.stopPropagation()">
                     {% csrf_token %}

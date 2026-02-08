@@ -117,6 +117,15 @@ def call(obj, method_name):
 
 
 @register.filter
+def cards_total(cards):
+    """カード辞書の全カードの合計金額を計算"""
+    try:
+        return sum(data.get('total', 0) for data in cards.values())
+    except (AttributeError, TypeError):
+        return 0
+
+
+@register.filter
 def usd_display(obj):
     """ドル金額を $XX.XX (¥XX,XXX) 形式で表示"""
     try:
