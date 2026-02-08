@@ -490,6 +490,9 @@ class CreditEstimateForm(forms.ModelForm):
         # カード種別のデフォルトをVIEWカードに設定
         if not self.instance.pk:
             self.fields['card_type'].initial = 'item_6'
+            # 新規作成時は利用日のデフォルトを本日に設定
+            from datetime import date
+            self.fields['purchase_date'].initial = date.today()
         else:
             # 編集時: 分割払いの場合は合計金額を表示
             if self.instance.is_split_payment and self.instance.split_payment_group:
@@ -923,6 +926,8 @@ class CreditDefaultForm(forms.ModelForm):
         # 新規作成時のみカード種別のデフォルト値を設定（最初のカード）
         if not self.instance.pk and card_choices:
             self.fields['card_type'].initial = card_choices[0][0]
+            # 毎月の利用日のデフォルトを空にする
+            self.fields['payment_day'].initial = None
 
         # ドル入力時はamountが空でも通るようにする
         self.fields['amount'].required = False
