@@ -398,13 +398,19 @@
         const label = document.getElementById(`${mode}_estimate_amount_label`);
 
         if (isUsdCheckbox && jpyInput && usdInput) {
+            const jpyField = jpyInput.querySelector('input');
+            const usdField = usdInput.querySelector('input');
             if (isUsdCheckbox.checked) {
                 jpyInput.classList.add('hidden');
                 usdInput.classList.remove('hidden');
+                if (jpyField) { jpyField.disabled = true; jpyField.value = ''; }
+                if (usdField) usdField.disabled = false;
                 if (label) label.textContent = '金額（ドル）';
             } else {
                 jpyInput.classList.remove('hidden');
                 usdInput.classList.add('hidden');
+                if (jpyField) jpyField.disabled = false;
+                if (usdField) { usdField.disabled = true; usdField.value = ''; }
                 if (label) label.textContent = '金額（円）';
             }
         }
