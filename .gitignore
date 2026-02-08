@@ -40,3 +40,12 @@ Thumbs.db
 heroku_data*.json
 datadump.json
 latest.dump
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/

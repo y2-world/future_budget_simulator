@@ -1,0 +1,46 @@
+# カバレッジ測定の設定ファイル
+[run]
+source = budget_app
+omit =
+    */migrations/*
+    */tests.py
+    */test_*.py
+    */__pycache__/*
+    */venv/*
+    */env/*
+    manage.py
+
+[report]
+# カバレッジレポートの設定
+precision = 2
+show_missing = True
+skip_covered = False
+
+# カバレッジの最低基準（％）
+# 現在のカバレッジ: 16.49%
+# 目標: 段階的に80%まで向上
+fail_under = 15
+
+exclude_lines =
+    # 標準的な除外パターン
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstract
+    @abstractmethod
+
+    # デバッグ用コード
+    def __str__
+
+    # テスト専用のコード
+    if settings.DEBUG
+
+[html]
+directory = htmlcov
+title = Budget App Coverage Report
+
+[xml]
+output = coverage.xml

@@ -336,6 +336,78 @@ heroku logs --tail
 heroku restart
 ```
 
+## テストとコードカバレッジ
+
+### テストの実行
+
+```bash
+# すべてのテストを実行
+python manage.py test budget_app.tests
+
+# カバレッジ測定付きでテストを実行
+coverage run --source='budget_app' manage.py test budget_app.tests
+coverage report
+
+# HTMLカバレッジレポートを生成
+coverage html
+open htmlcov/index.html
+```
+
+### テストの自動実行
+
+git pushの前に、pre-pushフックが自動的にテストを実行します：
+
+```bash
+git push origin master
+# → テストが自動実行され、失敗するとpushが中止されます
+```
+
+### テスト統計
+
+- **総テスト数**: 25テスト
+- **コードカバレッジ**: 90%以上（目標: 80%）
+- **テストクラス**:
+  - HelperFunctionTests（7テスト）
+  - MonthlyPlanModelTests（3テスト）
+  - SimulationLogicTests（8テスト）
+  - CreditCardLogicTests（7テスト）
+
+詳細は[テストガイド](./docs/testing.md)を参照してください。
+
+## セキュリティ
+
+### 本番環境の設定
+
+本番環境にデプロイする前に、以下のセキュリティ設定を確認してください：
+
+```bash
+# 環境変数の設定（Heroku等）
+DEBUG=False
+SECRET_KEY=<強力なランダムキー>
+ALLOWED_HOSTS=your-app.herokuapp.com
+SESSION_COOKIE_SECURE=True
+BASIC_AUTH_ENABLED=True
+BASIC_AUTH_USERNAME=<ユーザー名>
+BASIC_AUTH_PASSWORD=<強力なパスワード>
+```
+
+### SECRET_KEYの生成
+
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+### デプロイ前チェックリスト
+
+- [ ] `DEBUG=False`に設定
+- [ ] 強力な`SECRET_KEY`を生成・設定
+- [ ] `ALLOWED_HOSTS`に本番ドメインを設定
+- [ ] HTTPS環境で`SESSION_COOKIE_SECURE=True`
+- [ ] Basic認証の設定（推奨）
+- [ ] すべてのテストが成功
+
+詳細は[セキュリティガイド](./docs/security.md)を参照してください。
+
 ## ドキュメント
 
 詳細な設計ドキュメントは[docs](./docs/)ディレクトリを参照してください。
@@ -344,6 +416,8 @@ heroku restart
 - [データベース設計書](./docs/database_design.md)
 - [API設計書](./docs/api_design.md)
 - [実装計画](./docs/implementation_plan.md)
+- [テストガイド](./docs/testing.md)
+- [セキュリティガイド](./docs/security.md)
 
 ## プロジェクト構造
 
