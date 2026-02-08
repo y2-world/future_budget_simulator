@@ -222,6 +222,193 @@ class MonthlyPlanDefaultModelTests(TestCase):
         self.assertFalse(item.is_credit_card())
 
 
+class CreditCardLogicTests(TestCase):
+    """クレジットカード処理の詳細テスト"""
+
+    def setUp(self):
+        """テスト用のカード設定を作成"""
+        # 5日締め翌々月27日払いカード（楽天カード想定）
+        self.rakuten_card = MonthlyPlanDefault(
+            title='楽天カード',
+            card_id='rakuten',
+            is_active=True,
+            closing_day=5,
+            is_end_of_month=False,
+            withdrawal_day=27,
+            order=1
+        )
+        self.rakuten_card.save()
+        MonthlyPlanDefault.objects.filter(pk=self.rakuten_card.pk).update(key='rakuten')
+        self.rakuten_card.refresh_from_db()
+
+        # 月末締め翌月10日払いカード（三井住友カード想定）
+        self.smbc_card = MonthlyPlanDefault(
+            title='三井住友カード',
+            card_id='smbc',
+            is_active=True,
+            closing_day=None,
+            is_end_of_month=True,
+            withdrawal_day=10,
+            order=2
+        )
+        self.smbc_card.save()
+        MonthlyPlanDefault.objects.filter(pk=self.smbc_card.pk).update(key='smbc')
+        self.smbc_card.refresh_from_db()
+
+        # 15日締め翌月10日払いカード（VIEWカード想定）
+        self.view_card = MonthlyPlanDefault(
+            title='VIEWカード',
+            card_id='view',
+            is_active=True,
+            closing_day=15,
+            is_end_of_month=False,
+            withdrawal_day=4,
+            order=3
+        )
+        self.view_card.save()
+        MonthlyPlanDefault.objects.filter(pk=self.view_card.pk).update(key='view')
+        self.view_card.refresh_from_db()
+
+    def test_closing_date_calculation_various_cards(self):
+        """様々なカードの締め日計算テスト"""
+        # 楽天カード（5日締め）: 2025-01 → 2025-02-05
+        closing = calculate_closing_date('2025-01', 'rakuten')
+        self.assertEqual(closing, date(2025, 2, 5))
+
+        # 三井住友カード（月末締め）: 2025-01 → 2025-01-31
+        closing = calculate_closing_date('2025-01', 'smbc')
+        self.assertEqual(closing, date(2025, 1, 31))
+
+        # VIEWカード（15日締め）: 2025-01 → 2025-02-15
+        closing = calculate_closing_date('2025-01', 'view')
+        self.assertEqual(closing, date(2025, 2, 15))
+
+        # 2月の月末締め: 2025-02 → 2025-02-28
+        closing = calculate_closing_date('2025-02', 'smbc')
+        self.assertEqual(closing, date(2025, 2, 28))
+
+    def test_billing_month_calculation_various_cards(self):
+        """様々なカードの引き落とし月計算テスト"""
+        # 楽天カード（指定日締め）: 利用月+2ヶ月
+        billing = calculate_billing_month('2025-01', 'rakuten')
+        self.assertEqual(billing, '2025-03')
+
+        billing = calculate_billing_month('2025-11', 'rakuten')
+        self.assertEqual(billing, '2026-01')  # 年をまたぐケース
+
+        # 三井住友カード（月末締め）: 利用月+1ヶ月
+        billing = calculate_billing_month('2025-01', 'smbc')
+        self.assertEqual(billing, '2025-02')
+
+        billing = calculate_billing_month('2025-12', 'smbc')
+        self.assertEqual(billing, '2026-01')  # 年をまたぐケース
+
+        # VIEWカード（15日締め）: 利用月+2ヶ月
+        billing = calculate_billing_month('2025-01', 'view')
+        self.assertEqual(billing, '2025-03')
+
+    def test_split_payment_billing_month(self):
+        """分割払いの引き落とし月計算テスト"""
+        # 楽天カード 2回払い
+        # 1回目: 2025-01 → 2025-03
+        billing_1st = calculate_billing_month('2025-01', 'rakuten', split_part=1)
+        self.assertEqual(billing_1st, '2025-03')
+
+        # 2回目: 2025-01 → 2025-04
+        billing_2nd = calculate_billing_month('2025-01', 'rakuten', split_part=2)
+        self.assertEqual(billing_2nd, '2025-04')
+
+        # 年をまたぐケース
+        billing_1st = calculate_billing_month('2025-11', 'rakuten', split_part=1)
+        self.assertEqual(billing_1st, '2026-01')
+
+        billing_2nd = calculate_billing_month('2025-11', 'rakuten', split_part=2)
+        self.assertEqual(billing_2nd, '2026-02')
+
+    def test_year_boundary_cases(self):
+        """年またぎのエッジケーステスト"""
+        # 12月の処理
+        closing = calculate_closing_date('2025-12', 'rakuten')
+        self.assertEqual(closing, date(2026, 1, 5))
+
+        billing = calculate_billing_month('2025-12', 'rakuten')
+        self.assertEqual(billing, '2026-02')
+
+        # 11月から年をまたぐケース
+        billing = calculate_billing_month('2025-11', 'rakuten')
+        self.assertEqual(billing, '2026-01')
+
+    def test_credit_estimate_creation(self):
+        """クレジット見積もりの作成テスト"""
+        estimate = CreditEstimate.objects.create(
+            card_type='rakuten',
+            description='テスト購入',
+            amount=10000,
+            billing_month='2025-03',
+            is_split_payment=False,
+            is_bonus_payment=False
+        )
+        self.assertEqual(estimate.card_type, 'rakuten')
+        self.assertEqual(estimate.amount, 10000)
+        self.assertFalse(estimate.is_split_payment)
+        self.assertFalse(estimate.is_bonus_payment)
+
+    def test_split_payment_estimate(self):
+        """分割払い見積もりのテスト"""
+        # 2回払いの見積もり（1回目）
+        estimate1 = CreditEstimate.objects.create(
+            card_type='rakuten',
+            description='高額商品',
+            amount=20000,  # 1回あたりの金額
+            billing_month='2025-03',
+            is_split_payment=True,
+            split_payment_part=1,
+            split_payment_group='test_group_1'
+        )
+        self.assertTrue(estimate1.is_split_payment)
+        self.assertEqual(estimate1.split_payment_part, 1)
+        self.assertEqual(estimate1.split_payment_group, 'test_group_1')
+
+        # 2回払いの見積もり（2回目）
+        estimate2 = CreditEstimate.objects.create(
+            card_type='rakuten',
+            description='高額商品',
+            amount=20000,
+            billing_month='2025-04',
+            is_split_payment=True,
+            split_payment_part=2,
+            split_payment_group='test_group_1'
+        )
+        self.assertEqual(estimate2.split_payment_part, 2)
+        self.assertEqual(estimate2.split_payment_group, 'test_group_1')
+
+    def test_bonus_payment_estimate(self):
+        """ボーナス払い見積もりのテスト"""
+        estimate = CreditEstimate.objects.create(
+            card_type='rakuten',
+            description='ボーナス一括',
+            amount=50000,
+            billing_month='2025-07',  # 夏のボーナス月
+            is_bonus_payment=True
+        )
+        self.assertTrue(estimate.is_bonus_payment)
+
+    def test_usd_payment_estimate(self):
+        """ドル建て決済のテスト"""
+        estimate = CreditEstimate.objects.create(
+            card_type='rakuten',
+            description='海外通販',
+            amount=15000,  # 円換算後
+            billing_month='2025-03',
+            is_usd=True,
+            usd_amount=Decimal('100.00')
+        )
+        self.assertTrue(estimate.is_usd)
+        self.assertEqual(estimate.usd_amount, Decimal('100.00'))
+        # 円換算された金額も保存される
+        self.assertEqual(estimate.amount, 15000)
+
+
 class ViewTests(TestCase):
     """ビューのテスト"""
 
