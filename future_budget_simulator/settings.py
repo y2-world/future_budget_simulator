@@ -86,13 +86,24 @@ WSGI_APPLICATION = 'future_budget_simulator.wsgi.application'
 
 # DATABASE_URLを使用（Heroku Postgres）
 DATABASE_URL = os.environ.get('DATABASE_URL')
-DATABASES = {
-    'default': dj_database_url.config(
-        default=DATABASE_URL or 'postgresql://budget_user:your_strong_password@localhost:5432/future_budget_simulator',
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+
+# テスト実行時はSQLiteを使用
+import sys
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
+else:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL or 'postgresql://budget_user:your_strong_password@localhost:5432/future_budget_simulator',
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
 
 
 # Password validation

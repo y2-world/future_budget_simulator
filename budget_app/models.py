@@ -102,12 +102,6 @@ class MonthlyPlan(models.Model):
     def __str__(self):
         return f"{self.year_month}"
 
-    def save(self, *args, **kwargs):
-        """
-        保存時に自動処理を実行
-        """
-        super().save(*args, **kwargs)
-
     def get_item(self, field_name):
         """
         項目の金額を取得（items JSONFieldから）

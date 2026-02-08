@@ -24,6 +24,10 @@ from .forms import (
     MonthlyPlanDefaultForm,
     get_next_bonus_month,
 )
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def get_monthly_plan_defaults():
     """
@@ -32,7 +36,7 @@ def get_monthly_plan_defaults():
     keyをキーとした辞書を返す
     """
     defaults = {}
-    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items = get_active_defaults_ordered()
 
     for item in default_items:
         if item.key:
@@ -107,8 +111,8 @@ def config_view(request):
             return redirect('budget_app:config')
         else:
             # バリデーションエラーをログに出力
-            import logging
-            logger = logging.getLogger(__name__)
+
+
             logger.error(f"Form validation errors: {form.errors}")
             logger.error(f"POST data: {request.POST}")
             messages.error(request, 'エラーが発生しました。入力内容を確認してください。')
@@ -116,7 +120,7 @@ def config_view(request):
         form = SimulationConfigForm(instance=config)
 
     # 月次計画デフォルト項目のデータを取得（論理削除されていないもののみ）
-    defaults = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    defaults = get_active_defaults_ordered()
     defaults_with_amount = [d for d in defaults if d.amount]
     defaults_without_amount = [d for d in defaults if not d.amount]
     default_form = MonthlyPlanDefaultForm()
@@ -170,6 +174,180 @@ def adjust_to_next_business_day(target_date):
     while target_date.weekday() >= 5 or jpholiday.is_holiday(target_date):
         target_date += timedelta(days=1)
     return target_date
+
+
+def get_card_plan(card_type):
+    """
+    カード種別からMonthlyPlanDefaultを取得
+
+    Args:
+        card_type: カード種別のkey
+
+    Returns:
+        MonthlyPlanDefault: カード情報、存在しない場合はNone
+    """
+    return MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
+
+
+def calculate_closing_date(year_month, card_type):
+    """
+    締め日を計算
+
+    Args:
+        year_month: 利用月（YYYY-MM形式）
+        card_type: カード種別のkey
+
+    Returns:
+        date: 締め日、計算できない場合はNone
+    """
+    from datetime import date
+    import calendar
+
+    try:
+        year, month = map(int, year_month.split('-'))
+    except (ValueError, AttributeError):
+        return None
+
+    card_plan = get_card_plan(card_type)
+
+    if card_plan:
+        if card_plan.is_end_of_month:
+            # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
+            last_day = calendar.monthrange(year, month)[1]
+            return date(year, month, last_day)
+        elif card_plan.closing_day:
+            # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
+            closing_month = month + 1
+            closing_year = year
+            if closing_month > 12:
+                closing_month = 1
+                closing_year += 1
+            return date(closing_year, closing_month, card_plan.closing_day)
+
+    # デフォルト: 月末締め
+    last_day = calendar.monthrange(year, month)[1]
+    return date(year, month, last_day)
+
+
+def calculate_billing_month(year_month, card_type, split_part=None):
+    """
+    利用月から引き落とし月を計算
+
+    Args:
+        year_month: 利用月（YYYY-MM形式）
+        card_type: カード種別のkey
+        split_part: 分割払いの回数（1 or 2）、Noneの場合は通常払い
+
+    Returns:
+        str: 引き落とし月（YYYY-MM形式）
+    """
+    try:
+        year, month = map(int, year_month.split('-'))
+    except (ValueError, AttributeError):
+        return year_month
+
+    card_plan = get_card_plan(card_type)
+
+    if card_plan:
+        if card_plan.is_end_of_month:
+            # 月末締め: billing_month = year_month + 1
+            billing_month = month + 1
+            billing_year = year
+        else:
+            # 指定日締め: billing_month = year_month + 2
+            billing_month = month + 2
+            billing_year = year
+    else:
+        # デフォルト値（情報がない場合は翌月）
+        billing_month = month + 1
+        billing_year = year
+
+    # 分割2回目の場合はさらに+1ヶ月
+    if split_part == 2:
+        billing_month += 1
+
+    # 月の繰り上がり処理
+    while billing_month > 12:
+        billing_month -= 12
+        billing_year += 1
+
+    return f"{billing_year}-{billing_month:02d}"
+
+
+def is_odd_month(year_month):
+    """
+    奇数月かどうかを判定
+
+    Args:
+        year_month: 年月（YYYY-MM形式）
+
+    Returns:
+        bool: 奇数月の場合True
+    """
+    try:
+        month = int(year_month.split('-')[1])
+        return month % 2 == 1
+    except (ValueError, IndexError, AttributeError):
+        return False
+
+
+def get_active_defaults_ordered():
+    """
+    有効な月次計画デフォルト項目を順序付きで取得
+
+    Returns:
+        QuerySet: 有効なMonthlyPlanDefaultをorder順でソートしたQuerySet
+    """
+    return MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+
+
+def get_active_card_defaults():
+    """
+    有効なカード項目（card_idが設定されている）を取得
+
+    Returns:
+        QuerySet: カード項目のMonthlyPlanDefault
+    """
+    return MonthlyPlanDefault.objects.filter(is_active=True, card_id__isnull=False)
+
+
+def get_card_choices_for_form():
+    """
+    フォーム用のカード選択肢を取得（key, titleのみ）
+
+    Returns:
+        QuerySet: カード選択肢用のMonthlyPlanDefault（card_idがあり、ボーナス払いを除外）
+    """
+    return MonthlyPlanDefault.objects.filter(
+        is_active=True,
+        card_id__isnull=False
+    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
+
+
+def get_card_by_key(card_key):
+    """
+    keyからMonthlyPlanDefaultを取得（is_activeフィルターなし）
+
+    Args:
+        card_key: カードのkey
+
+    Returns:
+        MonthlyPlanDefault: カード情報、存在しない場合はNone
+    """
+    return MonthlyPlanDefault.objects.filter(key=card_key).first()
+
+
+def get_cards_by_closing_day(closing_day):
+    """
+    指定された締め日のカードを取得
+
+    Args:
+        closing_day: 締め日（1-31）
+
+    Returns:
+        QuerySet: 指定された締め日のMonthlyPlanDefault
+    """
+    return MonthlyPlanDefault.objects.filter(is_active=True, closing_day=closing_day)
 
 
 
@@ -397,7 +575,7 @@ def plan_list(request):
     past_plans = archived_current_month_plans  # 過去の明細に追加
 
     # MonthlyPlanDefaultのデータを取得
-    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items = get_active_defaults_ordered()
 
     # 登録済みの年月リストを取得（モーダルで除外するため）
     import json
@@ -472,8 +650,8 @@ def plan_create(request):
             existing_plan = MonthlyPlan.objects.filter(year_month=year_month_str).first()
 
         # デバッグ: POSTデータを確認
-        import logging
-        logger = logging.getLogger(__name__)
+
+
 
         # 過去月の場合はPastSalaryFormを使用
         if is_past_month:
@@ -555,7 +733,7 @@ def plan_create(request):
                     initial_data[field] = existing_plan.get_item(field)
 
                 # MonthlyPlanDefaultから動的フィールドを追加
-                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                default_items = get_active_defaults_ordered()
                 for item in default_items:
                     if item.key:
                         initial_data[item.key] = existing_plan.get_item(item.key)
@@ -587,7 +765,7 @@ def plan_create(request):
     # デフォルト項目の情報をJavaScript用にJSON形式で渡す
     import json
 
-    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items = get_active_defaults_ordered()
     default_items_data = [
         {
             'key': item.key,
@@ -664,18 +842,21 @@ def get_plan_by_month(request):
 
             if not is_past_month:
                 # 未来の月の場合はデフォルト値を返す
-                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                default_items = get_active_defaults_ordered()
                 for item in default_items:
                     data[item.key] = item.amount or 0
             else:
                 # 過去の月の場合は全て0
-                default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                default_items = get_active_defaults_ordered()
                 for item in default_items:
                     data[item.key] = 0
 
             return JsonResponse(data)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+
+
+        logger.error(f'Error in get_plan_by_month: {e}', exc_info=True)
+        return JsonResponse({'error': 'データ取得中にエラーが発生しました。'}, status=500)
 
 
 def plan_data(request, pk):
@@ -684,7 +865,7 @@ def plan_data(request, pk):
     plan = get_object_or_404(MonthlyPlan, pk=pk)
 
     # MonthlyPlanDefaultから収入・支出項目を取得
-    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items = get_active_defaults_ordered()
 
     income_items = []
     expense_items = []
@@ -724,8 +905,8 @@ def plan_edit(request, pk):
     plan = get_object_or_404(MonthlyPlan, pk=pk)
     from django.http import JsonResponse
     from datetime import datetime, timedelta
-    import logging
-    logger = logging.getLogger(__name__)
+
+
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
     # 過去月かどうかを判定
@@ -740,7 +921,7 @@ def plan_edit(request, pk):
         post_data = request.POST.copy()
         # MonthlyPlanDefaultからクレカ項目の除外フラグを動的に生成
         checkbox_fields = []
-        default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+        default_items = get_active_defaults_ordered()
         for item in default_items:
             if item.key and item.is_credit_card():
                 checkbox_fields.append(f'exclude_{item.key}')
@@ -872,7 +1053,7 @@ def plan_edit(request, pk):
     # デフォルト項目の情報をJavaScript用にJSON形式で渡す
     import json
 
-    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items = get_active_defaults_ordered()
     default_items_data = [
         {
             'key': item.key,
@@ -938,7 +1119,8 @@ def credit_estimate_list(request):
     from django.http import JsonResponse
 
     # 事前に上書きデータを取得して辞書に格納（金額、カード種別、2回払い、利用日、USD情報）
-    overrides = DefaultChargeOverride.objects.all()
+    # N+1クエリを防ぐため select_related で default を取得
+    overrides = DefaultChargeOverride.objects.select_related('default').all()
     override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment, 'purchase_date_override': ov.purchase_date_override, 'is_usd': ov.is_usd, 'usd_amount': ov.usd_amount} for ov in overrides}
     estimates = list(CreditEstimate.objects.all().order_by('-year_month', 'card_type', 'due_date', 'created_at'))
     credit_defaults = list(CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id'))
@@ -949,7 +1131,7 @@ def credit_estimate_list(request):
     card_due_days = {}
     card_info = {}  # is_end_of_month, closing_day を保存
 
-    for item in MonthlyPlanDefault.objects.filter(is_active=True, card_id__isnull=False):
+    for item in get_active_card_defaults():
         if item.card_id:
             card_labels[item.card_id] = item.title
             # keyでも引けるようにする（card_typeにはkeyが格納されるため）
@@ -1013,7 +1195,7 @@ def credit_estimate_list(request):
             # （締め日チェックも同じロジック、billing_monthだけが異なる）
 
             # MonthlyPlanDefaultから締め日を取得
-            card_default = MonthlyPlanDefault.objects.filter(key=est.card_type, is_active=True).first()
+            card_default = get_card_plan(est.card_type)
             if card_default:
                 if card_default.is_end_of_month:
                     # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
@@ -1151,7 +1333,7 @@ def credit_estimate_list(request):
     for year_month in candidate_usage_months:
         # 年月から月を取得（奇数月判定用）
         year, month = map(int, year_month.split('-'))
-        is_odd_month = (month % 2 == 1)
+        is_odd_month_flag = is_odd_month(year_month)
 
         # 定期項目も締め日チェックを行う（通常払いと同じロジック）
         # VIEW/VERMILLIONカードの締め日（翌月5日）をチェック
@@ -1178,7 +1360,7 @@ def credit_estimate_list(request):
         # 定期デフォルトを該当カードのエントリーとして追加
         for default in credit_defaults:
             # 奇数月のみ適用フラグが立っている場合、偶数月はスキップ
-            if default.apply_odd_months_only and not is_odd_month:
+            if default.apply_odd_months_only and not is_odd_month_flag:
                 continue
 
             # 上書きデータを確認
@@ -1367,7 +1549,7 @@ def credit_estimate_list(request):
                 current_year_month_str = f"{today.year}-{today.month:02d}"
 
                 # カード情報を取得（2回目の締め日計算でも使用）
-                card_plan = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+                card_plan = get_card_plan(actual_card_type)
 
                 # billing_monthが過去月または現在月の場合のみ締め日チェック
                 if billing_month >= current_year_month_str:
@@ -1444,7 +1626,7 @@ def credit_estimate_list(request):
                 # billing_monthが過去月または現在月の場合のみ締め日チェック
                 if billing_month >= current_year_month_str:
                     # カード情報を取得
-                    card_plan = MonthlyPlanDefault.objects.filter(key=actual_card_type, is_active=True).first()
+                    card_plan = get_card_plan(actual_card_type)
                     if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
                         # 指定日締めの場合：year_monthの締め日を計算
                         year, month = map(int, year_month.split('-'))
@@ -1582,7 +1764,7 @@ def credit_estimate_list(request):
         # 締め日が5日のカードの特別処理
         # MonthlyPlanDefaultから締め日が5日のカードを取得
         cards_with_5th_closing = set()
-        for item in MonthlyPlanDefault.objects.filter(is_active=True, closing_day=5):
+        for item in get_cards_by_closing_day(5):
             if item.key:
                 cards_with_5th_closing.add(item.key)
                 cards_with_5th_closing.add(f"{item.key}_bonus")
@@ -1700,7 +1882,6 @@ def credit_estimate_list(request):
                 })
             except (ValueError, TypeError):
                 return JsonResponse({'status': 'error', 'message': '無効な金額が入力されました。'}, status=400)
-            return redirect('budget_app:credit_estimates')
 
         elif action == 'delete_override':
             default_id = request.POST.get('default_id')
@@ -1883,7 +2064,7 @@ def credit_estimate_list(request):
                     return redirect('budget_app:credit_estimates')
 
             # カードラベルを取得
-            card_item_for_label = MonthlyPlanDefault.objects.filter(key=actual_card_id).first()
+            card_item_for_label = get_card_by_key(actual_card_id)
             if card_item_for_label:
                 card_label = card_item_for_label.title
                 if is_bonus:
@@ -1990,10 +2171,7 @@ def credit_estimate_list(request):
                         regular_total = 0
                         if not is_bonus:
                             # カード情報を取得して締め日タイプを確認
-                            card_plan = MonthlyPlanDefault.objects.filter(
-                                key=card_type,
-                                is_active=True
-                            ).first()
+                            card_plan = get_card_plan(card_type)
 
                             if card_plan:
                                 # billing_monthからyear_monthを逆算
@@ -2019,7 +2197,7 @@ def credit_estimate_list(request):
 
                                 # 奇数月のみ適用フラグのチェック
                                 usage_month_int = int(usage_month_num)
-                                is_odd_month = (usage_month_int % 2 == 1)
+                                is_odd_month_flag = (usage_month_int % 2 == 1)
 
                                 for override in overrides:
                                     if override.default.apply_odd_months_only and not is_odd_month:
@@ -2037,7 +2215,7 @@ def credit_estimate_list(request):
 
                         # 月次計画を取得または作成
                         # MonthlyPlanDefaultからデフォルト値を取得
-                        default_items = MonthlyPlanDefault.objects.filter(is_active=True)
+                        default_items = get_active_defaults_ordered()
                         items_defaults = {}
                         for item in default_items:
                             if item.key:
@@ -2130,24 +2308,9 @@ def credit_estimate_list(request):
                 try:
                     if not instance.is_bonus_payment and instance.year_month and instance.card_type:
                         # 通常払いの場合、締め日が過ぎたかチェック
-                        year, month = map(int, instance.year_month.split('-'))
-                        card_plan = MonthlyPlanDefault.objects.filter(key=instance.card_type, is_active=True).first()
-
-                        if card_plan and not card_plan.is_end_of_month and card_plan.closing_day:
-                            # 指定日締め（翌月の締め日）
-                            closing_month = month + 1
-                            closing_year = year
-                            if closing_month > 12:
-                                closing_month = 1
-                                closing_year += 1
-                            closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
-                        else:
-                            # 月末締め
-                            last_day = calendar.monthrange(year, month)[1]
-                            closing_date = dt_date(year, month, last_day)
-
+                        closing_date = calculate_closing_date(instance.year_month, instance.card_type)
                         # 締め日の翌日以降なら過去の見積もり
-                        if current_date > closing_date:
+                        if closing_date and current_date > closing_date:
                             is_past_estimate = True
                     elif instance.is_bonus_payment and instance.due_date:
                         # ボーナス払いの場合、支払日が過ぎたかチェック
@@ -2155,8 +2318,8 @@ def credit_estimate_list(request):
                             is_past_estimate = True
                 except Exception as e:
                     # 締め日チェックでエラーが発生した場合はログに記録してスキップ
-                    import logging
-                    logger = logging.getLogger(__name__)
+        
+        
                     logger.error(f'Error in closing date check: {e}')
 
                 # 過去の見積もりなら past_transactions ページへ、そうでなければ credit_estimates ページへ
@@ -2196,9 +2359,7 @@ def credit_estimate_list(request):
         form = CreditEstimateForm(initial=initial_data)
 
     # カード選択肢を取得（新規追加モーダル用）
-    card_choices = MonthlyPlanDefault.objects.filter(
-        card_id__isnull=False
-    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
+    card_choices = get_card_choices_for_form()
 
     context = {
         'form': form,
@@ -2281,29 +2442,9 @@ def credit_estimate_edit(request, pk):
                 is_past_transaction = updated_estimate.due_date < current_date
             # 通常払いの場合は締め日で判定
             elif updated_estimate.year_month:
-                year, month = map(int, updated_estimate.year_month.split('-'))
-                card_plan = MonthlyPlanDefault.objects.filter(key=updated_estimate.card_type, is_active=True).first()
-
-                if card_plan:
-                    if card_plan.is_end_of_month:
-                        # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
-                        last_day = calendar.monthrange(year, month)[1]
-                        closing_date = date(year, month, last_day)
-                    elif card_plan.closing_day:
-                        # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
-                        closing_month = month + 1
-                        closing_year = year
-                        if closing_month > 12:
-                            closing_month = 1
-                            closing_year += 1
-                        closing_date = date(closing_year, closing_month, card_plan.closing_day)
-                else:
-                    # デフォルト: 月末締め
-                    last_day = calendar.monthrange(year, month)[1]
-                    closing_date = date(year, month, last_day)
-
+                closing_date = calculate_closing_date(updated_estimate.year_month, updated_estimate.card_type)
                 # 締め日の翌日以降なら過去の明細
-                is_past_transaction = current_date > closing_date
+                is_past_transaction = current_date > closing_date if closing_date else False
 
             # 締め日チェックの結果に基づいてページを判定
             if is_past_transaction:
@@ -2422,10 +2563,13 @@ def credit_estimate_delete(request, pk):
                 return HttpResponseRedirect(reverse(target_page) + anchor)
 
         except Exception as e:
+
+
+            logger.error(f'Error deleting credit estimate: {e}', exc_info=True)
             if is_ajax:
-                return JsonResponse({'status': 'error', 'message': f'削除中にエラーが発生しました: {str(e)}'}, status=500)
+                return JsonResponse({'status': 'error', 'message': '削除中にエラーが発生しました。'}, status=500)
             else:
-                messages.error(request, f'削除中にエラーが発生しました: {str(e)}')
+                messages.error(request, '削除中にエラーが発生しました。')
                 referer = request.META.get('HTTP_REFERER', '')
                 if 'past-transactions' in referer:
                     return redirect('budget_app:past_transactions')
@@ -2496,9 +2640,7 @@ def credit_default_list(request):
             old_card_type = instance.card_type
             old_payment_day = instance.payment_day
 
-            print(f"DEBUG UPDATE: Received card_type = {request.POST.get('card_type')}")  # デバッグ用
             form = CreditDefaultForm(request.POST, instance=instance)
-            print(f"DEBUG UPDATE: Form card_type choices = {form.fields['card_type'].choices}")  # デバッグ用
             if form.is_valid():
                 instance = form.save(commit=False)
 
@@ -2556,7 +2698,7 @@ def credit_default_list(request):
                     # Get card type display name from MonthlyPlanDefault
                     card_type_display = instance.card_type
                     if instance.card_type:
-                        card_item = MonthlyPlanDefault.objects.filter(key=instance.card_type).first()
+                        card_item = get_card_by_key(instance.card_type)
                         if card_item:
                             card_type_display = card_item.title
 
@@ -2594,13 +2736,7 @@ def credit_default_list(request):
     # カード種別の選択肢を取得（MonthlyPlanDefaultから）
     # card_idが設定されているものをクレジットカード項目とみなす
     # is_active=Falseのカードも含める（ユーザーが登録したカードを全て表示）
-    card_choices = MonthlyPlanDefault.objects.filter(
-        card_id__isnull=False
-    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
-
-    print(f"DEBUG: card_choices count = {card_choices.count()}")  # デバッグ用
-    for choice in card_choices:
-        print(f"  - {choice['key']}: {choice['title']}")  # デバッグ用
+    card_choices = get_card_choices_for_form()
 
     return render(request, 'budget_app/credit_defaults.html', {
         'defaults': defaults,
@@ -2631,7 +2767,7 @@ def credit_default_delete(request, pk):
 
 def monthly_plan_default_list(request):
     """月次計画デフォルト項目の管理"""
-    defaults = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    defaults = get_active_defaults_ordered()
 
     # POST時の処理
     if request.method == 'POST':
@@ -2881,9 +3017,12 @@ def salary_create(request):
         })
 
     except Exception as e:
+
+
+        logger.error(f'Error creating salary: {e}', exc_info=True)
         return JsonResponse({
             'status': 'error',
-            'message': f'給与明細の登録に失敗しました: {str(e)}'
+            'message': '給与明細の登録に失敗しました。'
         }, status=500)
 
 
@@ -2925,9 +3064,12 @@ def salary_edit(request, salary_id):
             'message': '給与明細が見つかりません。'
         }, status=404)
     except Exception as e:
+
+
+        logger.error(f'Error updating salary: {e}', exc_info=True)
         return JsonResponse({
             'status': 'error',
-            'message': f'給与明細の更新に失敗しました: {str(e)}'
+            'message': '給与明細の更新に失敗しました。'
         }, status=500)
 
 
@@ -2960,9 +3102,12 @@ def salary_edit_bonus(request, salary_id):
             'message': '給与明細が見つかりません。'
         }, status=404)
     except Exception as e:
+
+
+        logger.error(f'Error updating bonus: {e}', exc_info=True)
         return JsonResponse({
             'status': 'error',
-            'message': f'ボーナス明細の更新に失敗しました: {str(e)}'
+            'message': 'ボーナス明細の更新に失敗しました。'
         }, status=500)
 
 
@@ -2986,9 +3131,12 @@ def salary_delete(request, salary_id):
             'message': '給与明細が見つかりません。'
         }, status=404)
     except Exception as e:
+
+
+        logger.error(f'Error deleting salary: {e}', exc_info=True)
         return JsonResponse({
             'status': 'error',
-            'message': f'給与明細の削除に失敗しました: {str(e)}'
+            'message': '給与明細の削除に失敗しました。'
         }, status=500)
 
 
@@ -3007,9 +3155,6 @@ def past_transactions_list(request):
             card_type = request.POST.get('card_type')
             amount = request.POST.get('amount')
             purchase_date = request.POST.get('purchase_date')  # 利用日を取得
-
-            # デバッグ: 受信したパラメータをログ出力
-            print(f"DEBUG: default_id={default_id}, year_month={year_month}, card_type={card_type}, amount={amount}, purchase_date={purchase_date}")
 
             try:
                 # DefaultChargeOverrideを取得または作成
@@ -3037,7 +3182,7 @@ def past_transactions_list(request):
 
                     # billing_monthを計算（引き落とし月のセクションにジャンプするため）
                     year, month = map(int, year_month.split('-'))
-                    card_plan = MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
+                    card_plan = get_card_plan(card_type)
 
                     if card_plan:
                         if card_plan.is_end_of_month:
@@ -3064,10 +3209,10 @@ def past_transactions_list(request):
                 else:
                     return redirect('budget_app:past_transactions')
             except Exception as e:
-                import traceback
-                error_detail = traceback.format_exc()
-                print(f"ERROR: {error_detail}")
-                return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+    
+                logger.error(f'Error updating default charge override: {e}', exc_info=True)
+                return JsonResponse({'status': 'error', 'message': '更新中にエラーが発生しました。'}, status=400)
 
     current_date = datetime.now().date()
     current_year_month = datetime.now().strftime('%Y-%m')
@@ -3085,7 +3230,7 @@ def past_transactions_list(request):
         # 当月のタイムラインを計算して、今日以降の明細があるかチェック
         # タイムラインを生成（plan_listと同じロジック）
         timeline = []
-        default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+        default_items = get_active_defaults_ordered()
 
         for item in default_items:
             if not item.should_display_for_month(current_month_plan.year_month):
@@ -3145,7 +3290,7 @@ def past_transactions_list(request):
                 # 締め日チェック（MonthlyPlanDefaultから取得）
                 year, month = map(int, est.year_month.split('-'))
 
-                card_plan = MonthlyPlanDefault.objects.filter(key=est.card_type, is_active=True).first()
+                card_plan = get_card_plan(est.card_type)
                 if card_plan:
                     if card_plan.is_end_of_month:
                         # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
@@ -3186,12 +3331,11 @@ def past_transactions_list(request):
         year, month = map(int, year_month.split('-'))
 
         # 奇数月のみ適用フラグのチェック
-        is_odd_month = (month % 2 == 1)
-        if override.default.apply_odd_months_only and not is_odd_month:
+        if override.default.apply_odd_months_only and not is_odd_month(year_month):
             continue
 
         # カード情報を取得
-        card_plan = MonthlyPlanDefault.objects.filter(key=override.card_type, is_active=True).first()
+        card_plan = get_card_plan(override.card_type)
         if not card_plan:
             continue
 
@@ -3432,7 +3576,7 @@ def past_transactions_list(request):
             import calendar
 
             # MonthlyPlanDefaultから締め日を取得
-            card_plan = MonthlyPlanDefault.objects.filter(key=estimate.card_type, is_active=True).first()
+            card_plan = get_card_plan(estimate.card_type)
             if card_plan and not card_plan.is_end_of_month and card_plan.closing_day:
                 # 指定日締め（翌月の締め日）
                 closing_month = month + 1
@@ -3484,7 +3628,7 @@ def past_transactions_list(request):
         card_type_display = estimate.card_type
         card_due_day_value = None
         if estimate.card_type:
-            card_item = MonthlyPlanDefault.objects.filter(key=estimate.card_type).first()
+            card_item = get_card_by_key(estimate.card_type)
             if card_item:
                 card_type_display = card_item.title
                 card_due_day_value = card_item.withdrawal_day
@@ -3608,7 +3752,7 @@ def past_transactions_list(request):
     sorted_years = sorted(filtered_yearly_data.keys(), reverse=True)
 
     # MonthlyPlanDefaultから有効な項目を取得（テンプレートで使用）
-    default_items = MonthlyPlanDefault.objects.filter(is_active=True).order_by('order', 'id')
+    default_items = get_active_defaults_ordered()
 
     # ハードコードされたフィールド（既存のテンプレートとの互換性のため）
     # 古いフィールド名と新しいkey名の両方を含める
@@ -3616,9 +3760,7 @@ def past_transactions_list(request):
     hardcoded_fields = [item.key for item in default_items if item.key]
 
     # カード選択肢を取得（新規追加モーダル用）
-    card_choices = MonthlyPlanDefault.objects.filter(
-        card_id__isnull=False
-    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
+    card_choices = get_card_choices_for_form()
 
     context = {
         'yearly_data': filtered_yearly_data,
