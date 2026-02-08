@@ -76,8 +76,8 @@
                 </div>
                 <div class="text-right ml-3">
                     {% if d.is_usd and d.usd_amount %}
-                        <p class="text-xl font-bold text-gray-900">${{ d.usd_amount }}</p>
-                        <p class="text-xs text-gray-500">{{ d.amount|default:0|yen }}</p>
+                        <p class="text-xl font-bold text-green-600">${{ d.usd_amount }}</p>
+                        <p class="text-xs text-gray-500">({{ d.amount|default:0|yen }})</p>
                     {% else %}
                         <p class="text-xl font-bold text-green-600">{{ d.amount|default:0|yen }}</p>
                     {% endif %}
