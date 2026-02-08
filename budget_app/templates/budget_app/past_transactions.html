@@ -187,14 +187,12 @@
                                                                                 {% endif %}
                                                                             </div>
                                                                             <div class="flex items-center gap-2">
-                                                                                <span class="text-red-600 font-medium">
-                                                                                    {% if est.estimate.is_usd and est.estimate.usd_amount %}
-                                                                                        <span class="text-gray-900">${{ est.estimate.usd_amount }}</span>
-                                                                                        <span class="text-xs text-gray-500">({{ est.amount|yen }})</span>
-                                                                                    {% else %}
-                                                                                        {{ est.amount|yen }}
-                                                                                    {% endif %}
-                                                                                </span>
+                                                                                {% if est.estimate.is_usd and est.estimate.usd_amount %}
+                                                                                    <div class="text-red-600 font-medium">${{ est.estimate.usd_amount }}</div>
+                                                                                    <div class="text-xs text-gray-500">({{ est.amount|yen }})</div>
+                                                                                {% else %}
+                                                                                    <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
+                                                                                {% endif %}
                                                                                 {% if est.estimate.pk %}
                                                                                 <div class="flex gap-1">
                                                                                     <button type="button" class="edit-estimate-btn text-blue-600 hover:text-blue-800 cursor-pointer w-6 h-6 flex items-center justify-center"
@@ -407,14 +405,12 @@
                                                             {% endif %}
                                                         </div>
                                                     </div>
-                                                    <span class="text-xl font-bold text-red-600">
-                                                        {% if est.estimate.is_usd and est.estimate.usd_amount %}
-                                                            <span class="text-gray-900">${{ est.estimate.usd_amount }}</span>
-                                                            <span class="text-sm text-gray-500">({{ est.amount|yen }})</span>
-                                                        {% else %}
-                                                            {{ est.amount|yen }}
-                                                        {% endif %}
-                                                    </span>
+                                                    {% if est.estimate.is_usd and est.estimate.usd_amount %}
+                                                        <div class="text-xl font-bold text-red-600">${{ est.estimate.usd_amount }}</div>
+                                                        <div class="text-xs text-gray-500">({{ est.amount|yen }})</div>
+                                                    {% else %}
+                                                        <span class="text-xl font-bold text-red-600">{{ est.amount|yen }}</span>
+                                                    {% endif %}
                                                 </div>
 
                                                 {% if est.estimate.is_split_payment %}
