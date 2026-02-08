@@ -33,8 +33,8 @@
                     <td class="px-3 py-2 align-middle">{{ d.get_card_type_display }}</td>
                     <td class="px-3 py-2 align-middle text-right">
                         {% if d.is_usd and d.usd_amount %}
-                            <span class="text-gray-900">${{ d.usd_amount }}</span>
-                            <span class="text-xs text-gray-500">({{ d.amount|default:0|yen }})</span>
+                            <div>${{ d.usd_amount }}</div>
+                            <div class="text-xs text-gray-500">({{ d.amount|default:0|yen }})</div>
                         {% else %}
                             {{ d.amount|default:0|yen }}
                         {% endif %}
