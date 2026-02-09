@@ -668,9 +668,9 @@
                 const mobileContent = document.getElementById('estimate-content-mobile-' + ym);
                 const icon = document.getElementById('collapse-icon-' + ym);
 
-                // デスクトップ表示：全体をトグル（md:blockクラスは維持）
+                // デスクトップ・モバイル両方：collapsedクラスをトグル
                 if (desktopContent) {
-                    desktopContent.classList.toggle('hidden');
+                    desktopContent.classList.toggle('collapsed');
                 }
 
                 // モバイル表示：個別項目リストのみをトグル（カード種別ヘッダーは常に表示）

@@ -49,6 +49,24 @@
                 scroll-margin-top: 120px; /* デスクトップ: ヘッダー高さ + 余白 */
             }
         }
+
+        /* クレカ見積もり折りたたみ：初期状態は開いた状態 */
+        .estimate-collapsible {
+            display: block;
+        }
+        /* collapsedクラスで折りたたみ */
+        .estimate-collapsible.collapsed {
+            display: none;
+        }
+        /* デスクトップ（768px以上）では非モバイル表示を使う */
+        @media (min-width: 768px) {
+            .estimate-collapsible {
+                display: block;
+            }
+            .estimate-collapsible.collapsed {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
