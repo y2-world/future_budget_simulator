@@ -504,8 +504,8 @@ def plan_list(request):
                 'is_savings': True
             })
 
-        # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
-        transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, -x['amount']))
+        # 日付順にソート（日付がNoneの場合は最後、同日の場合は定期預金を最後に、収入を先に）
+        transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, 1 if x.get('is_savings') else 0, -x['amount']))
 
         # 過去の明細用のリスト（現在月の今日以前の取引）
         past_timeline = []
@@ -548,6 +548,8 @@ def plan_list(request):
             # メイン残高 = 残高 - 定期預金累積（定期預金が開始していれば常に引く）
             main_balance_for_row = current_balance - cumulative_savings if plan.has_savings else current_balance
 
+            total_balance_for_row = main_balance_for_row + cumulative_savings if plan.has_savings else None
+
             timeline.append({
                 'date': transaction['date'],
                 'name': transaction['name'],
@@ -557,6 +559,7 @@ def plan_list(request):
                 'is_excluded': transaction.get('is_excluded', False),
                 'is_savings': transaction.get('is_savings', False),
                 'savings_cumulative': cumulative_savings if plan.has_savings else None,
+                'total_balance': total_balance_for_row,
             })
             # VIEWカード（通常払いまたはボーナス払い）の引き落とし後の残高を記録
             if transaction.get('is_view_card', False):

@@ -108,12 +108,16 @@
                         </span>
                         <div class="flex-1"></div>
                         <div class="text-right flex-shrink-0">
+                            {% if item.savings_cumulative %}
+                            <span class="text-sm text-gray-500">残高:</span>
+                            <span class="font-bold ml-2 {% if item.total_balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">{{ item.total_balance|yen }}</span>
+                            <div class="text-xs mt-0.5" style="{% if item.balance < 0 %}color:#b91c1c{% else %}color:#9333ea{% endif %};">メイン: {{ item.balance|yen }}</div>
+                            <div class="text-xs text-blue-600 mt-0.5">定期: {{ item.savings_cumulative|yen }}</div>
+                            {% else %}
                             <span class="text-sm text-gray-500">残高:</span>
                             <span class="font-bold ml-2 {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
                                 {{ item.balance|yen }}
                             </span>
-                            {% if item.savings_cumulative %}
-                            <div class="text-xs text-blue-600 mt-0.5">定期預金残高: {{ item.savings_cumulative|yen }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -134,12 +138,16 @@
                             </div>
                         </div>
                         <div class="text-right pt-2 border-t border-gray-100">
+                            {% if item.savings_cumulative %}
+                            <span class="text-xs text-gray-500">残高: </span>
+                            <span class="font-bold text-sm {% if item.total_balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">{{ item.total_balance|yen }}</span>
+                            <div class="text-xs mt-0.5" style="{% if item.balance < 0 %}color:#b91c1c{% else %}color:#9333ea{% endif %};">メイン: {{ item.balance|yen }}</div>
+                            <div class="text-xs text-blue-600 mt-0.5">定期: {{ item.savings_cumulative|yen }}</div>
+                            {% else %}
                             <span class="text-xs text-gray-500">残高: </span>
                             <span class="font-bold text-sm {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
                                 {{ item.balance|yen }}
                             </span>
-                            {% if item.savings_cumulative %}
-                            <div class="text-xs text-blue-600 mt-0.5">定期預金残高: {{ item.savings_cumulative|yen }}</div>
                             {% endif %}
                         </div>
                     </div>
