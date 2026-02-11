@@ -66,12 +66,6 @@
                     <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold">
                         純収支: {{ plan.net_income|yen }}
                     </span>
-                    {% if plan.has_savings %}
-                        <span class="mx-2">|</span>
-                        <span class="text-purple-600 font-semibold">メイン預金残高: {{ plan.main_balance|yen }}</span>
-                        <span class="mx-2">|</span>
-                        <span class="text-blue-600 font-semibold">定期預金残高: {{ plan.savings_amount_display|yen }}</span>
-                    {% endif %}
                 </div>
 
                 <!-- モバイル: グリッド表示 -->
@@ -92,16 +86,6 @@
                         <span class="text-gray-600">純収支:</span>
                         <span class="{% if plan.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-semibold ml-1">{{ plan.net_income|yen }}</span>
                     </div>
-                    {% if plan.has_savings %}
-                    <div>
-                        <span class="text-gray-600">メイン預金残高:</span>
-                        <span class="text-purple-600 font-semibold ml-1">{{ plan.main_balance|yen }}</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-600">定期預金残高:</span>
-                        <span class="text-blue-600 font-semibold ml-1">{{ plan.savings_amount_display|yen }}</span>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
 
@@ -112,7 +96,7 @@
                     {% for item in plan.timeline %}
                     {% if not item.date or item.date > today or plan.year_month != today|date:"Y-m" %}
                     <!-- デスクトップ表示 -->
-                    <div class="hidden md:flex items-center p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded hover:{% if item.balance < 0 %}bg-red-200{% else %}bg-gray-50{% endif %}">
+                    <div class="hidden md:flex items-center p-3 {% if item.balance < 0 %}bg-red-100{% elif item.is_savings %}bg-blue-50{% else %}bg-white{% endif %} border rounded hover:{% if item.balance < 0 %}bg-red-200{% elif item.is_savings %}bg-blue-100{% else %}bg-gray-50{% endif %}">
                         {% if item.date %}
                         <span class="text-sm text-gray-600 w-24 flex-shrink-0">{{ item.date|date:"m/d（D）" }}</span>
                         {% else %}
@@ -128,11 +112,14 @@
                             <span class="font-bold ml-2 {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
                                 {{ item.balance|yen }}
                             </span>
+                            {% if item.savings_cumulative %}
+                            <div class="text-xs text-blue-600 mt-0.5">定期預金残高: {{ item.savings_cumulative|yen }}</div>
+                            {% endif %}
                         </div>
                     </div>
 
                     <!-- モバイル表示 -->
-                    <div class="md:hidden p-3 {% if item.balance < 0 %}bg-red-100{% else %}bg-white{% endif %} border rounded">
+                    <div class="md:hidden p-3 {% if item.balance < 0 %}bg-red-100{% elif item.is_savings %}bg-blue-50{% else %}bg-white{% endif %} border rounded">
                         <div class="flex justify-between items-start mb-2 gap-2">
                             <div class="flex-1 min-w-0">
                                 {% if item.date %}
@@ -151,6 +138,9 @@
                             <span class="font-bold text-sm {% if item.balance < 0 %}text-red-700{% else %}text-gray-800{% endif %}">
                                 {{ item.balance|yen }}
                             </span>
+                            {% if item.savings_cumulative %}
+                            <div class="text-xs text-blue-600 mt-0.5">定期預金残高: {{ item.savings_cumulative|yen }}</div>
+                            {% endif %}
                         </div>
                     </div>
                     {% endif %}

@@ -495,12 +495,21 @@
                 {% endif %}
 
                 <div id="savings_fields" class="ml-6">
-                    <div class="mb-2">
-                        <label class="block text-gray-600 text-sm mb-1">{{ form.savings_amount.label }}</label>
-                        {{ form.savings_amount }}
-                        {% if form.savings_amount.errors %}
-                            <p class="text-red-500 text-sm mt-1">{{ form.savings_amount.errors.0 }}</p>
-                        {% endif %}
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                            <label class="block text-gray-600 text-sm mb-1">{{ form.savings_amount.label }}</label>
+                            {{ form.savings_amount }}
+                            {% if form.savings_amount.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ form.savings_amount.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 text-sm mb-1">{{ form.savings_day.label }}（1〜28日）</label>
+                            {{ form.savings_day }}
+                            {% if form.savings_day.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ form.savings_day.errors.0 }}</p>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>

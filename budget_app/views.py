@@ -379,6 +379,7 @@ def plan_list(request):
     savings_enabled = config.savings_enabled if config else False
     savings_amount = config.savings_amount if (config and savings_enabled) else 0
     savings_start_month = config.savings_start_month if (config and savings_enabled) else None
+    savings_day = config.savings_day if (config and savings_enabled) else None
 
     current_balance = initial_balance
     cumulative_savings = 0  # 定期預金の累計
@@ -394,9 +395,12 @@ def plan_list(request):
 
         # 定期預金が有効で開始されているか判定
         plan.has_savings = savings_enabled and savings_start_month and plan.year_month >= savings_start_month
-        if plan.has_savings:
+        # savings_dayあり時は定期預金行を処理した後に累積するので、ここでは前月までの累積を保持
+        # savings_dayなし時はここで加算（タイムライン行なし）
+        if plan.has_savings and not savings_day:
             cumulative_savings += savings_amount
         plan.savings_amount_display = cumulative_savings if plan.has_savings else 0
+        plan.savings_day_display = savings_day if plan.has_savings else None
 
         year, month = map(int, plan.year_month.split('-'))
         last_day = calendar.monthrange(year, month)[1]
@@ -488,6 +492,18 @@ def plan_list(request):
                 'is_temporary': True
             })
 
+        # 定期預金トランザクションを追加（savings_dayが設定されている場合のみ）
+        if plan.has_savings and savings_amount > 0 and savings_day:
+            savings_date = date(year, month, clamp_day(savings_day))
+            transactions.append({
+                'date': savings_date,
+                'name': '🏦 定期預金',
+                'amount': -savings_amount,
+                'is_view_card': False,
+                'is_excluded': False,
+                'is_savings': True
+            })
+
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は収入を先に）
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, -x['amount']))
 
@@ -521,17 +537,26 @@ def plan_list(request):
                 if transaction['date'] and transaction['date'] <= today:
                     continue
 
-            # 繰上げ返済でチェックされている場合は残高計算から除外
-            if not transaction.get('is_excluded', False):
+            # 繰上げ返済・定期預金は残高計算から除外（定期預金は cumulative_savings で別途管理）
+            if not transaction.get('is_excluded', False) and not transaction.get('is_savings', False):
                 current_balance += transaction['amount']
+
+            # 定期預金行の場合、この行を処理した後にcumulative_savingsを加算
+            if transaction.get('is_savings', False):
+                cumulative_savings += savings_amount
+
+            # メイン残高 = 残高 - 定期預金累積（定期預金が開始していれば常に引く）
+            main_balance_for_row = current_balance - cumulative_savings if plan.has_savings else current_balance
 
             timeline.append({
                 'date': transaction['date'],
                 'name': transaction['name'],
                 'amount': transaction['amount'],
-                'balance': current_balance,
+                'balance': main_balance_for_row,
                 'is_income': transaction['amount'] > 0,
-                'is_excluded': transaction.get('is_excluded', False)
+                'is_excluded': transaction.get('is_excluded', False),
+                'is_savings': transaction.get('is_savings', False),
+                'savings_cumulative': cumulative_savings if plan.has_savings else None,
             })
             # VIEWカード（通常払いまたはボーナス払い）の引き落とし後の残高を記録
             if transaction.get('is_view_card', False):
@@ -539,11 +564,8 @@ def plan_list(request):
 
         plan.timeline = timeline
         plan.past_timeline = past_timeline  # 過去の明細を保存
-        plan.final_balance = current_balance
-        # メイン預金残高を計算（VIEWカード引き落とし後の残高 - 定期預金残高）
-        # VIEWカードの引き落としがない場合は月末残高を使用
-        base_balance = view_card_balance if view_card_balance is not None else current_balance
-        plan.main_balance = base_balance - cumulative_savings if plan.has_savings else base_balance
+        # 月末残高もメイン残高（定期分を引いた後）で表示
+        plan.final_balance = current_balance - cumulative_savings if plan.has_savings else current_balance
         # アーカイブフラグを設定
         plan.is_archived = plan.year_month < current_year_month
 

@@ -162,6 +162,7 @@ class SimulationConfigForm(forms.ModelForm):
         fields = [
             'savings_enabled',
             'savings_amount',
+            'savings_day',
             'savings_start_month',
         ]
         widgets = {
@@ -175,10 +176,17 @@ class SimulationConfigForm(forms.ModelForm):
                 'id': 'savings_amount_field',
                 'min': 0
             }),
+            'savings_day': forms.NumberInput(attrs={
+                'class': 'w-full p-2 border rounded',
+                'min': 1,
+                'max': 28,
+                'id': 'savings_day_field',
+            }),
             'savings_start_month': forms.HiddenInput(),
         }
         labels = {
             'savings_amount': '定期預金額（円）',
+            'savings_day': '引き落とし日',
             'savings_start_month': '定期預金開始月',
         }
 

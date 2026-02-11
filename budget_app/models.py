@@ -405,6 +405,12 @@ class SimulationConfig(models.Model):
         verbose_name="定期預金開始月（YYYY-MM）",
         help_text="定期預金を開始する年月"
     )
+    savings_day = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="定期預金引き落とし日",
+        help_text="毎月何日に定期預金が引き落とされるか（1〜28）"
+    )
     is_active = models.BooleanField(default=True, verbose_name="有効")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新日時")

@@ -50,15 +50,11 @@
             }
         }
 
-        /* クレカ見積もり折りたたみ：初期状態は開いた状態 */
+        /* クレカ見積もり折りたたみ：モバイルでは非表示（md:hiddenと同じ） */
         .estimate-collapsible {
-            display: block;
-        }
-        /* collapsedクラスで折りたたみ */
-        .estimate-collapsible.collapsed {
             display: none;
         }
-        /* デスクトップ（768px以上）では非モバイル表示を使う */
+        /* デスクトップ（768px以上）では表示、collapsedで折りたたみ */
         @media (min-width: 768px) {
             .estimate-collapsible {
                 display: block;
