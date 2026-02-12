@@ -1391,8 +1391,8 @@ def credit_estimate_list(request):
             # 上書きデータを確認
             override_data = override_map.get((default.id, year_month))
 
-            # 上書きデータが存在しない場合、自動作成する（初回表示時にスナップショットを取る）
-            if not override_data:
+            # 上書きデータが存在しない場合、今月以降のみ自動作成する（過去月には適用しない）
+            if not override_data and year_month >= current_year_month:
                 # DefaultChargeOverrideを作成して、現在のデフォルト値をコピー
                 new_override = DefaultChargeOverride.objects.create(
                     default=default,
