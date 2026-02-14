@@ -1366,13 +1366,12 @@ def credit_estimate_list(request):
     # 現在の年月を取得
     current_year_month = f"{today.year}-{today.month:02d}"
 
-    # 過去の全ての月を自動的に追加（定期デフォルト表示のため）
-    # MonthlyPlanから過去の年月をすべて取得
+    # MonthlyPlanの全ての月を追加（定期デフォルト表示のため）
     # MonthlyPlanのyear_monthは既に引き落とし月（計画月）を表している
-    past_plans = MonthlyPlan.objects.filter(year_month__lt=current_year_month).values_list('year_month', flat=True)
-    for past_month_str in past_plans:
-        # past_month_strは既に引き落とし月なので、そのまま追加
-        existing_billing_months.add(past_month_str)
+    all_plans = MonthlyPlan.objects.all().values_list('year_month', flat=True)
+    for month_str in all_plans:
+        # month_strは既に引き落とし月なので、そのまま追加
+        existing_billing_months.add(month_str)
 
     # 定期デフォルトを追加する利用月を決定
     # 既存の引き落とし月から逆算して、対応する利用月を計算
