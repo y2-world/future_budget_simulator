@@ -1275,11 +1275,6 @@ def credit_estimate_list(request):
             display_month = est.billing_month if est.billing_month else est.year_month
             existing_billing_months.add(display_month)
 
-    # MonthlyPlanが存在する月も追加（定期デフォルトが消えないようにするため）
-    all_monthly_plans = MonthlyPlan.objects.all().values_list('year_month', flat=True)
-    for plan_month in all_monthly_plans:
-        existing_billing_months.add(plan_month)
-
     for est in estimates:
         # 通常払いの場合、締め日が過ぎたら非表示
         if not est.is_bonus_payment:
