@@ -1376,13 +1376,9 @@ def credit_estimate_list(request):
         billing_year, billing_month_num = map(int, billing_month.split('-'))
 
         # billing_monthからyear_monthを逆算
+        # クレジットカードは基本的に締め日の翌月払いなので、billing_month - 1 が利用月
         for card_id, info in card_info.items():
-            if info['is_end_of_month']:
-                # 月末締め: billing_month = year_month + 2 → year_month = billing_month - 2
-                usage_month_num = billing_month_num - 2
-            else:
-                # 指定日締め: billing_month = year_month + 1 → year_month = billing_month - 1
-                usage_month_num = billing_month_num - 1
+            usage_month_num = billing_month_num - 1
 
             usage_year = billing_year
             if usage_month_num < 1:
