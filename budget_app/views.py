@@ -1462,7 +1462,17 @@ def credit_estimate_list(request):
 
             # 元のカード種別または変更後のカード種別のいずれかが候補にある場合のみ処理
             original_card_type = default.card_type
+
+            # デバッグログ：Apple MusicとHerokuの場合のみログ出力
+            if default.label in ['Apple Music', 'Heroku']:
+                logger.info(f"[定期デフォルト] {default.label} - year_month={year_month}")
+                logger.info(f"  original_card_type={original_card_type}, actual_card_type={actual_card_type}")
+                logger.info(f"  (year_month, original) in candidates: {(year_month, original_card_type) in candidate_usage_cards}")
+                logger.info(f"  (year_month, actual) in candidates: {(year_month, actual_card_type) in candidate_usage_cards}")
+
             if (year_month, original_card_type) not in candidate_usage_cards and (year_month, actual_card_type) not in candidate_usage_cards:
+                if default.label in ['Apple Music', 'Heroku']:
+                    logger.info(f"  → スキップ（候補にない）")
                 continue
 
             # 分割払いかどうかを確認
@@ -1479,15 +1489,27 @@ def credit_estimate_list(request):
             )
 
             # 変更後または元のカード種別の引き落とし月が既存の見積もりにない場合はスキップ
+            if default.label in ['Apple Music', 'Heroku']:
+                logger.info(f"  billing_month={billing_month}, original_billing_month={original_billing_month}")
+                logger.info(f"  billing_month in existing: {billing_month in existing_billing_months}")
+                logger.info(f"  original_billing_month in existing: {original_billing_month in existing_billing_months}")
+
             if billing_month not in existing_billing_months and original_billing_month not in existing_billing_months:
+                if default.label in ['Apple Music', 'Heroku']:
+                    logger.info(f"  → スキップ（引き落とし月が既存にない）")
                 continue
 
-            # 引き落とし月でグループ化
-            month_group = summary.setdefault(billing_month, OrderedDict())
+            if default.label in ['Apple Music', 'Heroku']:
+                logger.info(f"  → 表示OK！ display_billing_month={billing_month if billing_month in existing_billing_months else original_billing_month}")
+
+            # 引き落とし月でグループ化（既存の見積もりに存在する方を使用）
+            # 変更後のカードのbilling_monthが存在すればそれを使い、なければ元のカードのbilling_monthを使う
+            display_billing_month = billing_month if billing_month in existing_billing_months else original_billing_month
+            month_group = summary.setdefault(display_billing_month, OrderedDict())
 
             # 該当カードのグループを取得または作成（実際のカード種別を使用）
             # カード名 + 支払日のラベル作成（get_card_label_with_due_day関数を使用）
-            default_label = get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=billing_month)
+            default_label = get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=display_billing_month)
 
             card_group = month_group.setdefault(actual_card_type, {
                 'label': default_label,
@@ -1496,7 +1518,7 @@ def credit_estimate_list(request):
                 'default_total': 0,  # 定期項目の合計
                 'entries': [],
                 # 反映機能で billing_month が参照される
-                'year_month': billing_month,
+                'year_month': display_billing_month,
                 'is_bonus_section': False,
             })
 
