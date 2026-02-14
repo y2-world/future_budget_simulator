@@ -274,6 +274,61 @@ def calculate_billing_month(year_month, card_type, split_part=None):
     return f"{billing_year}-{billing_month:02d}"
 
 
+def calculate_billing_month_for_purchase(payment_day, year_month, card_type):
+    """
+    利用日（purchase_date）ベースで引き落とし月を計算する。
+    カード変更時にも正確なbilling_monthを返す。
+
+    Args:
+        payment_day: 毎月の利用日（1-31）
+        year_month: 利用月（YYYY-MM形式）
+        card_type: カード種別のkey
+
+    Returns:
+        str: 引き落とし月（YYYY-MM形式）
+    """
+    import calendar as cal_module
+
+    try:
+        p_year, p_month = map(int, year_month.split('-'))
+    except (ValueError, AttributeError):
+        return year_month
+
+    max_day = cal_module.monthrange(p_year, p_month)[1]
+    purchase_day = min(payment_day, max_day)
+
+    card_plan = get_card_plan(card_type)
+
+    if card_plan:
+        if card_plan.is_end_of_month:
+            # 月末締め: 利用日が含まれる月の月末が締め日 → 翌月払い
+            billing_month_num = p_month + 1
+            billing_year = p_year
+        elif card_plan.closing_day:
+            # 指定日締め: 利用日と締め日を比較
+            if purchase_day <= card_plan.closing_day:
+                # 利用日が締め日以前 → 当月締め → 翌月払い
+                billing_month_num = p_month + 1
+                billing_year = p_year
+            else:
+                # 利用日が締め日より後 → 翌月締め → 翌々月払い
+                billing_month_num = p_month + 2
+                billing_year = p_year
+        else:
+            # closing_dayなし → デフォルトは翌月
+            billing_month_num = p_month + 1
+            billing_year = p_year
+    else:
+        billing_month_num = p_month + 1
+        billing_year = p_year
+
+    while billing_month_num > 12:
+        billing_month_num -= 12
+        billing_year += 1
+
+    return f"{billing_year}-{billing_month_num:02d}"
+
+
 def is_odd_month(year_month):
     """
     奇数月かどうかを判定
@@ -1417,34 +1472,20 @@ def credit_estimate_list(request):
             # 実際に使用するカード種別を決定（上書きがあればそれを使用）
             actual_card_type = override_data.get('card_type') if override_data and override_data.get('card_type') else default.card_type
 
-            # このカード×利用月の組み合わせが候補に含まれているかチェック
-            if (year_month, actual_card_type) not in candidate_usage_cards:
-                continue
+            # 元のカード種別で候補チェック（この利用月がそもそも有効かどうか）
+            original_card_type = default.card_type
+            if (year_month, original_card_type) not in candidate_usage_cards:
+                # 変更後のカードでも候補にない場合はスキップ
+                if (year_month, actual_card_type) not in candidate_usage_cards:
+                    continue
 
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
 
-            # 引き落とし月を計算（締め日情報から）
-            from datetime import datetime
-            usage_date = datetime.strptime(year_month, '%Y-%m')
-
-            # カード情報を取得
-            info = card_info.get(actual_card_type, {'is_end_of_month': False})
-
-            if info['is_end_of_month']:
-                # 月末締め: 利用月 → 利用月末締め → 翌月払い
-                # 例: 1月利用 → 1/31締め → 2月払い
-                billing_month_num = usage_date.month + 1
-            else:
-                # 指定日締め: 利用月 → 翌月締め → 翌々月払い
-                # 例: 1月利用 → 2/5締め → 3月払い（VIEWカードは3/4払い）
-                billing_month_num = usage_date.month + 2
-
-            billing_year = usage_date.year
-            while billing_month_num > 12:
-                billing_month_num -= 12
-                billing_year += 1
-            billing_month = f"{billing_year}-{billing_month_num:02d}"
+            # 引き落とし月を計算（purchase_dateベースで締め日と比較）
+            billing_month = calculate_billing_month_for_purchase(
+                default.payment_day, year_month, actual_card_type
+            )
 
             # この引き落とし月に既存の見積もりがない場合はスキップ
             if billing_month not in existing_billing_months:
@@ -1455,7 +1496,7 @@ def credit_estimate_list(request):
 
             # 該当カードのグループを取得または作成（実際のカード種別を使用）
             # カード名 + 支払日のラベル作成（get_card_label_with_due_day関数を使用）
-            default_label = get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=year_month)
+            default_label = get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=billing_month)
 
             card_group = month_group.setdefault(actual_card_type, {
                 'label': default_label,
@@ -2690,19 +2731,36 @@ def credit_default_list(request):
 
                 instance.save()
 
-                # 今月以降の上書きデータを更新
-                from datetime import datetime
+                # 利用日より後の上書きデータのみを更新
+                from datetime import datetime, date as date_type
+                import calendar
                 today = timezone.now()
-                current_year_month = f"{today.year}-{today.month:02d}"
+                today_date = today.date()
 
-                # 今月以降の全ての上書きデータを取得
-                future_overrides = DefaultChargeOverride.objects.filter(
+                # 全ての上書きデータを取得（利用日で判定するため）
+                all_overrides = DefaultChargeOverride.objects.filter(
                     default=instance,
-                    year_month__gte=current_year_month
                 )
 
                 updated_count = 0
-                for override in future_overrides:
+                for override in all_overrides:
+                    # 利用日（purchase_date）を計算して、今日より後の利用日のみ更新
+                    try:
+                        ov_year, ov_month = map(int, override.year_month.split('-'))
+                        max_day = calendar.monthrange(ov_year, ov_month)[1]
+                        purchase_day = min(instance.payment_day, max_day)
+                        purchase_date = date_type(ov_year, ov_month, purchase_day)
+                    except (ValueError, TypeError):
+                        # payment_dayが無効な場合はyear_monthベースでフォールバック
+                        current_year_month = f"{today.year}-{today.month:02d}"
+                        if override.year_month < current_year_month:
+                            continue
+                        purchase_date = today_date  # 今日以降として扱う
+
+                    # 利用日が今日以前のものはスキップ（過去の利用は変更しない）
+                    if purchase_date <= today_date:
+                        continue
+
                     needs_update = False
                     # 金額が変更された場合、元の金額と同じ場合のみ更新（手動変更を尊重）
                     if old_amount != instance.amount and override.amount == old_amount:
@@ -2729,7 +2787,7 @@ def credit_default_list(request):
 
                     message = f'{instance.label} を更新しました。'
                     if updated_count > 0:
-                        message += f' 今月以降の{updated_count}件の見積もりにも反映しました。'
+                        message += f' 利用日が今日より後の{updated_count}件の見積もりにも反映しました。'
 
                     return JsonResponse({
                         'status': 'success',
@@ -2745,7 +2803,7 @@ def credit_default_list(request):
 
                 success_message = f'{instance.label} を更新しました。'
                 if updated_count > 0:
-                    success_message += f' 今月以降の{updated_count}件の見積もりにも反映しました。'
+                    success_message += f' 利用日が今日より後の{updated_count}件の見積もりにも反映しました。'
                 messages.success(request, success_message)
             else:
                 if is_ajax:
