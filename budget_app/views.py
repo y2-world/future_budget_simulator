@@ -306,11 +306,16 @@ def calculate_billing_month_for_purchase(payment_day, year_month, card_type):
             billing_year = p_year
         elif card_plan.closing_day:
             # 指定日締め（例: VIEWカード 5日締め→翌月4日払い）
-            # 締め月の翌月に引き落とし = 利用月から見ると常に+2
-            # purchase_day ≤ closing_day → 当月締め → 翌々月払い (+2)
-            # purchase_day > closing_day → 翌月締め → 翌々月払い (+2)
-            billing_month_num = p_month + 2
-            billing_year = p_year
+            if purchase_day <= card_plan.closing_day:
+                # 利用日が締め日以前 → 当月締め → 翌月払い
+                # 例: 3/4利用 → 3/5締め → 4/4払い (+1)
+                billing_month_num = p_month + 1
+                billing_year = p_year
+            else:
+                # 利用日が締め日より後 → 翌月締め → 翌々月払い
+                # 例: 3/7利用 → 4/5締め → 5/4払い (+2)
+                billing_month_num = p_month + 2
+                billing_year = p_year
         else:
             # closing_dayなし → デフォルトは翌月
             billing_month_num = p_month + 1
@@ -1261,6 +1266,14 @@ def credit_estimate_list(request):
 
     today = timezone.now()
 
+    # 締め日チェック前に、通常払いCreditEstimateのbilling_monthを収集
+    # （定期デフォルトを表示する月を決定するため）
+    existing_billing_months = set()
+    for est in estimates:
+        if not est.is_bonus_payment:
+            display_month = est.billing_month if est.billing_month else est.year_month
+            existing_billing_months.add(display_month)
+
     for est in estimates:
         # 通常払いの場合、締め日が過ぎたら非表示
         if not est.is_bonus_payment:
@@ -1350,28 +1363,6 @@ def credit_estimate_list(request):
         # 通常のCreditEstimateオブジェクトにis_defaultフラグを追加
         est.is_default = False
         card_group['entries'].append(est)
-
-    # 既存の引き落とし月を収集（定期デフォルトはこれらの月にのみ追加）
-    # ただし、通常払いがある月のみを対象とする（ボーナス払いのみの月は除外）
-    existing_billing_months = set()
-    for billing_month, month_group in summary.items():
-        # この月に通常払い（ボーナス払いでない）のカードがあるかチェック
-        has_normal_payment = any(
-            not card_data.get('is_bonus_section', False)
-            for card_data in month_group.values()
-        )
-        if has_normal_payment:
-            existing_billing_months.add(billing_month)
-
-    # 現在の年月を取得
-    current_year_month = f"{today.year}-{today.month:02d}"
-
-    # MonthlyPlanの全ての月を追加（定期デフォルト表示のため）
-    # MonthlyPlanのyear_monthは既に引き落とし月（計画月）を表している
-    all_plans = MonthlyPlan.objects.all().values_list('year_month', flat=True)
-    for month_str in all_plans:
-        # month_strは既に引き落とし月なので、そのまま追加
-        existing_billing_months.add(month_str)
 
     # 定期デフォルトを追加する利用月を決定
     # 既存の引き落とし月から逆算して、対応する利用月を計算
