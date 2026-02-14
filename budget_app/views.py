@@ -1275,6 +1275,11 @@ def credit_estimate_list(request):
             display_month = est.billing_month if est.billing_month else est.year_month
             existing_billing_months.add(display_month)
 
+    # MonthlyPlanが存在する月も追加（定期デフォルトが消えないようにするため）
+    all_monthly_plans = MonthlyPlan.objects.all().values_list('year_month', flat=True)
+    for plan_month in all_monthly_plans:
+        existing_billing_months.add(plan_month)
+
     for est in estimates:
         # 通常払いの場合、締め日が過ぎたら非表示
         if not est.is_bonus_payment:
@@ -1460,12 +1465,10 @@ def credit_estimate_list(request):
             # 実際に使用するカード種別を決定（上書きがあればそれを使用）
             actual_card_type = override_data.get('card_type') if override_data and override_data.get('card_type') else default.card_type
 
-            # 元のカード種別で候補チェック（この利用月がそもそも有効かどうか）
+            # 元のカード種別または変更後のカード種別のいずれかが候補にある場合のみ処理
             original_card_type = default.card_type
-            if (year_month, original_card_type) not in candidate_usage_cards:
-                # 変更後のカードでも候補にない場合はスキップ
-                if (year_month, actual_card_type) not in candidate_usage_cards:
-                    continue
+            if (year_month, original_card_type) not in candidate_usage_cards and (year_month, actual_card_type) not in candidate_usage_cards:
+                continue
 
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
