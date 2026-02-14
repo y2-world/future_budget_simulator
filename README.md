@@ -117,12 +117,12 @@ docker compose up -d
 
 3. ブラウザでアクセス
 ```
-http://localhost:8000/
+http://localhost:8001/
 ```
 
 4. データベース管理ツール（Adminer）にアクセス（オプション）
 ```
-http://localhost:8080/
+http://localhost:8081/
 
 ログイン情報:
 - システム: PostgreSQL
