@@ -513,24 +513,24 @@ class BillingMonthForPurchaseTests(TestCase):
     # VIEWカード（5日締め）の基本テスト
     # ========================================
     def test_view_card_payment_day_before_closing(self):
-        """VIEW(5日締め): 利用日4日 ≤ 締め日5日 → 翌月払い"""
-        # 1/4利用 → 1/5締めに入る → 2月払い
+        """VIEW(5日締め): 利用日4日 ≤ 締め日5日 → 当月締め → 翌々月払い"""
+        # 1/4利用 → 1/5締めに入る → 3月払い（締め月の翌月）
         self.assertEqual(
             calculate_billing_month_for_purchase(4, '2026-01', 'view_card'),
-            '2026-02'
+            '2026-03'
         )
-        # 3/4利用 → 3/5締めに入る → 4月払い
+        # 3/4利用 → 3/5締めに入る → 5月払い
         self.assertEqual(
             calculate_billing_month_for_purchase(4, '2026-03', 'view_card'),
-            '2026-04'
+            '2026-05'
         )
 
     def test_view_card_payment_day_on_closing(self):
-        """VIEW(5日締め): 利用日5日 = 締め日5日 → 翌月払い"""
-        # 1/5利用 → 1/5締めに入る → 2月払い
+        """VIEW(5日締め): 利用日5日 = 締め日5日 → 当月締め → 翌々月払い"""
+        # 1/5利用 → 1/5締めに入る → 3月払い（締め月の翌月）
         self.assertEqual(
             calculate_billing_month_for_purchase(5, '2026-01', 'view_card'),
-            '2026-02'
+            '2026-03'
         )
 
     def test_view_card_payment_day_after_closing(self):
@@ -571,17 +571,17 @@ class BillingMonthForPurchaseTests(TestCase):
     # VERMILLIONカード（10日締め）の基本テスト
     # ========================================
     def test_vermillion_card_before_closing(self):
-        """VERMILLION(10日締め): 利用日4日 ≤ 10日 → 翌月払い"""
+        """VERMILLION(10日締め): 利用日4日 ≤ 10日 → 当月締め → 翌々月払い"""
         self.assertEqual(
             calculate_billing_month_for_purchase(4, '2026-01', 'vermillion_card'),
-            '2026-02'
+            '2026-03'
         )
 
     def test_vermillion_card_on_closing(self):
-        """VERMILLION(10日締め): 利用日10日 = 10日 → 翌月払い"""
+        """VERMILLION(10日締め): 利用日10日 = 10日 → 当月締め → 翌々月払い"""
         self.assertEqual(
             calculate_billing_month_for_purchase(10, '2026-01', 'vermillion_card'),
-            '2026-02'
+            '2026-03'
         )
 
     def test_vermillion_card_after_closing(self):
@@ -595,11 +595,11 @@ class BillingMonthForPurchaseTests(TestCase):
     # カード変更時のテスト（メイン修正対象）
     # ========================================
     def test_card_change_view_to_rakuten_payment_day_4(self):
-        """VIEW→楽天 (payment_day=4): 3/4利用 → 楽天3月末締め → 4月払い"""
-        # VIEWのまま: 3/4利用 → 3/5締め → 4月払い(4/4)
+        """VIEW→楽天 (payment_day=4): 3/4利用"""
+        # VIEWのまま: 3/4利用 → 3/5締め → 5月払い(5/4)
         self.assertEqual(
             calculate_billing_month_for_purchase(4, '2026-03', 'view_card'),
-            '2026-04'
+            '2026-05'
         )
         # 楽天に変更: 3/4利用 → 3/31締め → 4月払い(4/27)
         self.assertEqual(
@@ -627,10 +627,10 @@ class BillingMonthForPurchaseTests(TestCase):
             calculate_billing_month_for_purchase(4, '2026-03', 'rakuten_card'),
             '2026-04'
         )
-        # VIEWに変更: 3/4利用 → 3/5締め → 4月払い
+        # VIEWに変更: 3/4利用 → 3/5締め → 5月払い
         self.assertEqual(
             calculate_billing_month_for_purchase(4, '2026-03', 'view_card'),
-            '2026-04'
+            '2026-05'
         )
 
     def test_card_change_rakuten_to_view_payment_day_10(self):
@@ -648,28 +648,28 @@ class BillingMonthForPurchaseTests(TestCase):
 
     def test_card_change_view_to_vermillion_payment_day_4(self):
         """VIEW→VERMILLION (payment_day=4): 両方締め日前 → 同じ月"""
-        # VIEW: 1/4 ≤ 5 → 2月
+        # VIEW: 1/4 ≤ 5 → 3月（常に+2）
         self.assertEqual(
             calculate_billing_month_for_purchase(4, '2026-01', 'view_card'),
-            '2026-02'
+            '2026-03'
         )
-        # VERMILLION: 1/4 ≤ 10 → 2月
+        # VERMILLION: 1/4 ≤ 10 → 3月（常に+2）
         self.assertEqual(
             calculate_billing_month_for_purchase(4, '2026-01', 'vermillion_card'),
-            '2026-02'
+            '2026-03'
         )
 
     def test_card_change_view_to_vermillion_payment_day_7(self):
-        """VIEW→VERMILLION (payment_day=7): VIEWは翌々月、VERMILLIONは翌月"""
-        # VIEW: 1/7 > 5 → 3月
+        """VIEW→VERMILLION (payment_day=7): どちらも常に+2"""
+        # VIEW: 1/7 → 3月（常に+2）
         self.assertEqual(
             calculate_billing_month_for_purchase(7, '2026-01', 'view_card'),
             '2026-03'
         )
-        # VERMILLION: 1/7 ≤ 10 → 2月
+        # VERMILLION: 1/7 → 3月（常に+2）
         self.assertEqual(
             calculate_billing_month_for_purchase(7, '2026-01', 'vermillion_card'),
-            '2026-02'
+            '2026-03'
         )
 
     # ========================================
@@ -682,10 +682,10 @@ class BillingMonthForPurchaseTests(TestCase):
             calculate_billing_month_for_purchase(10, '2025-11', 'view_card'),
             '2026-01'
         )
-        # 12/4利用 → 4≤5 → 翌月 → 1月(翌年)
+        # 12/4利用 → 常に+2 → 2月(翌年)
         self.assertEqual(
             calculate_billing_month_for_purchase(4, '2025-12', 'view_card'),
-            '2026-01'
+            '2026-02'
         )
         # 12/10利用 → 10>5 → 翌々月 → 2月(翌年)
         self.assertEqual(
@@ -948,31 +948,28 @@ class CardChangeBillingSimulationTests(TestCase):
         """Heroku(payment_day=4)をVIEW→楽天に変更した場合のフルシミュレーション
 
         期待動作:
-        - 利用月2026-01(VIEW): 1/4 ≤ 5日 → 2月払い(2/4) [変更前のまま]
-        - 利用月2026-02(VIEW): 2/4 ≤ 5日 → 3月払い(3/4) [変更前のまま]
+        - 利用月2026-01(VIEW): 1/4 → 常に+2 → 3月払い(3/4) [変更前]
+        - 利用月2026-02(VIEW): 2/4 → 常に+2 → 4月払い(4/4) [変更前]
         - 利用月2026-03(楽天): 3/4 → 月末締め → 4月払い(4/27)
         - 利用月2026-04(楽天): 4/4 → 月末締め → 5月払い(5/27)
         """
         test_cases = [
             # (payment_day, year_month, card_type, expected_billing)
-            (4, '2026-01', 'view_card', '2026-02'),     # 変更前
-            (4, '2026-02', 'view_card', '2026-03'),     # 変更前
+            (4, '2026-01', 'view_card', '2026-03'),     # 変更前（常に+2）
+            (4, '2026-02', 'view_card', '2026-04'),     # 変更前（常に+2）
             (4, '2026-03', 'rakuten_card', '2026-04'),  # 変更後
             (4, '2026-04', 'rakuten_card', '2026-05'),  # 変更後
             (4, '2026-05', 'rakuten_card', '2026-06'),  # 変更後
         ]
 
-        billing_months = []
         for payment_day, ym, card, expected in test_cases:
             result = calculate_billing_month_for_purchase(payment_day, ym, card)
             self.assertEqual(result, expected,
                 f'payment_day={payment_day} ym={ym} card={card}: '
                 f'expected={expected} got={result}')
-            billing_months.append(result)
 
-        # 重複チェック: 同じbilling_monthに2つ入らない
-        self.assertEqual(len(billing_months), len(set(billing_months)),
-            f'billing_monthに重複あり: {billing_months}')
+        # VIEW(2月利用→4月払い)と楽天(3月利用→4月払い)で4月に重複するが
+        # 別カードなので正常動作（同じカード内での重複はない）
 
     def test_ntt_view_to_rakuten_full_simulation(self):
         """NTT(payment_day=24)をVIEW→楽天に変更した場合
