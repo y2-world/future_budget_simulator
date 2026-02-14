@@ -1473,8 +1473,13 @@ def credit_estimate_list(request):
                 default.payment_day, year_month, actual_card_type
             )
 
-            # この引き落とし月に既存の見積もりがない場合はスキップ
-            if billing_month not in existing_billing_months:
+            # 元のカード種別での引き落とし月も計算
+            original_billing_month = calculate_billing_month_for_purchase(
+                default.payment_day, year_month, original_card_type
+            )
+
+            # 変更後または元のカード種別の引き落とし月が既存の見積もりにない場合はスキップ
+            if billing_month not in existing_billing_months and original_billing_month not in existing_billing_months:
                 continue
 
             # 引き落とし月でグループ化
