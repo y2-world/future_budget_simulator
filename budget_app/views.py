@@ -1265,6 +1265,7 @@ def credit_estimate_list(request):
     config = SimulationConfig.objects.filter(is_active=True).first()
 
     today = timezone.now()
+    current_year_month = f"{today.year}-{today.month:02d}"
 
     # 締め日チェック前に、通常払いCreditEstimateのbilling_monthを収集
     # （定期デフォルトを表示する月を決定するため）
