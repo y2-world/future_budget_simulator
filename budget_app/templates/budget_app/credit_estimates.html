@@ -132,61 +132,19 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">カード種別</label>
                 <div class="grid grid-cols-2 gap-2">
-                    <label class="relative cursor-pointer card-type-label" data-value="item_6">
-                        <input type="radio" name="card_type" value="item_6" class="hidden card-type-radio">
+                    {% for card in card_choices %}
+                    <label class="relative cursor-pointer card-type-label" data-value="{{ card.key }}">
+                        <input type="radio" name="card_type" value="{{ card.key }}" class="hidden card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
                                     <div class="w-2.5 h-2.5 rounded-full bg-blue-600 hidden radio-dot"></div>
                                 </div>
-                                <span class="text-sm font-medium text-gray-700">VIEWカード</span>
+                                <span class="text-sm font-medium text-gray-700">{{ card.title }}</span>
                             </div>
                         </div>
                     </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="item_8">
-                        <input type="radio" name="card_type" value="item_8" class="hidden card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-xl p-3 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-blue-600 hidden radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">楽天カード</span>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="item_9">
-                        <input type="radio" name="card_type" value="item_9" class="hidden card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-xl p-3 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-blue-600 hidden radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">PayPayカード</span>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="item_10">
-                        <input type="radio" name="card_type" value="item_10" class="hidden card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-xl p-3 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-blue-600 hidden radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">VERMILLION</span>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="relative cursor-pointer card-type-label" data-value="item_12">
-                        <input type="radio" name="card_type" value="item_12" class="hidden card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-xl p-3 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-blue-600 hidden radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">Olive</span>
-                            </div>
-                        </div>
-                    </label>
+                    {% endfor %}
                 </div>
                 <!-- 分割払いの場合の注意メッセージ -->
                 <p id="edit_split_payment_notice" class="text-sm text-amber-600 mt-2 hidden">
@@ -284,61 +242,19 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">カード種別</label>
                 <div class="grid grid-cols-2 gap-2">
-                    <label class="relative cursor-pointer default-card-type-label" data-value="item_6">
-                        <input type="radio" name="card_type" value="item_6" class="hidden default-card-type-radio">
+                    {% for card in card_choices %}
+                    <label class="relative cursor-pointer default-card-type-label" data-value="{{ card.key }}">
+                        <input type="radio" name="card_type" value="{{ card.key }}" class="hidden default-card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-green-400 hover:bg-green-50 default-card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 default-radio-indicator">
                                     <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden default-radio-dot"></div>
                                 </div>
-                                <span class="text-sm font-medium text-gray-700">VIEWカード</span>
+                                <span class="text-sm font-medium text-gray-700">{{ card.title }}</span>
                             </div>
                         </div>
                     </label>
-                    <label class="relative cursor-pointer default-card-type-label" data-value="item_8">
-                        <input type="radio" name="card_type" value="item_8" class="hidden default-card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-xl p-3 transition hover:border-green-400 hover:bg-green-50 default-card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 default-radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden default-radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">楽天カード</span>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="relative cursor-pointer default-card-type-label" data-value="item_9">
-                        <input type="radio" name="card_type" value="item_9" class="hidden default-card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-xl p-3 transition hover:border-green-400 hover:bg-green-50 default-card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 default-radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden default-radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">PayPayカード</span>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="relative cursor-pointer default-card-type-label" data-value="item_10">
-                        <input type="radio" name="card_type" value="item_10" class="hidden default-card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-xl p-3 transition hover:border-green-400 hover:bg-green-50 default-card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 default-radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden default-radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">VERMILLION</span>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="relative cursor-pointer default-card-type-label" data-value="item_12">
-                        <input type="radio" name="card_type" value="item_12" class="hidden default-card-type-radio">
-                        <div class="border-2 border-gray-300 rounded-xl p-3 transition hover:border-green-400 hover:bg-green-50 default-card-type-box">
-                            <div class="flex items-center">
-                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 default-radio-indicator">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-green-600 hidden default-radio-dot"></div>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">Olive</span>
-                            </div>
-                        </div>
-                    </label>
+                    {% endfor %}
                 </div>
             </div>
 
