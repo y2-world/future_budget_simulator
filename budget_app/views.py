@@ -2788,6 +2788,10 @@ def credit_default_list(request):
                     if old_card_type != instance.card_type and override.card_type == old_card_type:
                         override.card_type = instance.card_type
                         needs_update = True
+                    # payment_dayが変更された場合、purchase_date_overrideをクリア
+                    if old_payment_day != instance.payment_day and override.purchase_date_override:
+                        override.purchase_date_override = None
+                        needs_update = True
 
                     if needs_update:
                         override.save()
