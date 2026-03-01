@@ -1364,13 +1364,8 @@ def credit_estimate_list(request):
                 label = card_labels.get(est.card_type, est.card_type)
                 card_label = label + '【ボーナス払い】'
         else:
-            # 通常払いの場合、カード名 + 支払日を表示
-            if due_day and display_month:
-                billing_year, billing_month = map(int, display_month.split('-'))
-                label = card_labels.get(est.card_type, est.card_type)
-                card_label = f"{label} ({billing_month}/{due_day}支払)"
-            else:
-                card_label = card_labels.get(est.card_type, est.card_type)
+            # 通常払いの場合、カード名 + 支払日を表示（土日祝考慮）
+            card_label = get_card_label_with_due_day(est.card_type, is_bonus=False, year_month=display_month)
 
         card_group = month_group.setdefault(card_key, {
             'label': card_label,
@@ -1674,10 +1669,9 @@ def credit_estimate_list(request):
                 if not first_payment_closed:
                     plan_info = info if info else {}
                     default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month, card_plan_info=plan_info)
-                    if default_entry_1.amount > 0:
-                        card_group['entries'].append(default_entry_1)
-                        card_group['total'] += default_entry_1.amount
-                        card_group['default_total'] += default_entry_1.amount
+                    card_group['entries'].append(default_entry_1)
+                    card_group['total'] += default_entry_1.amount
+                    card_group['default_total'] += default_entry_1.amount
 
                 # 2回目の引き落とし月を計算（1回目のbilling_month + 1ヶ月）
                 billing_date = datetime.strptime(billing_month, '%Y-%m')
@@ -1693,12 +1687,8 @@ def credit_estimate_list(request):
                     # 2回目の引き落とし月のカードグループを取得または作成
                     next_month_group = summary.setdefault(next_billing_month, OrderedDict())
 
-                    # 2回目のラベル作成
-                    if due_day:
-                        next_b_year, next_b_month = map(int, next_billing_month.split('-'))
-                        next_label = f"{card_labels.get(actual_card_type, actual_card_type)} ({next_b_month}/{due_day}支払)"
-                    else:
-                        next_label = card_labels.get(actual_card_type, actual_card_type)
+                    # 2回目のラベル作成（土日祝考慮）
+                    next_label = get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=next_billing_month)
 
                     next_card_group = next_month_group.setdefault(actual_card_type, {
                         'label': next_label,
@@ -1713,10 +1703,9 @@ def credit_estimate_list(request):
                     # 2回目のエントリ（利用月は1回目と同じyear_month、引き落とし月はnext_billing_month）
                     plan_info = info if info else {}
                     default_entry_2 = DefaultEntry(default, next_billing_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month, card_plan_info=plan_info)
-                    if default_entry_2.amount > 0:
-                        next_card_group['entries'].append(default_entry_2)
-                        next_card_group['total'] += default_entry_2.amount
-                        next_card_group['default_total'] += default_entry_2.amount
+                    next_card_group['entries'].append(default_entry_2)
+                    next_card_group['total'] += default_entry_2.amount
+                    next_card_group['default_total'] += default_entry_2.amount
             else:
                 # 通常の1回払い
                 # 締め日チェック（過去月の場合はスキップ）
@@ -1753,11 +1742,9 @@ def credit_estimate_list(request):
                     # カード情報を辞書形式で作成
                     plan_info = info if info else {}
                     default_entry = DefaultEntry(default, year_month, override_data, actual_card_type, card_plan_info=plan_info)
-                    # 金額が0の場合は追加しない（削除された定期項目）
-                    if default_entry.amount > 0:
-                        card_group['entries'].append(default_entry)
-                        card_group['total'] += default_entry.amount
-                        card_group['default_total'] += default_entry.amount
+                    card_group['entries'].append(default_entry)
+                    card_group['total'] += default_entry.amount
+                    card_group['default_total'] += default_entry.amount
 
     # 各カードのエントリーを利用日順にソート（日付は降順＝新しい順）
     for year_month, month_group in summary.items():
