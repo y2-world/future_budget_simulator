@@ -1,9 +1,6 @@
 import base64
-import logging
 from django.http import HttpResponse
 from django.conf import settings
-
-logger = logging.getLogger(__name__)
 
 
 class BasicAuthMiddleware:
@@ -22,7 +19,6 @@ class BasicAuthMiddleware:
 
         # セッションに認証済みフラグがあればスキップ
         session_verified = request.session.get('basic_auth_verified', False)
-        logger.info(f"Path: {request.path}, Session verified: {session_verified}, Has auth header: {'HTTP_AUTHORIZATION' in request.META}")
 
         if session_verified:
             response = self.get_response(request)
