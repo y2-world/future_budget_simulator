@@ -419,16 +419,22 @@ def plan_list(request):
     current_year_month = f"{today.year}-{today.month:02d}"
 
     # 月次計画を取得（現在月以降のみ表示）
+    from dateutil.relativedelta import relativedelta
+    prev_year_month = (today.replace(day=1) - relativedelta(months=1)).strftime('%Y-%m')
     all_plans = list(MonthlyPlan.objects.all().order_by('year_month'))
-    # 現在月以降のプランのみ表示
+    # 現在月以降のプランのみ表示（前月は持ち越し処理のために含める）
     current_and_future_plans = [
         p for p in all_plans
         if p.year_month >= current_year_month
     ]
+    prev_month_plans = [
+        p for p in all_plans
+        if p.year_month == prev_year_month
+    ]
     past_plans = []  # 過去月は非表示
 
-    # 表示対象のプラン
-    plans = current_and_future_plans
+    # 表示対象のプラン（前月を先頭に追加して持ち越し処理を行う）
+    plans = prev_month_plans + current_and_future_plans
 
     # 現在残高と定期預金情報を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
@@ -444,6 +450,9 @@ def plan_list(request):
     # 各計画に収支情報とタイムラインを追加
     # 現在月かどうかを判定するフラグ
     reached_current_month = False
+
+    # 翌月に持ち越すトランザクション {year_month: [transactions]}
+    carryover_transactions = {}
 
     for plan in plans:
         plan.total_income = plan.get_total_income()
@@ -477,7 +486,8 @@ def plan_list(request):
 
         # MonthlyPlanDefaultから動的にトランザクションを生成
         default_items = MonthlyPlanDefault.objects.all().order_by('order', 'id')
-        transactions = []
+        # 前月から持ち越されたトランザクションを追加
+        transactions = list(carryover_transactions.pop(plan.year_month, []))
 
         for item in default_items:
             # この月に表示すべき項目かチェック
@@ -509,6 +519,17 @@ def plan_list(request):
                     else:
                         # 引き落とし: 休日なら翌営業日
                         item_date = adjust_to_next_business_day(item_date)
+                        # 翌営業日調整で翌月にまたいだ場合は翌月に持ち越し
+                        if item_date.month != month or item_date.year != year:
+                            next_ym = item_date.strftime('%Y-%m')
+                            carryover_transactions.setdefault(next_ym, []).append({
+                                'date': item_date,
+                                'name': item.title,
+                                'amount': -amount if item.payment_type != 'deposit' else amount,
+                                'is_view_card': (key == 'item_6') and item.is_credit_card(),
+                                'is_excluded': plan.get_exclusion(key) if item.is_credit_card() else False,
+                            })
+                            continue
 
             # 収入か支出かを判定
             is_income = item.payment_type == 'deposit'
@@ -649,9 +670,10 @@ def plan_list(request):
             else:
                 # 今日以降の明細がない現在月は過去の明細として扱う
                 archived_current_month_plans.append(plan)
-        else:
-            # 未来月は全て表示
+        elif plan.year_month >= current_year_month:
+            # 現在月以降は全て表示
             filtered_plans.append(plan)
+        # 前月は持ち越し処理のためだけに使用（表示しない）
 
     plans = filtered_plans
     past_plans = archived_current_month_plans  # 過去の明細に追加
@@ -1264,7 +1286,7 @@ def credit_estimate_list(request):
     # 設定からVIEWカードのデフォルト値を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
 
-    today = timezone.now()
+    today = timezone.localtime(timezone.now())
     current_year_month = f"{today.year}-{today.month:02d}"
 
     # 締め日チェック前に、通常払いCreditEstimateのbilling_monthを収集
@@ -1791,7 +1813,7 @@ def credit_estimate_list(request):
             del summary[year_month]
 
     # summaryを現在、未来、過去に分割
-    today = timezone.now()
+    today = timezone.localtime(timezone.now())
     current_month_str = today.strftime('%Y-%m')
     current_day = today.day
     current_month_summary = OrderedDict()
@@ -2384,7 +2406,7 @@ def credit_estimate_list(request):
                 # 締め日チェック：過去の見積もりか現在/未来の見積もりかを判定
                 from datetime import date as dt_date
                 import calendar
-                current_date = timezone.now().date()
+                current_date = timezone.localtime(timezone.now()).date()
                 is_past_estimate = False
 
                 try:
@@ -2750,7 +2772,7 @@ def credit_default_list(request):
                 # 利用日より後の上書きデータのみを更新
                 from datetime import datetime, date as date_type
                 import calendar
-                today = timezone.now()
+                today = timezone.localtime(timezone.now())
                 today_date = today.date()
 
                 # 全ての上書きデータを取得（利用日で判定するため）
