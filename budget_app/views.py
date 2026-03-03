@@ -1393,19 +1393,34 @@ def credit_estimate_list(request):
         billing_year, billing_month_num = map(int, billing_month.split('-'))
 
         # billing_monthからyear_monthを逆算
-        # クレジットカードは基本的に締め日の翌月払いなので、billing_month - 1 が利用月
+        # カードごとに締め日を考慮して-1か-2を決定
         for card_id, info in card_info.items():
-            usage_month_num = billing_month_num - 1
-
-            usage_year = billing_year
-            if usage_month_num < 1:
-                usage_month_num += 12
-                usage_year -= 1
-            usage_month = f"{usage_year}-{usage_month_num:02d}"
-            # 過去3ヶ月以降を追加（定期デフォルト表示のため）
-            three_months_ago = (today - relativedelta(months=3)).strftime('%Y-%m')
-            if usage_month >= three_months_ago:
-                candidate_usage_cards[(usage_month, card_id)] = billing_month
+            card_plan = get_card_plan(card_id)
+            if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
+                # 指定日締めの場合、締め日より後の利用は+2ヶ月払いなので-2、以前は-1
+                # 定期デフォルトのpayment_dayが締め日より後かどうかで判定
+                # ここでは両方のケースを候補として追加
+                for offset in [1, 2]:
+                    usage_month_num = billing_month_num - offset
+                    usage_year = billing_year
+                    if usage_month_num < 1:
+                        usage_month_num += 12
+                        usage_year -= 1
+                    usage_month = f"{usage_year}-{usage_month_num:02d}"
+                    three_months_ago = (today - relativedelta(months=3)).strftime('%Y-%m')
+                    if usage_month >= three_months_ago:
+                        candidate_usage_cards[(usage_month, card_id)] = billing_month
+            else:
+                # 月末締めの場合は-1
+                usage_month_num = billing_month_num - 1
+                usage_year = billing_year
+                if usage_month_num < 1:
+                    usage_month_num += 12
+                    usage_year -= 1
+                usage_month = f"{usage_year}-{usage_month_num:02d}"
+                three_months_ago = (today - relativedelta(months=3)).strftime('%Y-%m')
+                if usage_month >= three_months_ago:
+                    candidate_usage_cards[(usage_month, card_id)] = billing_month
 
     # 利用月のリストを取得してソート（重複削除）
     candidate_usage_months = sorted(list(set(key[0] for key in candidate_usage_cards.keys())))
