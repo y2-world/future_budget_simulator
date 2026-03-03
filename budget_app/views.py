@@ -1382,48 +1382,20 @@ def credit_estimate_list(request):
         est.is_default = False
         card_group['entries'].append(est)
 
-    # 定期デフォルトを追加する利用月を決定
-    # 既存の引き落とし月から逆算して、対応する利用月を計算
-    # {(usage_month, card_id): billing_month} の辞書として保存
-    candidate_usage_cards = {}
-
+    # 定期デフォルトを表示する利用月を決定
+    # DefaultChargeOverrideのyear_monthを直接使用（現在月以降）
     from dateutil.relativedelta import relativedelta
 
-    for billing_month in existing_billing_months:
-        billing_year, billing_month_num = map(int, billing_month.split('-'))
+    three_months_ago = (today - relativedelta(months=3)).strftime('%Y-%m')
 
-        # billing_monthからyear_monthを逆算
-        # カードごとに締め日を考慮して-1か-2を決定
-        for card_id, info in card_info.items():
-            card_plan = get_card_plan(card_id)
-            if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
-                # 指定日締めの場合、締め日より後の利用は+2ヶ月払いなので-2、以前は-1
-                # 定期デフォルトのpayment_dayが締め日より後かどうかで判定
-                # ここでは両方のケースを候補として追加
-                for offset in [1, 2]:
-                    usage_month_num = billing_month_num - offset
-                    usage_year = billing_year
-                    if usage_month_num < 1:
-                        usage_month_num += 12
-                        usage_year -= 1
-                    usage_month = f"{usage_year}-{usage_month_num:02d}"
-                    three_months_ago = (today - relativedelta(months=3)).strftime('%Y-%m')
-                    if usage_month >= three_months_ago:
-                        candidate_usage_cards[(usage_month, card_id)] = billing_month
-            else:
-                # 月末締めの場合は-1
-                usage_month_num = billing_month_num - 1
-                usage_year = billing_year
-                if usage_month_num < 1:
-                    usage_month_num += 12
-                    usage_year -= 1
-                usage_month = f"{usage_year}-{usage_month_num:02d}"
-                three_months_ago = (today - relativedelta(months=3)).strftime('%Y-%m')
-                if usage_month >= three_months_ago:
-                    candidate_usage_cards[(usage_month, card_id)] = billing_month
+    # override_mapから利用月を収集（現在月以降 + 過去3ヶ月）
+    candidate_usage_months = sorted(list(set(
+        ym for (default_id, ym) in override_map.keys()
+        if ym >= three_months_ago
+    )))
 
-    # 利用月のリストを取得してソート（重複削除）
-    candidate_usage_months = sorted(list(set(key[0] for key in candidate_usage_cards.keys())))
+    # candidate_usage_cardsはカードの候補チェック用（常にTrueとして扱う）
+    candidate_usage_cards = {}
 
     # 各年月の各カードに定期デフォルトを追加
     for year_month in candidate_usage_months:
@@ -1491,48 +1463,13 @@ def credit_estimate_list(request):
             # 元のカード種別または変更後のカード種別のいずれかが候補にある場合のみ処理
             original_card_type = default.card_type
 
-            # デバッグログ：Apple MusicとHerokuの場合のみログ出力
-            if default.label in ['Apple Music', 'Heroku']:
-                logger.info(f"[定期デフォルト] {default.label} - year_month={year_month}")
-                logger.info(f"  original_card_type={original_card_type}, actual_card_type={actual_card_type}")
-                logger.info(f"  (year_month, original) in candidates: {(year_month, original_card_type) in candidate_usage_cards}")
-                logger.info(f"  (year_month, actual) in candidates: {(year_month, actual_card_type) in candidate_usage_cards}")
-
-            if (year_month, original_card_type) not in candidate_usage_cards and (year_month, actual_card_type) not in candidate_usage_cards:
-                if default.label in ['Apple Music', 'Heroku']:
-                    logger.info(f"  → スキップ（候補にない）")
-                continue
-
             # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
 
             # 引き落とし月を計算（purchase_dateベースで締め日と比較）
-            billing_month = calculate_billing_month_for_purchase(
+            display_billing_month = calculate_billing_month_for_purchase(
                 default.payment_day, year_month, actual_card_type
             )
-
-            # 元のカード種別での引き落とし月も計算
-            original_billing_month = calculate_billing_month_for_purchase(
-                default.payment_day, year_month, original_card_type
-            )
-
-            # 変更後または元のカード種別の引き落とし月が既存の見積もりにない場合はスキップ
-            if default.label in ['Apple Music', 'Heroku']:
-                logger.info(f"  billing_month={billing_month}, original_billing_month={original_billing_month}")
-                logger.info(f"  billing_month in existing: {billing_month in existing_billing_months}")
-                logger.info(f"  original_billing_month in existing: {original_billing_month in existing_billing_months}")
-
-            if billing_month not in existing_billing_months and original_billing_month not in existing_billing_months:
-                if default.label in ['Apple Music', 'Heroku']:
-                    logger.info(f"  → スキップ（引き落とし月が既存にない）")
-                continue
-
-            if default.label in ['Apple Music', 'Heroku']:
-                logger.info(f"  → 表示OK！ display_billing_month={billing_month if billing_month in existing_billing_months else original_billing_month}")
-
-            # 引き落とし月でグループ化（既存の見積もりに存在する方を使用）
-            # 変更後のカードのbilling_monthが存在すればそれを使い、なければ元のカードのbilling_monthを使う
-            display_billing_month = billing_month if billing_month in existing_billing_months else original_billing_month
             month_group = summary.setdefault(display_billing_month, OrderedDict())
 
             # 該当カードのグループを取得または作成（実際のカード種別を使用）
@@ -1682,7 +1619,7 @@ def credit_estimate_list(request):
 
                 # 1回目（利用月のbilling_monthに表示）
                 if not first_payment_closed:
-                    plan_info = info if info else {}
+                    plan_info = {}
                     default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month, card_plan_info=plan_info)
                     card_group['entries'].append(default_entry_1)
                     card_group['total'] += default_entry_1.amount
@@ -1716,7 +1653,7 @@ def credit_estimate_list(request):
                     })
 
                     # 2回目のエントリ（利用月は1回目と同じyear_month、引き落とし月はnext_billing_month）
-                    plan_info = info if info else {}
+                    plan_info = {}
                     default_entry_2 = DefaultEntry(default, next_billing_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month, card_plan_info=plan_info)
                     next_card_group['entries'].append(default_entry_2)
                     next_card_group['total'] += default_entry_2.amount
@@ -1755,7 +1692,7 @@ def credit_estimate_list(request):
                 # 締め日が過ぎていなければ表示（過去月は常に表示）
                 if not payment_closed:
                     # カード情報を辞書形式で作成
-                    plan_info = info if info else {}
+                    plan_info = {}
                     default_entry = DefaultEntry(default, year_month, override_data, actual_card_type, card_plan_info=plan_info)
                     card_group['entries'].append(default_entry)
                     card_group['total'] += default_entry.amount
