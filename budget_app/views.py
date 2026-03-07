@@ -3423,17 +3423,10 @@ def past_transactions_list(request):
 
         # 締め日の翌日以降なら過去の明細に含める
         if current_date > closing_date:
-            # billing_monthを計算
-            if card_plan.is_end_of_month:
-                billing_month_num = month + 1
-            else:
-                billing_month_num = month + 2
-
-            billing_year = year
-            if billing_month_num > 12:
-                billing_month_num -= 12
-                billing_year += 1
-            billing_month = f"{billing_year}-{billing_month_num:02d}"
+            # billing_monthをcalculate_billing_month_for_purchaseと同じロジックで計算
+            payment_day = override.default.payment_day
+            billing_month = calculate_billing_month_for_purchase(payment_day, year_month, override.card_type)
+            billing_year, billing_month_num = map(int, billing_month.split('-'))
 
             # 利用日を計算（purchase_date_overrideがあればそれを使用）
             if override.purchase_date_override:
