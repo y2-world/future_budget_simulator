@@ -3245,22 +3245,7 @@ def past_transactions_list(request):
                     default = CreditDefault.objects.get(id=default_id)
 
                     # billing_monthを計算（引き落とし月のセクションにジャンプするため）
-                    year, month = map(int, year_month.split('-'))
-                    card_plan = get_card_plan(card_type)
-
-                    if card_plan:
-                        if card_plan.is_end_of_month:
-                            billing_month_num = month + 1
-                        else:
-                            billing_month_num = month + 2
-
-                        billing_year = year
-                        if billing_month_num > 12:
-                            billing_month_num -= 12
-                            billing_year += 1
-                        billing_month = f"{billing_year}-{billing_month_num:02d}"
-                    else:
-                        billing_month = year_month
+                    billing_month = calculate_billing_month_for_purchase(default.payment_day, year_month, card_type)
 
                     # 過去の明細画面のアンカー付きURLを生成
                     target_url = reverse('budget_app:past_transactions') + f'#estimate-content-{billing_month}'
