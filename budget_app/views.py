@@ -3446,17 +3446,10 @@ def past_transactions_list(request):
                     actual_day_usage = min(payment_day, max_day_usage)
                     purchase_date = dt_date(year, month, actual_day_usage)
                 else:
-                    # 指定日締めの場合：payment_dayと締め日を比較
-                    if payment_day > card_plan.closing_day:
-                        # payment_dayが締め日より大きい：year_monthの月のpayment_day日
-                        max_day_usage = calendar.monthrange(year, month)[1]
-                        actual_day_usage = min(payment_day, max_day_usage)
-                        purchase_date = dt_date(year, month, actual_day_usage)
-                    else:
-                        # payment_dayが締め日以下：締め日の月のpayment_day日
-                        max_day_usage = calendar.monthrange(closing_year, closing_month)[1]
-                        actual_day_usage = min(payment_day, max_day_usage)
-                        purchase_date = dt_date(closing_year, closing_month, actual_day_usage)
+                    # 指定日締めの場合：year_monthの月のpayment_day日
+                    max_day_usage = calendar.monthrange(year, month)[1]
+                    actual_day_usage = min(payment_day, max_day_usage)
+                    purchase_date = dt_date(year, month, actual_day_usage)
 
             # 引落日を計算（billing_monthのwithdrawal_day日）
             max_day_billing = calendar.monthrange(billing_year, billing_month_num)[1]
