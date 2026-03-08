@@ -1392,8 +1392,9 @@ def credit_estimate_list(request):
     )
 
     # override_mapから利用月を収集（現在月以降 かつ 手動入力がある支払月のみ）
-    candidate_usage_months = sorted(list(set(
-        ym for (default_id, ym) in override_map.keys()
+    # カード別に billing_month が existing_billing_months に含まれるかチェック
+    candidate_default_month_pairs = set(
+        (default_id, ym) for (default_id, ym) in override_map.keys()
         if ym >= current_year_month
         and override_map.get((default_id, ym)) is not None
         and calculate_billing_month_for_purchase(
@@ -1401,7 +1402,8 @@ def credit_estimate_list(request):
             ym,
             override_map[(default_id, ym)].get('card_type', '')
         ) in existing_billing_months
-    )))
+    )
+    candidate_usage_months = sorted(list(set(ym for (_, ym) in candidate_default_month_pairs)))
 
     # candidate_usage_cardsはカードの候補チェック用（常にTrueとして扱う）
     candidate_usage_cards = {}
@@ -1438,6 +1440,10 @@ def credit_estimate_list(request):
         for default in credit_defaults:
             # 奇数月のみ適用フラグが立っている場合、偶数月はスキップ
             if default.apply_odd_months_only and not is_odd_month_flag:
+                continue
+
+            # このカード×利用月の組み合わせが候補に含まれない場合はスキップ
+            if (default.id, year_month) not in candidate_default_month_pairs:
                 continue
 
             # 上書きデータを確認
