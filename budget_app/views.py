@@ -1383,8 +1383,13 @@ def credit_estimate_list(request):
         card_group['entries'].append(est)
 
     # 定期デフォルトを表示する利用月を決定
-    # 手動入力のCreditEstimateが存在するbilling_monthのみに表示する
-    existing_billing_months = set(summary.keys())
+    # 手動入力の通常払いCreditEstimateが存在するbilling_monthのみに表示する（ボーナス払いは除外）
+    existing_billing_months = set(
+        display_month
+        for display_month, month_group in summary.items()
+        for card_key, card_data in month_group.items()
+        if not card_data.get('is_bonus_section', False)
+    )
 
     # override_mapから利用月を収集（現在月以降 かつ 手動入力がある支払月のみ）
     candidate_usage_months = sorted(list(set(
