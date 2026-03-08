@@ -792,8 +792,9 @@ class DefaultChargeUpdateScopeTests(TestCase):
 
         # 今日を2026-02-14に固定
         mock_now = real_tz.now()
-        mock_timezone.now.return_value = datetime.datetime(2026, 2, 14, 12, 0, 0,
-                                                            tzinfo=datetime.timezone.utc)
+        fixed_dt = datetime.datetime(2026, 2, 14, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        mock_timezone.now.return_value = fixed_dt
+        mock_timezone.localtime.return_value = fixed_dt
 
         client = Client()
         # payment_day=4なので:
@@ -840,8 +841,9 @@ class DefaultChargeUpdateScopeTests(TestCase):
         """手動で金額変更済みのoverrideは上書きしない"""
         import datetime
 
-        mock_timezone.now.return_value = datetime.datetime(2026, 2, 14, 12, 0, 0,
-                                                            tzinfo=datetime.timezone.utc)
+        fixed_dt = datetime.datetime(2026, 2, 14, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        mock_timezone.now.return_value = fixed_dt
+        mock_timezone.localtime.return_value = fixed_dt
 
         # 2026-04のoverrideを手動で金額変更
         ov_04 = DefaultChargeOverride.objects.get(default=self.heroku, year_month='2026-04')
@@ -877,8 +879,9 @@ class DefaultChargeUpdateScopeTests(TestCase):
         """payment_day=24の場合: 2/24は未来(2/14基準)なので更新対象"""
         import datetime
 
-        mock_timezone.now.return_value = datetime.datetime(2026, 2, 14, 12, 0, 0,
-                                                            tzinfo=datetime.timezone.utc)
+        fixed_dt = datetime.datetime(2026, 2, 14, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        mock_timezone.now.return_value = fixed_dt
+        mock_timezone.localtime.return_value = fixed_dt
 
         # NTTっぽい定期デフォルト (payment_day=24)
         ntt = CreditDefault.objects.create(
@@ -1015,3 +1018,205 @@ class CardChangeBillingSimulationTests(TestCase):
             self.assertEqual(result, expected,
                 f'payment_day={payment_day} ym={ym} card={card}: '
                 f'expected={expected} got={result}')
+
+
+class CreditEstimateListFilterTests(TestCase):
+    """credit_estimate_listビューの定期デフォルト表示フィルタのテスト"""
+
+    def setUp(self):
+        """テスト用カード・定期デフォルト・手動入力を作成"""
+        self.client = Client()
+
+        # VIEWカード: closing_day=5（翌月5日締め → 支払は翌々月）
+        self.view_card = MonthlyPlanDefault(
+            title='VIEWカード',
+            card_id='view_card',
+            is_active=True,
+            closing_day=5,
+            is_end_of_month=False,
+            withdrawal_day=4,
+            order=1
+        )
+        self.view_card.save()
+        MonthlyPlanDefault.objects.filter(pk=self.view_card.pk).update(key='view_card')
+
+        # 楽天カード: is_end_of_month=True（月末締め → 翌月払い）
+        self.rakuten_card = MonthlyPlanDefault(
+            title='楽天カード',
+            card_id='rakuten_card',
+            is_active=True,
+            closing_day=None,
+            is_end_of_month=True,
+            withdrawal_day=27,
+            order=2
+        )
+        self.rakuten_card.save()
+        MonthlyPlanDefault.objects.filter(pk=self.rakuten_card.pk).update(key='rakuten_card')
+
+        # 定期デフォルト A: payment_day=10, VIEWカード
+        # 2026-03利用 → billing_month=2026-05（10 > 5 なので翌々月）
+        self.default_view = CreditDefault.objects.create(
+            key='default_view_test',
+            label='VIEWサービス',
+            card_type='view_card',
+            amount=1000,
+            payment_day=10,
+            is_active=True,
+        )
+
+        # 定期デフォルト B: payment_day=10, 楽天カード
+        # 2026-03利用 → billing_month=2026-04（月末締め → 翌月）
+        self.default_rakuten = CreditDefault.objects.create(
+            key='default_rakuten_test',
+            label='楽天サービス',
+            card_type='rakuten_card',
+            amount=2000,
+            payment_day=10,
+            is_active=True,
+        )
+
+    @patch('budget_app.views.timezone')
+    def test_same_usage_month_different_cards_filtered_separately(self, mock_timezone):
+        """同じ利用月でもカード別に billing_month フィルタが適用される
+
+        2026-03利用:
+        - VIEWカード（payment_day=10 > closing_day=5）→ billing_month=2026-05
+        - 楽天カード（月末締め）→ billing_month=2026-04
+
+        2026-04 にのみ手動入力がある場合:
+        - 楽天の定期（2026-03利用）は 2026-04 に表示される
+        - VIEWの定期（2026-03利用）は 2026-05 に表示されない（2026-05に手動入力なし）
+        """
+        import datetime
+
+        fixed_dt = datetime.datetime(2026, 3, 8, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        mock_timezone.now.return_value = fixed_dt
+        mock_timezone.localtime.return_value = fixed_dt
+
+        # 2026-03利用月のオーバーライドを両カード分作成
+        DefaultChargeOverride.objects.create(
+            default=self.default_view,
+            year_month='2026-03',
+            amount=1000,
+            card_type='view_card',
+        )
+        DefaultChargeOverride.objects.create(
+            default=self.default_rakuten,
+            year_month='2026-03',
+            amount=2000,
+            card_type='rakuten_card',
+        )
+
+        # 2026-04（楽天の billing_month）にのみ手動入力
+        CreditEstimate.objects.create(
+            description='手動入力',
+            amount=5000,
+            year_month='2026-03',
+            billing_month='2026-04',
+            card_type='rakuten_card',
+            is_bonus_payment=False,
+        )
+
+        response = self.client.get(reverse('budget_app:credit_estimates'))
+        self.assertEqual(response.status_code, 200)
+
+        future_summary = response.context['future_summary']
+
+        # 2026-04は表示される（手動入力あり）
+        has_2026_04 = any('2026-04' in key for key in future_summary.keys())
+        self.assertTrue(has_2026_04, '2026-04 は手動入力があるので表示されるべき')
+
+        # 2026-05は表示されない（手動入力なし・VIEWカード定期のみ）
+        has_2026_05 = any('2026-05' in key for key in future_summary.keys())
+        self.assertFalse(has_2026_05, '2026-05 は手動入力がないので表示されないべき')
+
+    @patch('budget_app.views.timezone')
+    def test_bonus_payment_does_not_unlock_defaults(self, mock_timezone):
+        """ボーナス払いの billing_month は定期デフォルト表示のトリガーにならない
+
+        ボーナス払いが 2026-08 にあっても、2026-06利用の定期デフォルトが
+        2026-08 に表示されてはいけない。
+        """
+        import datetime
+
+        fixed_dt = datetime.datetime(2026, 3, 8, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        mock_timezone.now.return_value = fixed_dt
+        mock_timezone.localtime.return_value = fixed_dt
+
+        # 2026-06利用のオーバーライド（VIEWカード: payment_day=10 > 5 → billing_month=2026-08）
+        DefaultChargeOverride.objects.create(
+            default=self.default_view,
+            year_month='2026-06',
+            amount=1000,
+            card_type='view_card',
+        )
+
+        # ボーナス払い（is_bonus_payment=True）が 2026-08 にある
+        CreditEstimate.objects.create(
+            description='ボーナス払い',
+            amount=50000,
+            year_month='2026-01',
+            billing_month='2026-08',
+            card_type='view_card',
+            is_bonus_payment=True,
+        )
+
+        response = self.client.get(reverse('budget_app:credit_estimates'))
+        self.assertEqual(response.status_code, 200)
+
+        future_summary = response.context['future_summary']
+
+        # 2026-08 に通常払いの定期デフォルトが表示されていないことを確認
+        for key, cards in future_summary.items():
+            if '2026-08' in key:
+                for card_key, card_data in cards.items():
+                    if not card_data.get('is_bonus_section', False):
+                        default_entries = [e for e in card_data['entries'] if getattr(e, 'is_default', False)]
+                        self.assertEqual(len(default_entries), 0,
+                            f'2026-08 の通常払いセクション({card_key})に定期デフォルトが表示されるべきではない')
+
+    @patch('budget_app.views.timezone')
+    def test_manual_input_month_shows_defaults(self, mock_timezone):
+        """手動入力がある月には対応する定期デフォルトが正しく表示される
+
+        2026-04 に手動入力があれば、楽天の2026-03利用分（billing_month=2026-04）が表示される。
+        """
+        import datetime
+
+        fixed_dt = datetime.datetime(2026, 3, 8, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        mock_timezone.now.return_value = fixed_dt
+        mock_timezone.localtime.return_value = fixed_dt
+
+        DefaultChargeOverride.objects.create(
+            default=self.default_rakuten,
+            year_month='2026-03',
+            amount=2000,
+            card_type='rakuten_card',
+        )
+
+        CreditEstimate.objects.create(
+            description='手動入力',
+            amount=3000,
+            year_month='2026-03',
+            billing_month='2026-04',
+            card_type='rakuten_card',
+            is_bonus_payment=False,
+        )
+
+        response = self.client.get(reverse('budget_app:credit_estimates'))
+        self.assertEqual(response.status_code, 200)
+
+        future_summary = response.context['future_summary']
+
+        has_2026_04 = any('2026-04' in key for key in future_summary.keys())
+        self.assertTrue(has_2026_04, '2026-04 は手動入力があるので表示されるべき')
+
+        found_default = False
+        for key, cards in future_summary.items():
+            if '2026-04' in key:
+                for card_key, card_data in cards.items():
+                    if not card_data.get('is_bonus_section', False):
+                        for entry in card_data['entries']:
+                            if getattr(entry, 'is_default', False):
+                                found_default = True
+        self.assertTrue(found_default, '2026-04 に楽天の定期デフォルトが表示されるべき')
