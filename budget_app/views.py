@@ -1383,15 +1383,19 @@ def credit_estimate_list(request):
         card_group['entries'].append(est)
 
     # 定期デフォルトを表示する利用月を決定
-    # DefaultChargeOverrideのyear_monthを直接使用（現在月以降）
-    from dateutil.relativedelta import relativedelta
+    # 手動入力のCreditEstimateが存在するbilling_monthのみに表示する
+    existing_billing_months = set(summary.keys())
 
-    three_months_ago = (today - relativedelta(months=3)).strftime('%Y-%m')
-
-    # override_mapから利用月を収集（現在月以降 + 過去3ヶ月）
+    # override_mapから利用月を収集（現在月以降 かつ 手動入力がある支払月のみ）
     candidate_usage_months = sorted(list(set(
         ym for (default_id, ym) in override_map.keys()
-        if ym >= three_months_ago
+        if ym >= current_year_month
+        and override_map.get((default_id, ym)) is not None
+        and calculate_billing_month_for_purchase(
+            next((d.payment_day for d in credit_defaults if d.id == default_id), 1),
+            ym,
+            override_map[(default_id, ym)].get('card_type', '')
+        ) in existing_billing_months
     )))
 
     # candidate_usage_cardsはカードの候補チェック用（常にTrueとして扱う）
