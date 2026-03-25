@@ -27,7 +27,9 @@ def yen(value):
             amount = int(value)
         except (TypeError, ValueError):
             return value
-    # Pythonの組み込み機能でコンマ区切り
+    # Pythonの組み込み機能でコンマ区切り（マイナスは¥の前に付ける）
+    if amount < 0:
+        return f'-¥{-amount:,}'
     return f'¥{amount:,}'
 
 
@@ -136,6 +138,8 @@ def usd_display(obj):
         if not is_usd:
             # ドル入力でない場合は通常の円表示
             amount = getattr(obj, 'amount', 0)
+            if amount < 0:
+                return f'-¥{-amount:,}'
             return f'¥{amount:,}'
 
         usd_amount = getattr(obj, 'usd_amount', None)
@@ -144,6 +148,8 @@ def usd_display(obj):
         if usd_amount:
             return format_usd_with_jpy(usd_amount, jpy_amount)
         else:
+            if jpy_amount < 0:
+                return f'-¥{-jpy_amount:,}'
             return f'¥{jpy_amount:,}'
     except Exception as e:
         return str(obj)

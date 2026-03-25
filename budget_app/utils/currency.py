@@ -88,4 +88,6 @@ def format_usd_with_jpy(usd_amount, jpy_amount=None):
 
     # ドル部分: 小数点2桁
     # 円部分: カンマ区切り
+    if jpy_amount < 0:
+        return f"${usd:.2f} (-¥{-jpy_amount:,})"
     return f"${usd:.2f} (¥{jpy_amount:,})"
