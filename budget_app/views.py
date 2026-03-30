@@ -146,6 +146,7 @@ def update_initial_balance(request):
             config = SimulationConfig.objects.filter(is_active=True).first()
             if config:
                 config.initial_balance = initial_balance
+                config.balance_set_date = date.today()
                 config.save()
                 messages.success(request, f'現在残高を{initial_balance:,}円に更新しました。')
             else:
@@ -439,6 +440,7 @@ def plan_list(request):
     # 現在残高と定期預金情報を取得
     config = SimulationConfig.objects.filter(is_active=True).first()
     initial_balance = config.initial_balance if config else 0
+    balance_set_date = config.balance_set_date if config else None
     savings_enabled = config.savings_enabled if config else False
     savings_amount = config.savings_amount if (config and savings_enabled) else 0
     savings_start_month = config.savings_start_month if (config and savings_enabled) else None
@@ -446,6 +448,7 @@ def plan_list(request):
 
     current_balance = initial_balance
     cumulative_savings = 0  # 定期預金の累計
+    past_effective_sum = 0  # balance_set_date以降〜今日の取引合計
 
     # 各計画に収支情報とタイムラインを追加
     # 現在月かどうかを判定するフラグ
@@ -585,6 +588,16 @@ def plan_list(request):
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は定期預金を最後に、収入を先に）
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, 1 if x.get('is_savings') else 0, -x['amount']))
 
+        # balance_set_date以降〜今日の取引を累積（実効残高の自動計算用）
+        if balance_set_date:
+            for t in transactions:
+                if (t['date'] and
+                        t['date'] > balance_set_date and
+                        t['date'] <= today and
+                        not t.get('is_excluded', False) and
+                        not t.get('is_savings', False)):
+                    past_effective_sum += t['amount']
+
         # 過去の明細用のリスト（現在月の今日以前の取引）
         past_timeline = []
 
@@ -650,9 +663,9 @@ def plan_list(request):
         # アーカイブフラグを設定
         plan.is_archived = plan.year_month < current_year_month
 
-        # 現在月の場合、現在残高を表示
+        # 現在月の場合、現在残高を表示（balance_set_date以降の取引を自動加算）
         if plan.year_month == current_year_month:
-            plan.current_balance = initial_balance  # 現在残高（今日時点）
+            plan.current_balance = initial_balance + past_effective_sum
         else:
             plan.current_balance = None
 
@@ -720,6 +733,7 @@ def plan_list(request):
         'current_and_future_plans': current_and_future_plans,
         'past_plans': past_plans,
         'initial_balance': initial_balance,
+        'effective_balance': initial_balance + past_effective_sum,
         'today': today,
         'default_items': default_items,
         'registered_year_months': json.dumps(registered_year_months),
