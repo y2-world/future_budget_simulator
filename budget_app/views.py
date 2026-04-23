@@ -138,6 +138,7 @@ def config_view(request):
 
 def update_initial_balance(request):
     """現在残高を更新"""
+    from datetime import date
     if request.method == 'POST':
         initial_balance = request.POST.get('initial_balance', 0)
         try:
