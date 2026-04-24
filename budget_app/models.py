@@ -608,6 +608,14 @@ class MonthlyPlanDefault(models.Model):
         choices=BONUS_PAYMENT_TYPES,
         verbose_name="ボーナス払い種別",
     )
+    linked_bonus_payment_type = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        choices=BONUS_PAYMENT_TYPES,
+        verbose_name="連携ボーナス払い種別",
+        help_text="このカードでボーナス払いを選択した際に使用するボーナス払い種別（通常払いカードのみ設定）",
+    )
 
     class Meta:
         verbose_name = "月次計画デフォルト項目"

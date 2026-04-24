@@ -531,12 +531,25 @@ class CreditEstimateForm(forms.ModelForm):
         is_bonus_payment = cleaned_data.get('is_bonus_payment')
         card_type = cleaned_data.get('card_type')
 
+        # カードのlinked_bonus_payment_typeを取得
+        from budget_app.models import MonthlyPlanDefault
+        card_default = MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
+        card_linked_bonus = card_default.linked_bonus_payment_type if card_default else ''
+
         if is_split_payment and is_bonus_payment:
             raise forms.ValidationError('分割払いとボーナス払いは同時に選択できません。')
 
-        # 分割払いまたはボーナス払いの場合、VIEWカードのみ使用可能
-        if (is_split_payment or is_bonus_payment) and card_type != 'item_6':
-            raise forms.ValidationError('分割払いとボーナス払いはVIEWカードでのみ利用できます。')
+        # 分割払いはビックカメラVIEWカードのみ
+        if is_split_payment and card_type != 'item_6':
+            raise forms.ValidationError('分割払いはVIEWカード ビックカメラでのみ利用できます。')
+
+        # ボーナス払いはlinked_bonus_payment_typeが設定されているカードのみ
+        if is_bonus_payment and not card_linked_bonus:
+            raise forms.ValidationError('ボーナス払いはVIEWカードでのみ利用できます。')
+
+        # bonus_payment_typeが未設定の場合、カードのlinked_bonus_payment_typeから自動設定
+        if is_bonus_payment and not bonus_payment_type and card_linked_bonus:
+            cleaned_data['bonus_payment_type'] = card_linked_bonus
 
         # ボーナス払いの場合、利用日が有効な期間かチェック
         due_date = cleaned_data.get('due_date')

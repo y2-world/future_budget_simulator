@@ -53,7 +53,7 @@
                 <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.card_type.label }}</label>
                 <select name="card_type" id="create_card_type" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
                     {% for card in card_choices %}
-                    <option value="{{ card.key }}"{% if forloop.first %} selected{% endif %}>{{ card.title }}</option>
+                    <option value="{{ card.key }}" data-linked-bonus="{{ card.linked_bonus_payment_type|default:'' }}"{% if forloop.first %} selected{% endif %}>{{ card.title }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -92,23 +92,12 @@
                     {{ form.is_split_payment }}
                     <span class="ml-2 text-sm font-medium text-gray-700">{{ form.is_split_payment.label }}</span>
                 </label>
-                <!-- ボーナス払い種別ラジオボタン -->
-                <div id="create_bonus_payment_wrapper" class="p-2 bg-gray-50 rounded-lg">
-                    <span class="text-sm font-medium text-gray-700 block mb-1">ボーナス払い</span>
-                    <input type="hidden" name="is_bonus_payment" id="create_is_bonus_payment_hidden" value="">
+                <!-- ボーナス払い -->
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="create_bonus_payment_wrapper">
+                    <input type="checkbox" name="is_bonus_payment" id="create_is_bonus_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                     <input type="hidden" name="bonus_payment_type" id="create_bonus_payment_type" value="">
-                    <div class="flex gap-2 flex-wrap">
-                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
-                            <input type="radio" name="create_bonus_type" value="" class="w-3.5 h-3.5 text-blue-600 mr-1 create-bonus-radio" checked> なし
-                        </label>
-                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
-                            <input type="radio" name="create_bonus_type" value="bic_camera" class="w-3.5 h-3.5 text-blue-600 mr-1 create-bonus-radio"> ビックカメラ
-                        </label>
-                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
-                            <input type="radio" name="create_bonus_type" value="standard" class="w-3.5 h-3.5 text-blue-600 mr-1 create-bonus-radio"> スタンダード
-                        </label>
-                    </div>
-                </div>
+                    <span class="ml-2 text-sm font-medium text-gray-700">ボーナス払い</span>
+                </label>
             </div>
 
             <div class="flex gap-2 pt-3">
@@ -146,8 +135,8 @@
                 <label class="block text-sm font-semibold text-gray-700 mb-2">カード種別</label>
                 <div class="grid grid-cols-2 gap-2">
                     {% for card in card_choices %}
-                    <label class="relative cursor-pointer card-type-label" data-value="{{ card.key }}">
-                        <input type="radio" name="card_type" value="{{ card.key }}" class="hidden card-type-radio">
+                    <label class="relative cursor-pointer card-type-label" data-value="{{ card.key }}" data-linked-bonus="{{ card.linked_bonus_payment_type|default:'' }}">
+                        <input type="radio" name="card_type" value="{{ card.key }}" data-linked-bonus="{{ card.linked_bonus_payment_type|default:'' }}" class="hidden card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
@@ -205,23 +194,12 @@
                     <input type="checkbox" name="is_split_payment" id="edit_is_split_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                     <span class="ml-2 text-sm font-medium text-gray-700">分割2回払い</span>
                 </label>
-                <!-- ボーナス払い種別ラジオボタン -->
-                <div id="edit_bonus_payment_wrapper" class="p-2 bg-gray-50 rounded-lg">
-                    <span class="text-sm font-medium text-gray-700 block mb-1">ボーナス払い</span>
-                    <input type="hidden" name="is_bonus_payment" id="edit_is_bonus_payment_hidden" value="">
+                <!-- ボーナス払い -->
+                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="edit_bonus_payment_wrapper">
+                    <input type="checkbox" name="is_bonus_payment" id="edit_is_bonus_payment_check" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                     <input type="hidden" name="bonus_payment_type" id="edit_bonus_payment_type" value="">
-                    <div class="flex gap-2 flex-wrap">
-                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
-                            <input type="radio" name="edit_bonus_type" value="" class="w-3.5 h-3.5 text-blue-600 mr-1 edit-bonus-radio" checked> なし
-                        </label>
-                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
-                            <input type="radio" name="edit_bonus_type" value="bic_camera" class="w-3.5 h-3.5 text-blue-600 mr-1 edit-bonus-radio"> ビックカメラ
-                        </label>
-                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
-                            <input type="radio" name="edit_bonus_type" value="standard" class="w-3.5 h-3.5 text-blue-600 mr-1 edit-bonus-radio"> スタンダード
-                        </label>
-                    </div>
-                </div>
+                    <span class="ml-2 text-sm font-medium text-gray-700">ボーナス払い</span>
+                </label>
             </div>
 
             <!-- ボタン -->
@@ -438,13 +416,10 @@
 
         document.getElementById('edit_is_split_payment').checked = isSplitPayment;
 
-        // ボーナス払い種別ラジオボタンを設定
-        const bonusType = bonusPaymentType || (isBonusPayment ? 'standard' : '');
-        document.querySelectorAll('.edit-bonus-radio').forEach(radio => {
-            radio.checked = (radio.value === bonusType);
-        });
-        document.getElementById('edit_is_bonus_payment_hidden').value = bonusType ? 'on' : '';
-        document.getElementById('edit_bonus_payment_type').value = bonusType;
+        // ボーナス払いチェックボックスとhiddenフィールドを設定
+        const editBonusCheck = document.getElementById('edit_is_bonus_payment_check');
+        if (editBonusCheck) editBonusCheck.checked = isBonusPayment;
+        document.getElementById('edit_bonus_payment_type').value = bonusPaymentType || '';
 
         // 分割払いの場合の注意メッセージ表示を更新
         const splitNotice = document.getElementById('edit_split_payment_notice');
@@ -691,11 +666,14 @@
         const createBonusWrapper = document.getElementById('create_bonus_payment_wrapper');
         const createSplitWrapper = document.getElementById('create_split_payment_wrapper');
         const createSplitCheckbox = document.getElementById('id_is_split_payment');
+        const createBonusCheckbox = document.getElementById('create_is_bonus_payment');
 
         window.toggleCreatePaymentOptions = function() {
-            const isViewCard = createCardTypeSelect.value === 'item_6';
+            const selectedOption = createCardTypeSelect ? createCardTypeSelect.options[createCardTypeSelect.selectedIndex] : null;
+            const linkedBonus = selectedOption ? (selectedOption.getAttribute('data-linked-bonus') || '') : '';
+            const isViewCard = createCardTypeSelect && createCardTypeSelect.value === 'item_6';
 
-            // 分割払いはVIEWカードの場合のみ表示
+            // 分割払いはビックカメラVIEWカードの場合のみ表示
             if (createSplitWrapper) {
                 createSplitWrapper.style.display = isViewCard ? 'flex' : 'none';
                 if (!isViewCard && createSplitCheckbox) {
@@ -703,13 +681,11 @@
                 }
             }
 
-            // ボーナス払いはVIEWカードの場合のみ表示
+            // ボーナス払いはlinked_bonus_payment_typeが設定されているカードのみ表示
             if (createBonusWrapper) {
-                createBonusWrapper.style.display = isViewCard ? 'block' : 'none';
-                if (!isViewCard) {
-                    // VIEWカード以外では「なし」にリセット
-                    document.querySelectorAll('.create-bonus-radio').forEach(r => { r.checked = (r.value === ''); });
-                    document.getElementById('create_is_bonus_payment_hidden').value = '';
+                createBonusWrapper.style.display = linkedBonus ? 'flex' : 'none';
+                if (!linkedBonus) {
+                    if (createBonusCheckbox) createBonusCheckbox.checked = false;
                     document.getElementById('create_bonus_payment_type').value = '';
                 }
             }
@@ -722,25 +698,28 @@
             window.toggleCreatePaymentOptions(); // 初期状態を設定
         }
 
-        // 新規追加：ボーナス払いラジオボタン変更時にhiddenフィールドを同期
-        document.querySelectorAll('.create-bonus-radio').forEach(radio => {
-            radio.addEventListener('change', function() {
-                const val = this.value;
-                document.getElementById('create_is_bonus_payment_hidden').value = val ? 'on' : '';
-                document.getElementById('create_bonus_payment_type').value = val;
-                // ボーナス払いが選択された場合、分割払いを解除
-                if (val && createSplitCheckbox && createSplitCheckbox.checked) {
-                    createSplitCheckbox.checked = false;
+        // 新規追加：ボーナス払いチェックボックス変更時にhiddenフィールドを同期
+        if (createBonusCheckbox) {
+            createBonusCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    const selectedOption = createCardTypeSelect.options[createCardTypeSelect.selectedIndex];
+                    const linkedBonus = selectedOption ? (selectedOption.getAttribute('data-linked-bonus') || '') : '';
+                    document.getElementById('create_bonus_payment_type').value = linkedBonus;
+                    // ボーナス払いが選択された場合、分割払いを解除
+                    if (createSplitCheckbox && createSplitCheckbox.checked) {
+                        createSplitCheckbox.checked = false;
+                    }
+                } else {
+                    document.getElementById('create_bonus_payment_type').value = '';
                 }
             });
-        });
+        }
 
         // 分割払いチェック時にボーナス払いをリセット
         if (createSplitCheckbox) {
             createSplitCheckbox.addEventListener('change', function() {
                 if (this.checked) {
-                    document.querySelectorAll('.create-bonus-radio').forEach(r => { r.checked = (r.value === ''); });
-                    document.getElementById('create_is_bonus_payment_hidden').value = '';
+                    if (createBonusCheckbox) createBonusCheckbox.checked = false;
                     document.getElementById('create_bonus_payment_type').value = '';
                 }
             });
@@ -750,13 +729,15 @@
         const editBonusWrapper = document.getElementById('edit_bonus_payment_wrapper');
         const editSplitWrapper = document.getElementById('edit_split_payment_wrapper');
         const editSplitCheckbox = document.getElementById('edit_is_split_payment');
+        const editBonusCheckbox = document.getElementById('edit_is_bonus_payment_check');
 
         window.toggleEditPaymentOptions = function() {
             // 編集モーダルで選択されているカード種別を取得（ラジオボタン）
             const selectedRadio = document.querySelector('#editModal .card-type-radio:checked');
+            const linkedBonus = selectedRadio ? (selectedRadio.getAttribute('data-linked-bonus') || '') : '';
             const isViewCard = selectedRadio && selectedRadio.value === 'item_6';
 
-            // 分割払いはVIEWカードの場合のみ表示
+            // 分割払いはビックカメラVIEWカードの場合のみ表示
             if (editSplitWrapper) {
                 editSplitWrapper.style.display = isViewCard ? 'flex' : 'none';
                 if (!isViewCard && editSplitCheckbox) {
@@ -764,36 +745,38 @@
                 }
             }
 
-            // ボーナス払いはVIEWカードの場合のみ表示
+            // ボーナス払いはlinked_bonus_payment_typeが設定されているカードのみ表示
             if (editBonusWrapper) {
-                editBonusWrapper.style.display = isViewCard ? 'block' : 'none';
-                if (!isViewCard) {
-                    document.querySelectorAll('.edit-bonus-radio').forEach(r => { r.checked = (r.value === ''); });
-                    document.getElementById('edit_is_bonus_payment_hidden').value = '';
+                editBonusWrapper.style.display = linkedBonus ? 'flex' : 'none';
+                if (!linkedBonus) {
+                    if (editBonusCheckbox) editBonusCheckbox.checked = false;
                     document.getElementById('edit_bonus_payment_type').value = '';
                 }
             }
         }
 
-        // 編集：ボーナス払いラジオボタン変更時にhiddenフィールドを同期
-        document.querySelectorAll('.edit-bonus-radio').forEach(radio => {
-            radio.addEventListener('change', function() {
-                const val = this.value;
-                document.getElementById('edit_is_bonus_payment_hidden').value = val ? 'on' : '';
-                document.getElementById('edit_bonus_payment_type').value = val;
-                // ボーナス払いが選択された場合、分割払いを解除
-                if (val && editSplitCheckbox && editSplitCheckbox.checked) {
-                    editSplitCheckbox.checked = false;
+        // 編集：ボーナス払いチェックボックス変更時にhiddenフィールドを同期
+        if (editBonusCheckbox) {
+            editBonusCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    const selectedRadio = document.querySelector('#editModal .card-type-radio:checked');
+                    const linkedBonus = selectedRadio ? (selectedRadio.getAttribute('data-linked-bonus') || '') : '';
+                    document.getElementById('edit_bonus_payment_type').value = linkedBonus;
+                    // ボーナス払いが選択された場合、分割払いを解除
+                    if (editSplitCheckbox && editSplitCheckbox.checked) {
+                        editSplitCheckbox.checked = false;
+                    }
+                } else {
+                    document.getElementById('edit_bonus_payment_type').value = '';
                 }
             });
-        });
+        }
 
         // 分割払いチェック時にボーナス払いをリセット（編集）
         if (editSplitCheckbox) {
             editSplitCheckbox.addEventListener('change', function() {
                 if (this.checked) {
-                    document.querySelectorAll('.edit-bonus-radio').forEach(r => { r.checked = (r.value === ''); });
-                    document.getElementById('edit_is_bonus_payment_hidden').value = '';
+                    if (editBonusCheckbox) editBonusCheckbox.checked = false;
                     document.getElementById('edit_bonus_payment_type').value = '';
                 }
             });

@@ -380,7 +380,7 @@ def get_card_choices_for_form():
     return MonthlyPlanDefault.objects.filter(
         is_active=True,
         card_id__isnull=False
-    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title')
+    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title', 'linked_bonus_payment_type')
 
 
 def get_card_by_key(card_key):
@@ -1372,15 +1372,15 @@ def credit_estimate_list(request):
             btype = est.bonus_payment_type or ''
             type_label_map = {'bic_camera': 'ビックカメラ', 'standard': 'スタンダード'}
             type_label = type_label_map.get(btype, '')
-            bonus_label = f'【{type_label}ボーナス払い】' if type_label else '【ボーナス払い】'
-            # ボーナス払いの場合、カード名 + 支払日 + 【種別ボーナス払い】を表示
+            bonus_label = f'ボーナス払い【{type_label}】' if type_label else 'ボーナス払い'
+            # ボーナス払いの場合、カード名 + 支払日 + ボーナス払い【種別】を表示
             label = card_labels.get(est.card_type, est.card_type)
             if due_day and est.due_date:
                 billing_year = est.due_date.year
                 billing_month = est.due_date.month
-                card_label = f"{label} ({billing_month}/{due_day}支払){bonus_label}"
+                card_label = f"{label} ({billing_month}/{due_day}支払) {bonus_label}"
             else:
-                card_label = label + bonus_label
+                card_label = f"{label} {bonus_label}"
         else:
             # 通常払いの場合、カード名 + 支払日を表示（土日祝考慮）
             card_label = get_card_label_with_due_day(est.card_type, is_bonus=False, year_month=display_month)
@@ -2144,7 +2144,9 @@ def credit_estimate_list(request):
             if card_item_for_label:
                 card_label = card_item_for_label.title
                 if is_bonus:
-                    card_label += '【ボーナス払い】'
+                    type_label_map = {'bic_camera': 'ビックカメラ', 'standard': 'スタンダード'}
+                    type_label = type_label_map.get(bonus_type, '')
+                    card_label += f' ボーナス払い【{type_label}】' if type_label else ' ボーナス払い'
             else:
                 card_label = actual_card_id
 
@@ -3742,7 +3744,10 @@ def past_transactions_list(request):
             card_name = card_type_display
 
         if estimate.is_bonus_payment:
-            card_name = f'{card_name}【ボーナス払い】'
+            type_label_map = {'bic_camera': 'ビックカメラ', 'standard': 'スタンダード'}
+            type_label = type_label_map.get(estimate.bonus_payment_type, '')
+            bonus_suffix = f' ボーナス払い【{type_label}】' if type_label else ' ボーナス払い'
+            card_name = f'{card_name}{bonus_suffix}'
 
         if card_name not in yearly_data[year]['credit_months'][billing_month]['cards']:
             yearly_data[year]['credit_months'][billing_month]['cards'][card_name] = {
