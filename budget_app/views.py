@@ -522,14 +522,14 @@ def plan_list(request):
                     # 翌営業日調整で翌月にまたいだ場合は翌月に持ち越し
                     if item_date.month != month or item_date.year != year:
                         next_ym = item_date.strftime('%Y-%m')
-                            carryover_transactions.setdefault(next_ym, []).append({
-                                'date': item_date,
-                                'name': item.title,
-                                'amount': -amount if item.payment_type != 'deposit' else amount,
-                                'is_view_card': (key == 'item_6') and item.is_credit_card(),
-                                'is_excluded': plan.get_exclusion(key) if item.is_credit_card() else False,
-                            })
-                            continue
+                        carryover_transactions.setdefault(next_ym, []).append({
+                            'date': item_date,
+                            'name': item.title,
+                            'amount': -amount if item.payment_type != 'deposit' else amount,
+                            'is_view_card': (key == 'item_6') and item.is_credit_card(),
+                            'is_excluded': plan.get_exclusion(key) if item.is_credit_card() else False,
+                        })
+                        continue
 
             # 収入か支出かを判定
             is_income = item.payment_type == 'deposit'
