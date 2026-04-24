@@ -1360,20 +1360,27 @@ def credit_estimate_list(request):
         month_group = summary.setdefault(display_month, OrderedDict())
 
         # カードキーとラベルを設定
-        # ボーナス払いの場合はcard_typeに_bonusサフィックスを付ける
-        card_key = f"{est.card_type}_bonus" if est.is_bonus_payment else est.card_type
+        # ボーナス払いの場合はcard_typeに_bonus_{type}サフィックスを付ける
+        if est.is_bonus_payment:
+            btype = est.bonus_payment_type or ''
+            card_key = f"{est.card_type}_bonus_{btype}" if btype else f"{est.card_type}_bonus"
+        else:
+            card_key = est.card_type
         due_day = card_due_days.get(est.card_type, '')
 
         if est.is_bonus_payment:
-            # ボーナス払いの場合、カード名 + 支払日 + 【ボーナス払い】を表示
+            btype = est.bonus_payment_type or ''
+            type_label_map = {'bic_camera': 'ビックカメラ', 'standard': 'スタンダード'}
+            type_label = type_label_map.get(btype, '')
+            bonus_label = f'【{type_label}ボーナス払い】' if type_label else '【ボーナス払い】'
+            # ボーナス払いの場合、カード名 + 支払日 + 【種別ボーナス払い】を表示
+            label = card_labels.get(est.card_type, est.card_type)
             if due_day and est.due_date:
                 billing_year = est.due_date.year
                 billing_month = est.due_date.month
-                label = card_labels.get(est.card_type, est.card_type)
-                card_label = f"{label} ({billing_month}/{due_day}支払)【ボーナス払い】"
+                card_label = f"{label} ({billing_month}/{due_day}支払){bonus_label}"
             else:
-                label = card_labels.get(est.card_type, est.card_type)
-                card_label = label + '【ボーナス払い】'
+                card_label = label + bonus_label
         else:
             # 通常払いの場合、カード名 + 支払日を表示（土日祝考慮）
             card_label = get_card_label_with_due_day(est.card_type, is_bonus=False, year_month=display_month)
@@ -2008,34 +2015,32 @@ def credit_estimate_list(request):
             total_amount_str = request.POST.get('total_amount')  # フロントエンドから送られた合計金額
             is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
-            # card_idからボーナス払いフラグを判定
-            is_bonus = card_id.endswith('_bonus')
-            if is_bonus:
-                actual_card_id = card_id.replace('_bonus', '')
+            # card_idからボーナス払いフラグと種別を判定
+            # 形式: item_6_bonus_bic_camera / item_6_bonus_standard / item_6_bonus / item_6
+            bonus_type = ''
+            if '_bonus_' in card_id:
+                idx = card_id.index('_bonus_')
+                actual_card_id = card_id[:idx]
+                bonus_type = card_id[idx + 7:]
+                is_bonus = True
+            elif card_id.endswith('_bonus'):
+                actual_card_id = card_id[:-6]
+                is_bonus = True
             else:
                 actual_card_id = card_id
+                is_bonus = False
 
             # card_idからMonthlyPlanDefaultのkeyを取得
-            # ボーナス払いの場合は is_bonus_payment=True の項目を検索（例: item_6 → item_7）
             try:
                 if is_bonus:
-                    # ボーナス払いの場合: 基本カードを取得し、それに対応するボーナス払い項目を検索
-                    # actual_card_idは基本カードのID（例: item_6）
-                    # まず基本カードの情報を取得
-                    base_card = MonthlyPlanDefault.objects.get(
-                        key=actual_card_id,
-                        is_active=True
-                    )
-
-                    # 基本カードと同じカード種類でボーナス払い項目を検索
-                    # card_idベースで検索（例: item_6の基本カードに対してitem_7のボーナス払い項目）
-                    # ただし、item_7のcard_idはitem_7なので、タイトルベースで検索する
-                    card_item = MonthlyPlanDefault.objects.filter(
-                        is_bonus_payment=True,
-                        is_active=True
-                    ).filter(
-                        title__icontains=base_card.title.replace('【ボーナス払い】', '').replace(' (ボーナス払い)', '').replace('(ボーナス払い)', '').strip()
-                    ).first()
+                    q = MonthlyPlanDefault.objects.filter(is_bonus_payment=True, is_active=True)
+                    if bonus_type:
+                        card_item = q.filter(bonus_payment_type=bonus_type).first()
+                    else:
+                        # 旧形式: タイトルマッチで検索
+                        base_card = MonthlyPlanDefault.objects.get(key=actual_card_id, is_active=True)
+                        base_title = base_card.title.replace('【ボーナス払い】', '').replace(' (ボーナス払い)', '').replace('(ボーナス払い)', '').strip()
+                        card_item = q.filter(title__icontains=base_title).first()
 
                     if not card_item:
                         raise MonthlyPlanDefault.DoesNotExist()
@@ -2078,6 +2083,8 @@ def credit_estimate_list(request):
                     card_type=actual_card_id,
                     is_bonus_payment=is_bonus
                 )
+                if is_bonus and bonus_type:
+                    estimates_query = estimates_query.filter(bonus_payment_type=bonus_type)
 
                 # ボーナス払いの場合は支払月（due_date）でフィルタ
                 if is_bonus:
@@ -2211,23 +2218,33 @@ def credit_estimate_list(request):
                 for section_key in sections_to_process:
                     # VIEW/VERMILLIONは翌々月、その他は翌月に反映
                     for card_key, data in summary[section_key].items():
-                        # card_keyがボーナス払いかどうかを判定
-                        is_bonus = card_key.endswith('_bonus')
-                        if is_bonus:
-                            # ボーナス払いの場合、card_typeを取得
-                            card_type = card_key.replace('_bonus', '')
+                        # card_keyからボーナス払い種別を判定
+                        # 形式: item_6_bonus_bic_camera / item_6_bonus_standard / item_6_bonus / item_6
+                        bonus_type = ''
+                        if '_bonus_' in card_key:
+                            idx = card_key.index('_bonus_')
+                            card_type = card_key[:idx]
+                            bonus_type = card_key[idx + 7:]
+                            is_bonus = True
+                        elif card_key.endswith('_bonus'):
+                            card_type = card_key[:-6]
+                            is_bonus = True
                         else:
                             card_type = card_key
+                            is_bonus = False
 
                         # 手動入力と定期項目を分けて計算
                         # 手動入力データの合計
                         if is_bonus:
-                            estimates = CreditEstimate.objects.filter(
+                            estimates_q = CreditEstimate.objects.filter(
                                 card_type=card_type,
                                 is_bonus_payment=True,
                                 due_date__year=int(year_month.split('-')[0]),
                                 due_date__month=int(year_month.split('-')[1])
                             )
+                            if bonus_type:
+                                estimates_q = estimates_q.filter(bonus_payment_type=bonus_type)
+                            estimates = estimates_q
                         else:
                             estimates = CreditEstimate.objects.filter(
                                 card_type=card_type,
@@ -2296,8 +2313,16 @@ def credit_estimate_list(request):
                         )
 
                         # 通常払いまたはボーナス払いを反映
+                        # ボーナス払いはMonthlyPlanDefaultのkeyをfield_nameに使用
                         if is_bonus:
-                            field_name = f'{card_type}_card_bonus'
+                            bonus_q = MonthlyPlanDefault.objects.filter(
+                                is_bonus_payment=True, is_active=True
+                            )
+                            if bonus_type:
+                                bonus_default = bonus_q.filter(bonus_payment_type=bonus_type).first()
+                            else:
+                                bonus_default = bonus_q.first()
+                            field_name = bonus_default.key if bonus_default else f'{card_type}_card_bonus'
                         else:
                             field_name = f'{card_type}_card'
 

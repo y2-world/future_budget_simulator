@@ -597,6 +597,17 @@ class MonthlyPlanDefault(models.Model):
         verbose_name="ボーナス払い",
         help_text="ボーナス払い用の項目かどうか"
     )
+    BONUS_PAYMENT_TYPES = [
+        ('bic_camera', 'ビックカメラ'),
+        ('standard', 'スタンダード'),
+    ]
+    bonus_payment_type = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        choices=BONUS_PAYMENT_TYPES,
+        verbose_name="ボーナス払い種別",
+    )
 
     class Meta:
         verbose_name = "月次計画デフォルト項目"
