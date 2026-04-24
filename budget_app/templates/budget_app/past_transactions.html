@@ -196,7 +196,7 @@
                                                                                 {% if est.estimate.pk %}
                                                                                 <div class="flex gap-1">
                                                                                     <button type="button" class="edit-estimate-btn text-blue-600 hover:text-blue-800 cursor-pointer w-6 h-6 flex items-center justify-center"
-                                                                                        data-pk="{{ est.estimate.pk }}"
+                                                                                        data-pk="{{ est.estimate.pk|stringformat:'d' }}"
                                                                                         data-year-month="{{ est.estimate.year_month }}"
                                                                                         data-card-type="{{ est.estimate.card_type }}"
                                                                                         data-description="{{ est.estimate.description }}"
@@ -428,7 +428,7 @@
                                                 <div class="flex gap-2">
                                                     {% if est.estimate.pk %}
                                                     <button type="button" class="edit-estimate-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2 font-medium"
-                                                        data-pk="{{ est.estimate.pk }}"
+                                                        data-pk="{{ est.estimate.pk|stringformat:'d' }}"
                                                         data-year-month="{{ est.estimate.year_month }}"
                                                         data-card-type="{{ est.estimate.card_type }}"
                                                         data-description="{{ est.estimate.description }}"
