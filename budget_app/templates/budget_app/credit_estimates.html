@@ -87,15 +87,28 @@
                 {{ form.purchase_date }}
             </div>
 
-            <div class="grid grid-cols-2 gap-2">
+            <div class="space-y-2">
                 <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="create_split_payment_wrapper">
                     {{ form.is_split_payment }}
                     <span class="ml-2 text-sm font-medium text-gray-700">{{ form.is_split_payment.label }}</span>
                 </label>
-                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="create_bonus_payment_wrapper">
-                    {{ form.is_bonus_payment }}
-                    <span class="ml-2 text-sm font-medium text-gray-700">{{ form.is_bonus_payment.label }}</span>
-                </label>
+                <!-- ボーナス払い種別ラジオボタン -->
+                <div id="create_bonus_payment_wrapper" class="p-2 bg-gray-50 rounded-lg">
+                    <span class="text-sm font-medium text-gray-700 block mb-1">ボーナス払い</span>
+                    <input type="hidden" name="is_bonus_payment" id="create_is_bonus_payment_hidden" value="">
+                    <input type="hidden" name="bonus_payment_type" id="create_bonus_payment_type" value="">
+                    <div class="flex gap-2 flex-wrap">
+                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
+                            <input type="radio" name="create_bonus_type" value="" class="w-3.5 h-3.5 text-blue-600 mr-1 create-bonus-radio" checked> なし
+                        </label>
+                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
+                            <input type="radio" name="create_bonus_type" value="bic_camera" class="w-3.5 h-3.5 text-blue-600 mr-1 create-bonus-radio"> ビックカメラ
+                        </label>
+                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
+                            <input type="radio" name="create_bonus_type" value="standard" class="w-3.5 h-3.5 text-blue-600 mr-1 create-bonus-radio"> スタンダード
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <div class="flex gap-2 pt-3">
@@ -187,15 +200,28 @@
             </div>
 
             <!-- チェックボックス -->
-            <div class="grid grid-cols-2 gap-2">
+            <div class="space-y-2">
                 <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="edit_split_payment_wrapper">
                     <input type="checkbox" name="is_split_payment" id="edit_is_split_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                     <span class="ml-2 text-sm font-medium text-gray-700">分割2回払い</span>
                 </label>
-                <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="edit_bonus_payment_wrapper">
-                    <input type="checkbox" name="is_bonus_payment" id="edit_is_bonus_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
-                    <span class="ml-2 text-sm font-medium text-gray-700">ボーナス払い</span>
-                </label>
+                <!-- ボーナス払い種別ラジオボタン -->
+                <div id="edit_bonus_payment_wrapper" class="p-2 bg-gray-50 rounded-lg">
+                    <span class="text-sm font-medium text-gray-700 block mb-1">ボーナス払い</span>
+                    <input type="hidden" name="is_bonus_payment" id="edit_is_bonus_payment_hidden" value="">
+                    <input type="hidden" name="bonus_payment_type" id="edit_bonus_payment_type" value="">
+                    <div class="flex gap-2 flex-wrap">
+                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
+                            <input type="radio" name="edit_bonus_type" value="" class="w-3.5 h-3.5 text-blue-600 mr-1 edit-bonus-radio" checked> なし
+                        </label>
+                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
+                            <input type="radio" name="edit_bonus_type" value="bic_camera" class="w-3.5 h-3.5 text-blue-600 mr-1 edit-bonus-radio"> ビックカメラ
+                        </label>
+                        <label class="flex items-center cursor-pointer text-sm text-gray-600">
+                            <input type="radio" name="edit_bonus_type" value="standard" class="w-3.5 h-3.5 text-blue-600 mr-1 edit-bonus-radio"> スタンダード
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <!-- ボタン -->
@@ -348,7 +374,7 @@
     }
 
     // 編集モーダル制御関数
-    function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment) {
+    function openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplitPayment, isBonusPayment, bonusPaymentType) {
         const modal = document.getElementById('editModal');
         const form = document.getElementById('editForm');
 
@@ -411,7 +437,14 @@
         }
 
         document.getElementById('edit_is_split_payment').checked = isSplitPayment;
-        document.getElementById('edit_is_bonus_payment').checked = isBonusPayment;
+
+        // ボーナス払い種別ラジオボタンを設定
+        const bonusType = bonusPaymentType || (isBonusPayment ? 'standard' : '');
+        document.querySelectorAll('.edit-bonus-radio').forEach(radio => {
+            radio.checked = (radio.value === bonusType);
+        });
+        document.getElementById('edit_is_bonus_payment_hidden').value = bonusType ? 'on' : '';
+        document.getElementById('edit_bonus_payment_type').value = bonusType;
 
         // 分割払いの場合の注意メッセージ表示を更新
         const splitNotice = document.getElementById('edit_split_payment_notice');
@@ -657,7 +690,6 @@
         const createCardTypeSelect = document.getElementById('create_card_type');
         const createBonusWrapper = document.getElementById('create_bonus_payment_wrapper');
         const createSplitWrapper = document.getElementById('create_split_payment_wrapper');
-        const createBonusCheckbox = document.getElementById('id_is_bonus_payment');
         const createSplitCheckbox = document.getElementById('id_is_split_payment');
 
         window.toggleCreatePaymentOptions = function() {
@@ -673,9 +705,12 @@
 
             // ボーナス払いはVIEWカードの場合のみ表示
             if (createBonusWrapper) {
-                createBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
-                if (!isViewCard && createBonusCheckbox) {
-                    createBonusCheckbox.checked = false;
+                createBonusWrapper.style.display = isViewCard ? 'block' : 'none';
+                if (!isViewCard) {
+                    // VIEWカード以外では「なし」にリセット
+                    document.querySelectorAll('.create-bonus-radio').forEach(r => { r.checked = (r.value === ''); });
+                    document.getElementById('create_is_bonus_payment_hidden').value = '';
+                    document.getElementById('create_bonus_payment_type').value = '';
                 }
             }
         }
@@ -687,16 +722,26 @@
             window.toggleCreatePaymentOptions(); // 初期状態を設定
         }
 
-        // 分割・ボーナス払いの排他制御
-        if (createSplitCheckbox && createBonusCheckbox) {
-            createSplitCheckbox.addEventListener('change', function() {
-                if (this.checked && createBonusCheckbox.checked) {
-                    createBonusCheckbox.checked = false;
+        // 新規追加：ボーナス払いラジオボタン変更時にhiddenフィールドを同期
+        document.querySelectorAll('.create-bonus-radio').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const val = this.value;
+                document.getElementById('create_is_bonus_payment_hidden').value = val ? 'on' : '';
+                document.getElementById('create_bonus_payment_type').value = val;
+                // ボーナス払いが選択された場合、分割払いを解除
+                if (val && createSplitCheckbox && createSplitCheckbox.checked) {
+                    createSplitCheckbox.checked = false;
                 }
             });
-            createBonusCheckbox.addEventListener('change', function() {
-                if (this.checked && createSplitCheckbox.checked) {
-                    createSplitCheckbox.checked = false;
+        });
+
+        // 分割払いチェック時にボーナス払いをリセット
+        if (createSplitCheckbox) {
+            createSplitCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    document.querySelectorAll('.create-bonus-radio').forEach(r => { r.checked = (r.value === ''); });
+                    document.getElementById('create_is_bonus_payment_hidden').value = '';
+                    document.getElementById('create_bonus_payment_type').value = '';
                 }
             });
         }
@@ -704,7 +749,6 @@
         // 分割払いとボーナス払いチェックボックスの表示制御（編集モーダル）
         const editBonusWrapper = document.getElementById('edit_bonus_payment_wrapper');
         const editSplitWrapper = document.getElementById('edit_split_payment_wrapper');
-        const editBonusCheckbox = document.getElementById('edit_is_bonus_payment');
         const editSplitCheckbox = document.getElementById('edit_is_split_payment');
 
         window.toggleEditPaymentOptions = function() {
@@ -722,23 +766,35 @@
 
             // ボーナス払いはVIEWカードの場合のみ表示
             if (editBonusWrapper) {
-                editBonusWrapper.style.display = isViewCard ? 'flex' : 'none';
-                if (!isViewCard && editBonusCheckbox) {
-                    editBonusCheckbox.checked = false;
+                editBonusWrapper.style.display = isViewCard ? 'block' : 'none';
+                if (!isViewCard) {
+                    document.querySelectorAll('.edit-bonus-radio').forEach(r => { r.checked = (r.value === ''); });
+                    document.getElementById('edit_is_bonus_payment_hidden').value = '';
+                    document.getElementById('edit_bonus_payment_type').value = '';
                 }
             }
         }
 
-        // 分割・ボーナス払いの排他制御（編集モーダル）
-        if (editSplitCheckbox && editBonusCheckbox) {
-            editSplitCheckbox.addEventListener('change', function() {
-                if (this.checked && editBonusCheckbox.checked) {
-                    editBonusCheckbox.checked = false;
+        // 編集：ボーナス払いラジオボタン変更時にhiddenフィールドを同期
+        document.querySelectorAll('.edit-bonus-radio').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const val = this.value;
+                document.getElementById('edit_is_bonus_payment_hidden').value = val ? 'on' : '';
+                document.getElementById('edit_bonus_payment_type').value = val;
+                // ボーナス払いが選択された場合、分割払いを解除
+                if (val && editSplitCheckbox && editSplitCheckbox.checked) {
+                    editSplitCheckbox.checked = false;
                 }
             });
-            editBonusCheckbox.addEventListener('change', function() {
-                if (this.checked && editSplitCheckbox.checked) {
-                    editSplitCheckbox.checked = false;
+        });
+
+        // 分割払いチェック時にボーナス払いをリセット（編集）
+        if (editSplitCheckbox) {
+            editSplitCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    document.querySelectorAll('.edit-bonus-radio').forEach(r => { r.checked = (r.value === ''); });
+                    document.getElementById('edit_is_bonus_payment_hidden').value = '';
+                    document.getElementById('edit_bonus_payment_type').value = '';
                 }
             });
         }
@@ -756,9 +812,10 @@
                 const purchaseDate = this.dataset.purchaseDate;
                 const isSplit = this.dataset.split === 'true';
                 const isBonus = this.dataset.bonus === 'true';
+                const bonusType = this.dataset.bonusType || '';
 
                 console.log('取得したcardType:', cardType);
-                openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplit, isBonus);
+                openEditModal(pk, yearMonth, cardType, description, amount, dueDate, purchaseDate, isSplit, isBonus, bonusType);
             });
         });
         

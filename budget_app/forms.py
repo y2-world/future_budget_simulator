@@ -440,7 +440,7 @@ class CreditEstimateForm(forms.ModelForm):
 
     class Meta:
         model = CreditEstimate
-        fields = ['card_type', 'description', 'amount', 'purchase_date', 'is_split_payment', 'is_bonus_payment']
+        fields = ['card_type', 'description', 'amount', 'purchase_date', 'is_split_payment', 'is_bonus_payment', 'bonus_payment_type']
         widgets = {
             'card_type': forms.RadioSelect(attrs={
                 'class': 'card-type-radio',
@@ -464,6 +464,7 @@ class CreditEstimateForm(forms.ModelForm):
             'is_bonus_payment': forms.CheckboxInput(attrs={
                 'class': 'rounded',
             }),
+            'bonus_payment_type': forms.HiddenInput(),
         }
         labels = {
             'card_type': 'カード種別',
@@ -472,6 +473,7 @@ class CreditEstimateForm(forms.ModelForm):
             'purchase_date': '利用日',
             'is_split_payment': '分割2回払い',
             'is_bonus_payment': 'ボーナス払い',
+            'bonus_payment_type': 'ボーナス払い種別',
         }
 
     def __init__(self, *args, **kwargs):
@@ -522,6 +524,10 @@ class CreditEstimateForm(forms.ModelForm):
 
         # 分割払いとボーナス払いが同時に選択されていないかチェック
         is_split_payment = cleaned_data.get('is_split_payment')
+        bonus_payment_type = cleaned_data.get('bonus_payment_type', '')
+        # bonus_payment_typeが設定されている場合はis_bonus_paymentをTrueに設定
+        if bonus_payment_type:
+            cleaned_data['is_bonus_payment'] = True
         is_bonus_payment = cleaned_data.get('is_bonus_payment')
         card_type = cleaned_data.get('card_type')
 

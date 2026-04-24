@@ -282,9 +282,20 @@ class CreditEstimate(models.Model):
         default=False,
         verbose_name="分割2回払い"
     )
+    BONUS_PAYMENT_TYPES = [
+        ('bic_camera', 'ビックカメラ'),
+        ('standard', 'スタンダード'),
+    ]
     is_bonus_payment = models.BooleanField(
         default=False,
         verbose_name="ボーナス払い"
+    )
+    bonus_payment_type = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        choices=BONUS_PAYMENT_TYPES,
+        verbose_name="ボーナス払い種別",
     )
     split_payment_part = models.IntegerField(
         null=True,
