@@ -517,15 +517,11 @@ def plan_list(request):
                     # 振込（給与など）: 休日なら前営業日
                     item_date = adjust_to_previous_business_day(item_date)
                 else:
-                    if item.title == '食費':
-                        # 引き落とし: 休日なら前営業日
-                        item_date = adjust_to_previous_business_day(item_date)
-                    else:
-                        # 引き落とし: 休日なら翌営業日
-                        item_date = adjust_to_next_business_day(item_date)
-                        # 翌営業日調整で翌月にまたいだ場合は翌月に持ち越し
-                        if item_date.month != month or item_date.year != year:
-                            next_ym = item_date.strftime('%Y-%m')
+                    # 引き落とし: 休日なら翌営業日
+                    item_date = adjust_to_next_business_day(item_date)
+                    # 翌営業日調整で翌月にまたいだ場合は翌月に持ち越し
+                    if item_date.month != month or item_date.year != year:
+                        next_ym = item_date.strftime('%Y-%m')
                             carryover_transactions.setdefault(next_ym, []).append({
                                 'date': item_date,
                                 'name': item.title,
@@ -3585,12 +3581,8 @@ def past_transactions_list(request):
                     # 振込（給与など）: 休日なら前営業日
                     item_date = adjust_to_previous_business_day(item_date)
                 else:
-                    if item.title == '食費':
-                        # 引き落とし: 休日なら前営業日
-                        item_date = adjust_to_previous_business_day(item_date)
-                    else:
-                        # 引き落とし: 休日なら翌営業日
-                        item_date = adjust_to_next_business_day(item_date)
+                    # 引き落とし: 休日なら翌営業日
+                    item_date = adjust_to_next_business_day(item_date)
             # 収入か支出かを判定
             transaction_type = 'income' if item.payment_type == 'deposit' else 'expense'
 
