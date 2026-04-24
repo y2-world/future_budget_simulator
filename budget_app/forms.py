@@ -481,15 +481,14 @@ class CreditEstimateForm(forms.ModelForm):
 
         # カード選択肢を動的に生成
         from .models import CreditEstimate
-        self.fields['card_type'].widget.choices = CreditEstimate.get_card_choices()
+        card_choices = CreditEstimate.get_card_choices()
+        self.fields['card_type'].choices = card_choices
+        self.fields['card_type'].widget.choices = card_choices
 
         # 編集モーダルで使われるIDを設定
         self.fields['card_type'].widget.attrs.update({'id': 'edit_card_type'})
 
-        # card_typeフィールドから空の選択肢を削除
         self.fields['card_type'].required = True
-        # choicesを明示的に設定して空の選択肢を除外
-        self.fields['card_type'].choices = CreditEstimate.CARD_TYPES
 
         # purchase_dateを必須にする
         self.fields['purchase_date'].required = True
