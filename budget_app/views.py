@@ -413,7 +413,7 @@ def get_cards_by_closing_day(closing_day):
 
 def plan_list(request):
     """月次計画一覧"""
-    from datetime import date
+    from datetime import date, timedelta
     import calendar
 
     # 現在の年月を取得
@@ -586,14 +586,24 @@ def plan_list(request):
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, 1 if x.get('is_savings') else 0, -x['amount']))
 
         # balance_set_date以降〜今日の取引を累積（実効残高の自動計算用）
-        if balance_set_date:
+        # balance_set_dateが未設定の場合は当月1日を基準にする
+        effective_balance_date = balance_set_date or (
+            date(today.year, today.month, 1) - timedelta(days=1)
+            if plan.year_month == current_year_month else None
+        )
+        if effective_balance_date:
             for t in transactions:
                 if (t['date'] and
-                        t['date'] > balance_set_date and
+                        t['date'] > effective_balance_date and
                         t['date'] <= today and
                         not t.get('is_excluded', False) and
                         not t.get('is_savings', False)):
                     past_effective_sum += t['amount']
+
+        # 現在月のタイムライン開始残高を実効残高（past_effective_sum反映後）に更新
+        if plan.year_month == current_year_month:
+            current_balance = initial_balance + past_effective_sum
+            plan.start_balance = current_balance
 
         # 過去の明細用のリスト（現在月の今日以前の取引）
         past_timeline = []
