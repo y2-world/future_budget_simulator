@@ -10,6 +10,14 @@
                 新規作成
             </button>
         </div>
+        {% if not balance_set_date %}
+        <div class="mb-3 flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 text-sm text-amber-800">
+            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z"></path>
+            </svg>
+            <span>現在残高が未設定です。<button onclick="openInitialBalanceModal()" class="underline font-medium hover:text-amber-900">鉛筆アイコンから今の口座残高を入力</button>すると、日付が過ぎた取引が自動的に反映されます。</span>
+        </div>
+        {% endif %}
         <div class="flex items-center space-x-2">
             <span class="text-xs md:text-sm font-medium">現在残高:</span>
             {% if plans and plans.0.current_balance is not None %}

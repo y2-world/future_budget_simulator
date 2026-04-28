@@ -586,15 +586,10 @@ def plan_list(request):
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, 1 if x.get('is_savings') else 0, -x['amount']))
 
         # balance_set_date以降〜今日の取引を累積（実効残高の自動計算用）
-        # balance_set_dateが未設定の場合は当月1日を基準にする
-        effective_balance_date = balance_set_date or (
-            date(today.year, today.month, 1) - timedelta(days=1)
-            if plan.year_month == current_year_month else None
-        )
-        if effective_balance_date:
+        if balance_set_date:
             for t in transactions:
                 if (t['date'] and
-                        t['date'] > effective_balance_date and
+                        t['date'] > balance_set_date and
                         t['date'] <= today and
                         not t.get('is_excluded', False) and
                         not t.get('is_savings', False)):
@@ -741,6 +736,7 @@ def plan_list(request):
         'past_plans': past_plans,
         'initial_balance': initial_balance,
         'effective_balance': initial_balance + past_effective_sum,
+        'balance_set_date': balance_set_date,
         'today': today,
         'default_items': default_items,
         'registered_year_months': json.dumps(registered_year_months),
