@@ -1409,18 +1409,22 @@ def credit_estimate_list(request):
         if not card_data.get('is_bonus_section', False)
     )
 
-    # override_mapから利用月を収集（現在月以降 かつ 手動入力がある支払月のみ）
-    # カード別に billing_month が existing_billing_months に含まれるかチェック
-    candidate_default_month_pairs = set(
-        (default_id, ym) for (default_id, ym) in override_map.keys()
-        if ym >= current_year_month
-        and override_map.get((default_id, ym)) is not None
-        and calculate_billing_month_for_purchase(
-            next((d.payment_day for d in credit_defaults if d.id == default_id), 1),
-            ym,
-            override_map[(default_id, ym)].get('card_type', '')
-        ) in existing_billing_months
-    )
+    # 定期デフォルト×利用月の候補を収集（現在月以降 かつ 手動入力がある支払月のみ）
+    # オーバーライドがない定期デフォルトも対象にする
+    candidate_default_month_pairs = set()
+    candidate_yms = sorted(set(
+        [ym for (_, ym) in override_map.keys() if ym >= current_year_month]
+        + [current_year_month]
+    ))
+    for default in credit_defaults:
+        for ym in candidate_yms:
+            override_data = override_map.get((default.id, ym))
+            card_type = override_data.get('card_type', '') if override_data else default.card_type
+            billing_month = calculate_billing_month_for_purchase(
+                default.payment_day, ym, card_type
+            )
+            if billing_month in existing_billing_months:
+                candidate_default_month_pairs.add((default.id, ym))
     candidate_usage_months = sorted(list(set(ym for (_, ym) in candidate_default_month_pairs)))
 
     # candidate_usage_cardsはカードの候補チェック用（常にTrueとして扱う）
