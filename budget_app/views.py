@@ -1419,6 +1419,9 @@ def credit_estimate_list(request):
     for default in credit_defaults:
         for ym in candidate_yms:
             override_data = override_map.get((default.id, ym))
+            # amount=0の上書きは削除済みとして候補から除外
+            if override_data and override_data.get('amount') == 0 and not override_data.get('is_usd'):
+                continue
             card_type = override_data.get('card_type', '') if override_data else default.card_type
             billing_month = calculate_billing_month_for_purchase(
                 default.payment_day, ym, card_type
@@ -1470,6 +1473,10 @@ def credit_estimate_list(request):
 
             # 上書きデータを確認
             override_data = override_map.get((default.id, year_month))
+
+            # amount=0の上書きは「削除済み（非表示）」として扱いスキップ
+            if override_data and override_data.get('amount') == 0 and not override_data.get('is_usd'):
+                continue
 
             # 上書きデータが存在しない場合、今月以降のみ自動作成する（過去月には適用しない）
             if not override_data and year_month >= current_year_month:
