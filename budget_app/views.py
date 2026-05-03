@@ -1993,25 +1993,18 @@ def credit_estimate_list(request):
                 default_instance = get_object_or_404(CreditDefault, pk=default_id)
                 default_label = default_instance.label
 
-                # DefaultChargeOverrideを完全に削除
-                deleted_count, _ = DefaultChargeOverride.objects.filter(
+                # amount=0の上書きで非表示化（完全削除すると自動再生成されるため）
+                DefaultChargeOverride.objects.update_or_create(
                     default=default_instance,
-                    year_month=year_month
-                ).delete()
-
-                if deleted_count > 0:
-                    message = f'{format_year_month_display(year_month)}の「{default_label}」を削除しました。'
-                else:
-                    # 上書きデータが存在しない場合、金額0の上書きを作成して非表示化
-                    DefaultChargeOverride.objects.create(
-                        default=default_instance,
-                        year_month=year_month,
-                        amount=0,
-                        card_type=default_instance.card_type,
-                        is_usd=False,
-                        usd_amount=None
-                    )
-                    message = f'{format_year_month_display(year_month)}の「{default_label}」を非表示にしました。'
+                    year_month=year_month,
+                    defaults={
+                        'amount': 0,
+                        'card_type': default_instance.card_type,
+                        'is_usd': False,
+                        'usd_amount': None,
+                    }
+                )
+                message = f'{format_year_month_display(year_month)}の「{default_label}」を削除しました。'
 
                 return JsonResponse({
                     'status': 'success',
