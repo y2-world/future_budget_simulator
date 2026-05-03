@@ -89,8 +89,8 @@
 
             <div class="space-y-2">
                 <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="create_split_payment_wrapper">
-                    {{ form.is_split_payment }}
-                    <span class="ml-2 text-sm font-medium text-gray-700">{{ form.is_split_payment.label }}</span>
+                    <input type="checkbox" name="is_split_payment" id="id_is_split_payment" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="ml-2 text-sm font-medium text-gray-700">分割2回払い</span>
                 </label>
                 <!-- ボーナス払い -->
                 <label class="flex items-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition" id="create_bonus_payment_wrapper">
