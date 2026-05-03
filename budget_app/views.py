@@ -1413,7 +1413,7 @@ def credit_estimate_list(request):
     # オーバーライドがない定期デフォルトも対象にする
     candidate_default_month_pairs = set()
     candidate_yms = sorted(set(
-        [ym for (_, ym) in override_map.keys() if ym >= current_year_month]
+        [ym for (_, ym) in override_map.keys()]
         + [current_year_month]
     ))
     for default in credit_defaults:
