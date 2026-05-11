@@ -1,4 +1,5 @@
-from django.test import TestCase, Client
+import datetime as dt_module
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from decimal import Decimal
 from datetime import date, timedelta
@@ -21,7 +22,17 @@ from .views import (
     get_active_card_defaults,
     get_card_by_key,
     get_cards_by_closing_day,
+    get_active_config,
+    _advance_year_month,
+    _build_plan_transactions,
+    _build_plan_timeline,
+    DefaultEntry,
+    _build_estimate_summary,
+    _collect_default_candidates,
+    _inject_default_entries_to_summary,
+    _sort_and_split_summary,
 )
+from budget_app.utils.date_utils import parse_year_month
 
 
 class HelperFunctionTests(TestCase):
@@ -413,6 +424,7 @@ class CreditCardLogicTests(TestCase):
         self.assertEqual(estimate.amount, 15000)
 
 
+@override_settings(STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage')
 class ViewTests(TestCase):
     """ビューのテスト"""
 
@@ -1021,34 +1033,21 @@ class CardChangeBillingSimulationTests(TestCase):
 
 
 class CreditEstimateListFilterTests(TestCase):
-    """credit_estimate_listビューの定期デフォルト表示フィルタのテスト"""
+    """credit_estimate_list パイプラインの定期デフォルト表示フィルタのテスト"""
 
     def setUp(self):
-        """テスト用カード・定期デフォルト・手動入力を作成"""
-        self.client = Client()
-
-        # VIEWカード: closing_day=5（翌月5日締め → 支払は翌々月）
+        # VIEWカード: closing_day=5（10日利用 > 5 → 翌々月払い）
         self.view_card = MonthlyPlanDefault(
-            title='VIEWカード',
-            card_id='view_card',
-            is_active=True,
-            closing_day=5,
-            is_end_of_month=False,
-            withdrawal_day=4,
-            order=1
+            title='VIEWカード', card_id='view_card', is_active=True,
+            closing_day=5, is_end_of_month=False, withdrawal_day=4, order=1
         )
         self.view_card.save()
         MonthlyPlanDefault.objects.filter(pk=self.view_card.pk).update(key='view_card')
 
         # 楽天カード: is_end_of_month=True（月末締め → 翌月払い）
         self.rakuten_card = MonthlyPlanDefault(
-            title='楽天カード',
-            card_id='rakuten_card',
-            is_active=True,
-            closing_day=None,
-            is_end_of_month=True,
-            withdrawal_day=27,
-            order=2
+            title='楽天カード', card_id='rakuten_card', is_active=True,
+            closing_day=None, is_end_of_month=True, withdrawal_day=27, order=2
         )
         self.rakuten_card.save()
         MonthlyPlanDefault.objects.filter(pk=self.rakuten_card.pk).update(key='rakuten_card')
@@ -1056,27 +1055,59 @@ class CreditEstimateListFilterTests(TestCase):
         # 定期デフォルト A: payment_day=10, VIEWカード
         # 2026-03利用 → billing_month=2026-05（10 > 5 なので翌々月）
         self.default_view = CreditDefault.objects.create(
-            key='default_view_test',
-            label='VIEWサービス',
-            card_type='view_card',
-            amount=1000,
-            payment_day=10,
-            is_active=True,
+            key='default_view_test', label='VIEWサービス',
+            card_type='view_card', amount=1000, payment_day=10, is_active=True,
         )
 
         # 定期デフォルト B: payment_day=10, 楽天カード
         # 2026-03利用 → billing_month=2026-04（月末締め → 翌月）
         self.default_rakuten = CreditDefault.objects.create(
-            key='default_rakuten_test',
-            label='楽天サービス',
-            card_type='rakuten_card',
-            amount=2000,
-            payment_day=10,
-            is_active=True,
+            key='default_rakuten_test', label='楽天サービス',
+            card_type='rakuten_card', amount=2000, payment_day=10, is_active=True,
         )
 
-    @patch('budget_app.views.timezone')
-    def test_same_usage_month_different_cards_filtered_separately(self, mock_timezone):
+    def _run_pipeline(self, today_dt):
+        """パイプライン4関数を直接呼び出して (current, future, past, current_str) を返す"""
+        from collections import OrderedDict
+
+        card_labels = {}
+        card_due_days = {}
+        for item in get_active_card_defaults():
+            if item.card_id:
+                card_labels[item.card_id] = item.title
+                card_labels[item.key] = item.title
+                if item.withdrawal_day:
+                    card_due_days[item.card_id] = item.withdrawal_day
+                    card_due_days[item.key] = item.withdrawal_day
+
+        estimates = list(CreditEstimate.objects.all().order_by('-year_month', 'card_type', 'due_date', 'created_at'))
+        credit_defaults = list(CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id'))
+        overrides = DefaultChargeOverride.objects.select_related('default').all()
+        override_map = {
+            (ov.default_id, ov.year_month): {
+                'amount': ov.amount, 'card_type': ov.card_type,
+                'is_split_payment': ov.is_split_payment,
+                'purchase_date_override': ov.purchase_date_override,
+                'is_usd': ov.is_usd, 'usd_amount': ov.usd_amount,
+            }
+            for ov in overrides
+        }
+
+        current_year_month = f"{today_dt.year}-{today_dt.month:02d}"
+        summary, existing_billing_months = _build_estimate_summary(
+            estimates, card_labels, card_due_days, today_dt
+        )
+        candidate_pairs, candidate_usage_months = _collect_default_candidates(
+            credit_defaults, override_map, existing_billing_months, current_year_month
+        )
+        _inject_default_entries_to_summary(
+            summary, credit_defaults, override_map,
+            candidate_pairs, candidate_usage_months,
+            card_labels, card_due_days, today_dt, current_year_month
+        )
+        return _sort_and_split_summary(summary, card_due_days, today_dt)
+
+    def test_same_usage_month_different_cards_filtered_separately(self):
         """同じ利用月でもカード別に billing_month フィルタが適用される
 
         2026-03利用:
@@ -1085,88 +1116,47 @@ class CreditEstimateListFilterTests(TestCase):
 
         2026-04 にのみ手動入力がある場合:
         - 楽天の定期（2026-03利用）は 2026-04 に表示される
-        - VIEWの定期（2026-03利用）は 2026-05 に表示されない（2026-05に手動入力なし）
+        - VIEWの定期（2026-03利用）は 2026-05 に表示されない（手動入力なし）
         """
-        import datetime
+        today_dt = dt_module.datetime(2026, 3, 8, 12, 0, 0, tzinfo=dt_module.timezone.utc)
 
-        fixed_dt = datetime.datetime(2026, 3, 8, 12, 0, 0, tzinfo=datetime.timezone.utc)
-        mock_timezone.now.return_value = fixed_dt
-        mock_timezone.localtime.return_value = fixed_dt
-
-        # 2026-03利用月のオーバーライドを両カード分作成
         DefaultChargeOverride.objects.create(
-            default=self.default_view,
-            year_month='2026-03',
-            amount=1000,
-            card_type='view_card',
+            default=self.default_view, year_month='2026-03', amount=1000, card_type='view_card',
         )
         DefaultChargeOverride.objects.create(
-            default=self.default_rakuten,
-            year_month='2026-03',
-            amount=2000,
-            card_type='rakuten_card',
+            default=self.default_rakuten, year_month='2026-03', amount=2000, card_type='rakuten_card',
         )
-
-        # 2026-04（楽天の billing_month）にのみ手動入力
         CreditEstimate.objects.create(
-            description='手動入力',
-            amount=5000,
-            year_month='2026-03',
-            billing_month='2026-04',
-            card_type='rakuten_card',
-            is_bonus_payment=False,
+            description='手動入力', amount=5000, year_month='2026-03',
+            billing_month='2026-04', card_type='rakuten_card', is_bonus_payment=False,
         )
 
-        response = self.client.get(reverse('budget_app:credit_estimates'))
-        self.assertEqual(response.status_code, 200)
+        _, future_summary, _, _ = self._run_pipeline(today_dt)
 
-        future_summary = response.context['future_summary']
-
-        # 2026-04は表示される（手動入力あり）
         has_2026_04 = any('2026-04' in key for key in future_summary.keys())
         self.assertTrue(has_2026_04, '2026-04 は手動入力があるので表示されるべき')
 
-        # 2026-05は表示されない（手動入力なし・VIEWカード定期のみ）
         has_2026_05 = any('2026-05' in key for key in future_summary.keys())
         self.assertFalse(has_2026_05, '2026-05 は手動入力がないので表示されないべき')
 
-    @patch('budget_app.views.timezone')
-    def test_bonus_payment_does_not_unlock_defaults(self, mock_timezone):
+    def test_bonus_payment_does_not_unlock_defaults(self):
         """ボーナス払いの billing_month は定期デフォルト表示のトリガーにならない
 
         ボーナス払いが 2026-08 にあっても、2026-06利用の定期デフォルトが
         2026-08 に表示されてはいけない。
         """
-        import datetime
+        today_dt = dt_module.datetime(2026, 3, 8, 12, 0, 0, tzinfo=dt_module.timezone.utc)
 
-        fixed_dt = datetime.datetime(2026, 3, 8, 12, 0, 0, tzinfo=datetime.timezone.utc)
-        mock_timezone.now.return_value = fixed_dt
-        mock_timezone.localtime.return_value = fixed_dt
-
-        # 2026-06利用のオーバーライド（VIEWカード: payment_day=10 > 5 → billing_month=2026-08）
         DefaultChargeOverride.objects.create(
-            default=self.default_view,
-            year_month='2026-06',
-            amount=1000,
-            card_type='view_card',
+            default=self.default_view, year_month='2026-06', amount=1000, card_type='view_card',
         )
-
-        # ボーナス払い（is_bonus_payment=True）が 2026-08 にある
         CreditEstimate.objects.create(
-            description='ボーナス払い',
-            amount=50000,
-            year_month='2026-01',
-            billing_month='2026-08',
-            card_type='view_card',
-            is_bonus_payment=True,
+            description='ボーナス払い', amount=50000, year_month='2026-01',
+            billing_month='2026-08', card_type='view_card', is_bonus_payment=True,
         )
 
-        response = self.client.get(reverse('budget_app:credit_estimates'))
-        self.assertEqual(response.status_code, 200)
+        _, future_summary, _, _ = self._run_pipeline(today_dt)
 
-        future_summary = response.context['future_summary']
-
-        # 2026-08 に通常払いの定期デフォルトが表示されていないことを確認
         for key, cards in future_summary.items():
             if '2026-08' in key:
                 for card_key, card_data in cards.items():
@@ -1175,38 +1165,19 @@ class CreditEstimateListFilterTests(TestCase):
                         self.assertEqual(len(default_entries), 0,
                             f'2026-08 の通常払いセクション({card_key})に定期デフォルトが表示されるべきではない')
 
-    @patch('budget_app.views.timezone')
-    def test_manual_input_month_shows_defaults(self, mock_timezone):
-        """手動入力がある月には対応する定期デフォルトが正しく表示される
-
-        2026-04 に手動入力があれば、楽天の2026-03利用分（billing_month=2026-04）が表示される。
-        """
-        import datetime
-
-        fixed_dt = datetime.datetime(2026, 3, 8, 12, 0, 0, tzinfo=datetime.timezone.utc)
-        mock_timezone.now.return_value = fixed_dt
-        mock_timezone.localtime.return_value = fixed_dt
+    def test_manual_input_month_shows_defaults(self):
+        """手動入力がある月には対応する定期デフォルトが正しく表示される"""
+        today_dt = dt_module.datetime(2026, 3, 8, 12, 0, 0, tzinfo=dt_module.timezone.utc)
 
         DefaultChargeOverride.objects.create(
-            default=self.default_rakuten,
-            year_month='2026-03',
-            amount=2000,
-            card_type='rakuten_card',
+            default=self.default_rakuten, year_month='2026-03', amount=2000, card_type='rakuten_card',
         )
-
         CreditEstimate.objects.create(
-            description='手動入力',
-            amount=3000,
-            year_month='2026-03',
-            billing_month='2026-04',
-            card_type='rakuten_card',
-            is_bonus_payment=False,
+            description='手動入力', amount=3000, year_month='2026-03',
+            billing_month='2026-04', card_type='rakuten_card', is_bonus_payment=False,
         )
 
-        response = self.client.get(reverse('budget_app:credit_estimates'))
-        self.assertEqual(response.status_code, 200)
-
-        future_summary = response.context['future_summary']
+        _, future_summary, _, _ = self._run_pipeline(today_dt)
 
         has_2026_04 = any('2026-04' in key for key in future_summary.keys())
         self.assertTrue(has_2026_04, '2026-04 は手動入力があるので表示されるべき')
@@ -1220,3 +1191,202 @@ class CreditEstimateListFilterTests(TestCase):
                             if getattr(entry, 'is_default', False):
                                 found_default = True
         self.assertTrue(found_default, '2026-04 に楽天の定期デフォルトが表示されるべき')
+
+
+class DefaultEntryTests(TestCase):
+    """DefaultEntry クラスのユニットテスト"""
+
+    def _make_default(self, amount=5000, payment_day=10):
+        return CreditDefault.objects.create(
+            key='test_card',
+            label='テストカード',
+            card_type='test_card',
+            amount=amount,
+            payment_day=payment_day,
+            is_active=True,
+        )
+
+    def test_normal_amount(self):
+        default = self._make_default(amount=5000)
+        override_data = {'amount': 6000, 'card_type': 'test_card', 'is_split_payment': False,
+                         'purchase_date_override': None, 'is_usd': False, 'usd_amount': None}
+        entry = DefaultEntry(default, '2026-05', override_data, 'test_card')
+        self.assertEqual(entry.amount, 6000)
+        self.assertEqual(entry.original_amount, 6000)
+        self.assertFalse(entry.is_split_payment)
+
+    def test_no_override_uses_default_amount(self):
+        default = self._make_default(amount=5000)
+        entry = DefaultEntry(default, '2026-05', None, 'test_card')
+        self.assertEqual(entry.amount, 5000)
+
+    def test_split_payment_part1(self):
+        default = self._make_default(amount=10000)
+        override_data = {'amount': 10000, 'card_type': 'test_card', 'is_split_payment': True,
+                         'purchase_date_override': None, 'is_usd': False, 'usd_amount': None}
+        entry = DefaultEntry(default, '2026-05', override_data, 'test_card',
+                             split_part=1, total_amount=10000, original_year_month='2026-04')
+        # 2回目 = (10000 // 2) // 100 * 100 = 5000
+        # 1回目 = 10000 - 5000 = 5000
+        self.assertEqual(entry.amount, 5000)
+        self.assertEqual(entry.original_amount, 10000)
+
+    def test_split_payment_part2(self):
+        default = self._make_default(amount=9800)
+        override_data = {'amount': 9800, 'card_type': 'test_card', 'is_split_payment': True,
+                         'purchase_date_override': None, 'is_usd': False, 'usd_amount': None}
+        entry = DefaultEntry(default, '2026-06', override_data, 'test_card',
+                             split_part=2, total_amount=9800, original_year_month='2026-04')
+        # 2回目 = (9800 // 2) // 100 * 100 = (4900) // 100 * 100 = 4900
+        self.assertEqual(entry.amount, 4900)
+
+    def test_due_date_calculation(self):
+        default = self._make_default(payment_day=10)
+        entry = DefaultEntry(default, '2026-05', None, 'test_card')
+        self.assertEqual(entry.due_date, date(2026, 5, 10))
+
+    def test_due_date_clamped_to_month_end(self):
+        default = self._make_default(payment_day=31)
+        entry = DefaultEntry(default, '2026-02', None, 'test_card')
+        self.assertEqual(entry.due_date, date(2026, 2, 28))
+
+    def test_description_with_split(self):
+        default = self._make_default()
+        entry = DefaultEntry(default, '2026-06', None, 'test_card',
+                             split_part=2, total_amount=10000, original_year_month='2026-04')
+        self.assertIn('4月分', entry.description)
+
+    def test_flags(self):
+        default = self._make_default()
+        entry = DefaultEntry(default, '2026-05', None, 'test_card')
+        self.assertIsNone(entry.pk)
+        self.assertTrue(entry.is_default)
+        self.assertFalse(entry.is_bonus_payment)
+
+
+class BuildPlanTimelineTests(TestCase):
+    """_build_plan_timeline() のユニットテスト"""
+
+    def _make_plan(self, year_month='2026-05'):
+        plan = MonthlyPlan.objects.create(year_month=year_month)
+        plan.has_savings = False
+        return plan
+
+    def test_balance_accumulates_correctly(self):
+        plan = self._make_plan('2026-06')
+        today = date(2026, 5, 1)  # 過去月なので全行表示
+        transactions = [
+            {'date': date(2026, 6, 10), 'name': '給与', 'amount': 300000,
+             'is_view_card': False, 'is_excluded': False},
+            {'date': date(2026, 6, 25), 'name': '家賃', 'amount': -100000,
+             'is_view_card': False, 'is_excluded': False},
+        ]
+        timeline, past_timeline, balance, savings = _build_plan_timeline(
+            plan, transactions, current_balance=500000, cumulative_savings=0,
+            savings_amount=0, today=today, current_year_month='2026-05',
+            reached_current_month=True,
+        )
+        self.assertEqual(len(timeline), 2)
+        self.assertEqual(timeline[0]['balance'], 800000)
+        self.assertEqual(timeline[1]['balance'], 700000)
+        self.assertEqual(balance, 700000)
+
+    def test_excluded_transaction_skipped_in_balance(self):
+        plan = self._make_plan('2026-06')
+        today = date(2026, 5, 1)
+        transactions = [
+            {'date': date(2026, 6, 15), 'name': 'カード繰上返済', 'amount': -50000,
+             'is_view_card': False, 'is_excluded': True},
+        ]
+        timeline, _, balance, _ = _build_plan_timeline(
+            plan, transactions, current_balance=200000, cumulative_savings=0,
+            savings_amount=0, today=today, current_year_month='2026-05',
+            reached_current_month=True,
+        )
+        self.assertEqual(len(timeline), 1)
+        self.assertEqual(balance, 200000)  # is_excluded なので残高変動なし
+
+    def test_past_transactions_go_to_past_timeline(self):
+        plan = self._make_plan('2026-05')
+        today = date(2026, 5, 20)
+        transactions = [
+            {'date': date(2026, 5, 10), 'name': '給与', 'amount': 300000,
+             'is_view_card': False, 'is_excluded': False},
+            {'date': date(2026, 5, 25), 'name': '家賃', 'amount': -100000,
+             'is_view_card': False, 'is_excluded': False},
+        ]
+        timeline, past_timeline, _, _ = _build_plan_timeline(
+            plan, transactions, current_balance=500000, cumulative_savings=0,
+            savings_amount=0, today=today, current_year_month='2026-05',
+            reached_current_month=True,
+        )
+        self.assertEqual(len(past_timeline), 1)  # 5/10 のみ過去
+        self.assertEqual(len(timeline), 1)        # 5/25 のみ未来
+
+    def test_savings_tracked_separately(self):
+        plan = self._make_plan('2026-06')
+        plan.has_savings = True
+        today = date(2026, 5, 1)
+        transactions = [
+            {'date': date(2026, 6, 1), 'name': '定期預金', 'amount': -30000,
+             'is_view_card': False, 'is_excluded': False, 'is_savings': True},
+        ]
+        timeline, _, balance, savings = _build_plan_timeline(
+            plan, transactions, current_balance=500000, cumulative_savings=0,
+            savings_amount=30000, today=today, current_year_month='2026-05',
+            reached_current_month=True,
+        )
+        self.assertEqual(savings, 30000)
+        self.assertEqual(balance, 500000)  # savings は balance に含まれない
+        self.assertEqual(timeline[0]['balance'], 470000)  # main_balance = 500000 - 30000
+
+
+class ParseYearMonthTests(TestCase):
+    """parse_year_month ユーティリティのテスト"""
+
+    def test_normal(self):
+        self.assertEqual(parse_year_month('2026-03'), (2026, 3))
+
+    def test_january_zero_padded(self):
+        self.assertEqual(parse_year_month('2025-01'), (2025, 1))
+
+    def test_december(self):
+        self.assertEqual(parse_year_month('2024-12'), (2024, 12))
+
+
+class GetActiveConfigTests(TestCase):
+    """get_active_config ヘルパーのテスト"""
+
+    def test_returns_none_when_no_config(self):
+        self.assertIsNone(get_active_config())
+
+    def test_returns_active_config(self):
+        config = SimulationConfig.objects.create(
+            initial_balance=100000, is_active=True,
+            start_date=date.today(), simulation_months=12
+        )
+        result = get_active_config()
+        self.assertEqual(result.pk, config.pk)
+
+    def test_ignores_inactive_config(self):
+        SimulationConfig.objects.create(
+            initial_balance=100000, is_active=False,
+            start_date=date.today(), simulation_months=12
+        )
+        self.assertIsNone(get_active_config())
+
+
+class AdvanceYearMonthTests(TestCase):
+    """_advance_year_month ヘルパーのテスト"""
+
+    def test_within_year(self):
+        self.assertEqual(_advance_year_month(2026, 3, 2), '2026-05')
+
+    def test_year_boundary(self):
+        self.assertEqual(_advance_year_month(2025, 11, 2), '2026-01')
+
+    def test_december_plus_one(self):
+        self.assertEqual(_advance_year_month(2026, 12, 1), '2027-01')
+
+    def test_offset_zero(self):
+        self.assertEqual(_advance_year_month(2026, 6, 0), '2026-06')
