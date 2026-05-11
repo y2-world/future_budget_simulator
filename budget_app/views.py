@@ -32,6 +32,11 @@ from budget_app.utils.date_utils import parse_year_month
 logger = logging.getLogger(__name__)
 
 
+def get_active_config():
+    """アクティブな SimulationConfig を返す（存在しない場合は None）"""
+    return SimulationConfig.objects.filter(is_active=True).first()
+
+
 def get_monthly_plan_defaults():
     """
     月次計画のデフォルト値を取得する
@@ -97,7 +102,7 @@ def config_view(request):
     from datetime import date
     from .forms import MonthlyPlanDefaultForm
 
-    config = SimulationConfig.objects.filter(is_active=True).first()
+    config = get_active_config()
 
     if request.method == 'POST':
         form = SimulationConfigForm(request.POST, instance=config)
@@ -147,7 +152,7 @@ def update_initial_balance(request):
         try:
             initial_balance = int(initial_balance)
             # 有効な設定を取得または作成
-            config = SimulationConfig.objects.filter(is_active=True).first()
+            config = get_active_config()
             if config:
                 config.initial_balance = initial_balance
                 config.balance_set_date = date.today()
@@ -567,7 +572,7 @@ def plan_list(request):
     plans = prev_month_plans + current_and_future_plans
 
     # 現在残高と定期預金情報を取得
-    config = SimulationConfig.objects.filter(is_active=True).first()
+    config = get_active_config()
     initial_balance = config.initial_balance if config else 0
     balance_set_date = config.balance_set_date if config else None
     savings_enabled = config.savings_enabled if config else False
@@ -1716,7 +1721,7 @@ def credit_estimate_list(request):
             }
             card_info[item.key] = card_info[item.card_id]
 
-    config = SimulationConfig.objects.filter(is_active=True).first()
+    config = get_active_config()
     today = timezone.localtime(timezone.now())
     current_year_month = f"{today.year}-{today.month:02d}"
 
