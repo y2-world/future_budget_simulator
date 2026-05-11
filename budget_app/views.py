@@ -25,6 +25,8 @@ from .forms import (
     get_next_bonus_month,
 )
 import logging
+from datetime import date
+import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -1210,106 +1212,116 @@ def results_list(request):
     return redirect('budget_app:index')
 
 
-def credit_estimate_list(request):
-    """クレカ請求見積り一覧＆追加"""
-    from datetime import datetime, timedelta
-    from collections import OrderedDict
-    from django.http import JsonResponse
-
-    # 事前に上書きデータを取得して辞書に格納（金額、カード種別、2回払い、利用日、USD情報）
-    # N+1クエリを防ぐため select_related で default を取得
-    overrides = DefaultChargeOverride.objects.select_related('default').all()
-    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment, 'purchase_date_override': ov.purchase_date_override, 'is_usd': ov.is_usd, 'usd_amount': ov.usd_amount} for ov in overrides}
-    estimates = list(CreditEstimate.objects.all().order_by('-year_month', 'card_type', 'due_date', 'created_at'))
-    credit_defaults = list(CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id'))
-
-    # サマリー（年月 -> カード -> {total, entries}）
-    # card_id -> タイトル、支払日、締め日情報 のマッピングを MonthlyPlanDefault から取得
-    card_labels = {}
-    card_due_days = {}
-    card_info = {}  # is_end_of_month, closing_day を保存
-
-    for item in get_active_card_defaults():
-        if item.card_id:
-            card_labels[item.card_id] = item.title
-            # keyでも引けるようにする（card_typeにはkeyが格納されるため）
-            card_labels[item.key] = item.title
-            if item.withdrawal_day:
-                card_due_days[item.card_id] = item.withdrawal_day
-                card_due_days[item.key] = item.withdrawal_day
-            # 締め日情報を記録
-            card_info[item.card_id] = {
-                'is_end_of_month': item.is_end_of_month,
-                'closing_day': item.closing_day
-            }
-            card_info[item.key] = card_info[item.card_id]
-
-    # カード名に支払日を追加する関数
-    def get_card_label_with_due_day(card_type, is_bonus=False, year_month=None):
-        from datetime import date
-        import calendar
-
-        base_label = card_labels.get(card_type, card_type)
-        due_day = card_due_days.get(card_type, '')
-
-        if due_day and year_month:
-            # year_monthは既にbilling_month（支払月）として渡される
-            payment_year, payment_month = map(int, year_month.split('-'))
-
-            # 支払月の最終日を取得
-            last_day = calendar.monthrange(payment_year, payment_month)[1]
-            # 支払日が月の日数を超える場合は最終日に調整
-            actual_due_day = min(due_day, last_day)
-
-            # 営業日に調整（土日祝なら翌営業日）
-            payment_date = adjust_to_next_business_day(date(payment_year, payment_month, actual_due_day))
-
-            label = f'{base_label} ({payment_date.month}/{payment_date.day}支払)'
-        elif due_day:
-            label = f'{base_label} ({due_day}日)'
+class DefaultEntry:
+    """定期デフォルト項目を CreditEstimate と同じインターフェースで扱う疑似オブジェクト"""
+    def __init__(self, default_obj, entry_year_month, override_data, actual_card_type,
+                 split_part=None, total_amount=None, original_year_month=None, card_plan_info=None):
+        self.pk = None
+        self.year_month = entry_year_month
+        self.card_type = actual_card_type
+        self.original_year_month = original_year_month if original_year_month else entry_year_month
+        if split_part and original_year_month:
+            original_month = int(original_year_month.split('-')[1])
+            self.description = f"{default_obj.label} ({original_month}月分)"
         else:
-            label = base_label
+            self.description = default_obj.label
+        if split_part and total_amount is not None:
+            second_payment = (total_amount // 2) // 100 * 100
+            if split_part == 2:
+                self.amount = second_payment
+            else:
+                self.amount = total_amount - second_payment
+            self.original_amount = total_amount
+        else:
+            self.amount = override_data.get('amount') if override_data else default_obj.amount
+            self.original_amount = self.amount
+        if override_data:
+            self.is_usd = override_data.get('is_usd', False)
+            self.usd_amount = override_data.get('usd_amount')
+        else:
+            self.is_usd = default_obj.is_usd if hasattr(default_obj, 'is_usd') else False
+            self.usd_amount = default_obj.usd_amount if hasattr(default_obj, 'usd_amount') else None
+        self.is_overridden = override_data is not None
+        try:
+            year, month = map(int, entry_year_month.split('-'))
+            max_day = calendar.monthrange(year, month)[1]
+            actual_day = min(default_obj.payment_day, max_day)
+            self.due_date = date(year, month, actual_day)
+        except (ValueError, AttributeError):
+            self.due_date = None
+        self.is_split_payment = override_data.get('is_split_payment', False) if override_data else False
+        self.split_payment_part = split_part
+        self.is_bonus_payment = False
+        self.is_default = True
+        self.default_id = default_obj.id
+        self.payment_day = default_obj.payment_day
+        if override_data and override_data.get('purchase_date_override'):
+            self.purchase_date = override_data.get('purchase_date_override')
+        else:
+            try:
+                usage_ym = original_year_month if original_year_month else self.year_month
+                year, month = map(int, usage_ym.split('-'))
+                if card_plan_info and not card_plan_info.get('is_end_of_month') and card_plan_info.get('closing_day'):
+                    closing_day = card_plan_info['closing_day']
+                    payment_day = default_obj.payment_day
+                    if payment_day > closing_day:
+                        max_day = calendar.monthrange(year, month)[1]
+                        actual_day = min(payment_day, max_day)
+                        self.purchase_date = date(year, month, actual_day)
+                    else:
+                        closing_month = month + 1
+                        closing_year = year
+                        if closing_month > 12:
+                            closing_month = 1
+                            closing_year += 1
+                        max_day = calendar.monthrange(closing_year, closing_month)[1]
+                        actual_day = min(payment_day, max_day)
+                        self.purchase_date = date(closing_year, closing_month, actual_day)
+                else:
+                    max_day = calendar.monthrange(year, month)[1]
+                    actual_day = min(default_obj.payment_day, max_day)
+                    self.purchase_date = date(year, month, actual_day)
+            except (ValueError, AttributeError):
+                self.purchase_date = None
 
-        if is_bonus:
-            label = f'{base_label}【ボーナス払い】'
 
-        return label
+def get_card_label_with_due_day(card_type, card_labels, card_due_days, is_bonus=False, year_month=None):
+    """カード名に支払日を追加したラベルを返す"""
+    base_label = card_labels.get(card_type, card_type)
+    due_day = card_due_days.get(card_type, '')
+
+    if due_day and year_month:
+        payment_year, payment_month = map(int, year_month.split('-'))
+        last_day = calendar.monthrange(payment_year, payment_month)[1]
+        actual_due_day = min(due_day, last_day)
+        payment_date = adjust_to_next_business_day(date(payment_year, payment_month, actual_due_day))
+        label = f'{base_label} ({payment_date.month}/{payment_date.day}支払)'
+    elif due_day:
+        label = f'{base_label} ({due_day}日)'
+    else:
+        label = base_label
+
+    if is_bonus:
+        label = f'{base_label}【ボーナス払い】'
+
+    return label
+
+
+def _build_estimate_summary(estimates, card_labels, card_due_days, today):
+    """CreditEstimate 一覧からサマリー辞書を構築する"""
+    from collections import OrderedDict
 
     summary = OrderedDict()
 
-    # 設定からVIEWカードのデフォルト値を取得
-    config = SimulationConfig.objects.filter(is_active=True).first()
-
-    today = timezone.localtime(timezone.now())
-    current_year_month = f"{today.year}-{today.month:02d}"
-
-    # 締め日チェック前に、通常払いCreditEstimateのbilling_monthを収集
-    # （定期デフォルトを表示する月を決定するため）
-    existing_billing_months = set()
     for est in estimates:
-        if not est.is_bonus_payment:
-            display_month = est.billing_month if est.billing_month else est.year_month
-            existing_billing_months.add(display_month)
-
-    for est in estimates:
-        # 通常払いの場合、締め日が過ぎたら非表示
         if not est.is_bonus_payment:
             year, month = map(int, est.year_month.split('-'))
-            from datetime import date
-            import calendar
-
-            # 分割払いの2回目も1回目と同じyear_monthを使用
-            # （締め日チェックも同じロジック、billing_monthだけが異なる）
-
-            # MonthlyPlanDefaultから締め日を取得
             card_default = get_card_plan(est.card_type)
             if card_default:
                 if card_default.is_end_of_month:
-                    # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
                     last_day = calendar.monthrange(year, month)[1]
                     closing_date = date(year, month, last_day)
                 elif card_default.closing_day:
-                    # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
                     closing_month = month + 1
                     closing_year = year
                     if closing_month > 12:
@@ -1317,33 +1329,25 @@ def credit_estimate_list(request):
                         closing_year += 1
                     closing_date = date(closing_year, closing_month, card_default.closing_day)
                 else:
-                    # デフォルト: 月末締め
                     last_day = calendar.monthrange(year, month)[1]
                     closing_date = date(year, month, last_day)
             else:
-                # デフォルト: 月末締め
                 last_day = calendar.monthrange(year, month)[1]
                 closing_date = date(year, month, last_day)
 
-            # 締め日の翌日以降は非表示
             if today.date() > closing_date:
                 continue
-        # ボーナス払いは支払日が過ぎたら非表示
         elif est.is_bonus_payment and est.due_date:
             if today.date() >= est.due_date:
                 continue
 
-        # ボーナス払いも通常払いも引き落とし月でグルーピング
         if est.is_bonus_payment and est.due_date:
-            display_month = est.due_date.strftime('%Y-%m')  # ボーナス払いも支払月で同じセクションに
+            display_month = est.due_date.strftime('%Y-%m')
         else:
-            # billing_monthがある場合はそれを使用、なければyear_monthを使用（下位互換性）
             display_month = est.billing_month if est.billing_month else est.year_month
 
         month_group = summary.setdefault(display_month, OrderedDict())
 
-        # カードキーとラベルを設定
-        # ボーナス払いの場合はcard_typeに_bonus_{type}サフィックスを付ける
         if est.is_bonus_payment:
             btype = est.bonus_payment_type or ''
             card_key = f"{est.card_type}_bonus_{btype}" if btype else f"{est.card_type}_bonus"
@@ -1354,31 +1358,27 @@ def credit_estimate_list(request):
         if est.is_bonus_payment:
             label = card_labels.get(est.card_type, est.card_type)
             if due_day and est.due_date:
-                billing_month = est.due_date.month
-                card_label = f"{label}【ボーナス払い】({billing_month}/{due_day}支払)"
+                billing_month_num = est.due_date.month
+                card_label = f"{label}【ボーナス払い】({billing_month_num}/{due_day}支払)"
             else:
                 card_label = f"{label}【ボーナス払い】"
         else:
-            # 通常払いの場合、カード名 + 支払日を表示（土日祝考慮）
-            card_label = get_card_label_with_due_day(est.card_type, is_bonus=False, year_month=display_month)
+            card_label = get_card_label_with_due_day(est.card_type, card_labels, card_due_days, is_bonus=False, year_month=display_month)
 
         card_group = month_group.setdefault(card_key, {
             'label': card_label,
             'total': 0,
-            'manual_total': 0,  # 手動入力の合計
-            'default_total': 0,  # 定期項目の合計
+            'manual_total': 0,
+            'default_total': 0,
             'entries': [],
-            'year_month': display_month,  # 表示月（支払月＝billing_month）
-            'is_bonus_section': est.is_bonus_payment,  # ボーナス払いかどうか
+            'year_month': display_month,
+            'is_bonus_section': est.is_bonus_payment,
         })
         card_group['total'] += est.amount
-        card_group['manual_total'] += est.amount  # 手動入力として加算
-        # 通常のCreditEstimateオブジェクトにis_defaultフラグを追加
+        card_group['manual_total'] += est.amount
         est.is_default = False
         card_group['entries'].append(est)
 
-    # 定期デフォルトを表示する利用月を決定
-    # 手動入力の通常払いCreditEstimateが存在するbilling_monthのみに表示する（ボーナス払いは除外）
     existing_billing_months = set(
         display_month
         for display_month, month_group in summary.items()
@@ -1386,8 +1386,11 @@ def credit_estimate_list(request):
         if not card_data.get('is_bonus_section', False)
     )
 
-    # 定期デフォルト×利用月の候補を収集（現在月以降 かつ 手動入力がある支払月のみ）
-    # オーバーライドがない定期デフォルトも対象にする
+    return summary, existing_billing_months
+
+
+def _collect_default_candidates(credit_defaults, override_map, existing_billing_months, current_year_month):
+    """定期デフォルト×利用月の候補ペアを収集する"""
     candidate_default_month_pairs = set()
     candidate_yms = sorted(set(
         [ym for (_, ym) in override_map.keys()]
@@ -1396,7 +1399,6 @@ def credit_estimate_list(request):
     for default in credit_defaults:
         for ym in candidate_yms:
             override_data = override_map.get((default.id, ym))
-            # amount=0の上書きは削除済みとして候補から除外
             if override_data and override_data.get('amount') == 0 and not override_data.get('is_usd'):
                 continue
             card_type = override_data.get('card_type', '') if override_data else default.card_type
@@ -1406,22 +1408,20 @@ def credit_estimate_list(request):
             if billing_month in existing_billing_months:
                 candidate_default_month_pairs.add((default.id, ym))
     candidate_usage_months = sorted(list(set(ym for (_, ym) in candidate_default_month_pairs)))
+    return candidate_default_month_pairs, candidate_usage_months
 
-    # candidate_usage_cardsはカードの候補チェック用（常にTrueとして扱う）
-    candidate_usage_cards = {}
 
-    # 各年月の各カードに定期デフォルトを追加
+def _inject_default_entries_to_summary(summary, credit_defaults, override_map,
+                                        candidate_default_month_pairs, candidate_usage_months,
+                                        card_labels, card_due_days, today, current_year_month):
+    """定期デフォルトエントリをサマリーに注入する（副作用: DefaultChargeOverride を自動作成）"""
+    from collections import OrderedDict
+    from datetime import datetime, timedelta
+
     for year_month in candidate_usage_months:
-        # 年月から月を取得（奇数月判定用）
         year, month = map(int, year_month.split('-'))
         is_odd_month_flag = is_odd_month(year_month)
 
-        # 定期項目も締め日チェックを行う（通常払いと同じロジック）
-        # VIEW/VERMILLIONカードの締め日（翌月5日）をチェック
-        from datetime import date
-        import calendar
-
-        # VIEW/VERMILLIONカード用の締め日
         view_closing_month = month + 1
         view_closing_year = year
         if view_closing_month > 12:
@@ -1429,45 +1429,34 @@ def credit_estimate_list(request):
             view_closing_year += 1
         view_closing_date = date(view_closing_year, view_closing_month, 5)
 
-        # その他のカード用の締め日（月末）
         last_day = calendar.monthrange(year, month)[1]
         other_closing_date = date(year, month, last_day)
 
-        # VIEW/VERMILLIONの締め日が過ぎているかチェック
         view_closed = today.date() > view_closing_date
-        # その他のカードの締め日が過ぎているかチェック
         other_closed = today.date() > other_closing_date
 
-        # 定期デフォルトを該当カードのエントリーとして追加
         for default in credit_defaults:
-            # 奇数月のみ適用フラグが立っている場合、偶数月はスキップ
             if default.apply_odd_months_only and not is_odd_month_flag:
                 continue
 
-            # このカード×利用月の組み合わせが候補に含まれない場合はスキップ
             if (default.id, year_month) not in candidate_default_month_pairs:
                 continue
 
-            # 上書きデータを確認
             override_data = override_map.get((default.id, year_month))
 
-            # amount=0の上書きは「削除済み（非表示）」として扱いスキップ
             if override_data and override_data.get('amount') == 0 and not override_data.get('is_usd'):
                 continue
 
-            # 上書きデータが存在しない場合、今月以降のみ自動作成する（過去月には適用しない）
             if not override_data and year_month >= current_year_month:
-                # DefaultChargeOverrideを作成して、現在のデフォルト値をコピー
                 new_override = DefaultChargeOverride.objects.create(
                     default=default,
                     year_month=year_month,
                     amount=default.amount,
                     card_type=default.card_type,
-                    is_split_payment=False,  # 初回はデフォルトで分割払いなし
+                    is_split_payment=False,
                     is_usd=default.is_usd if hasattr(default, 'is_usd') else False,
                     usd_amount=default.usd_amount if hasattr(default, 'usd_amount') else None
                 )
-                # override_mapとoverride_dataを更新
                 override_data = {
                     'amount': new_override.amount,
                     'card_type': new_override.card_type,
@@ -1478,148 +1467,39 @@ def credit_estimate_list(request):
                 }
                 override_map[(default.id, year_month)] = override_data
 
-            # 実際に使用するカード種別を決定（上書きがあればそれを使用）
             actual_card_type = override_data.get('card_type') if override_data and override_data.get('card_type') else default.card_type
 
-            # 元のカード種別または変更後のカード種別のいずれかが候補にある場合のみ処理
-            original_card_type = default.card_type
-
-            # 分割払いかどうかを確認
             is_split = override_data.get('is_split_payment', False) if override_data else False
 
-            # 引き落とし月を計算（purchase_dateベースで締め日と比較）
             display_billing_month = calculate_billing_month_for_purchase(
                 default.payment_day, year_month, actual_card_type
             )
             month_group = summary.setdefault(display_billing_month, OrderedDict())
 
-            # 該当カードのグループを取得または作成（実際のカード種別を使用）
-            # カード名 + 支払日のラベル作成（get_card_label_with_due_day関数を使用）
-            default_label = get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=display_billing_month)
+            default_label = get_card_label_with_due_day(actual_card_type, card_labels, card_due_days, is_bonus=False, year_month=display_billing_month)
 
             card_group = month_group.setdefault(actual_card_type, {
                 'label': default_label,
                 'total': 0,
-                'manual_total': 0,  # 手動入力の合計
-                'default_total': 0,  # 定期項目の合計
+                'manual_total': 0,
+                'default_total': 0,
                 'entries': [],
-                # 反映機能で billing_month が参照される
                 'year_month': display_billing_month,
                 'is_bonus_section': False,
             })
 
-            # 疑似的なCreditEstimateオブジェクトを作成
-            class DefaultEntry:
-                def __init__(self, default_obj, entry_year_month, override_data, actual_card_type, split_part=None, total_amount=None, original_year_month=None, card_plan_info=None):
-                    self.pk = None  # 削除・編集不可を示すためにNone
-                    # 上書きされた金額とカード種別があればそれを使用
-                    self.year_month = entry_year_month
-                    self.card_type = actual_card_type
-                    # 元の年月を保持（編集時に使用）
-                    self.original_year_month = original_year_month if original_year_month else entry_year_month
-                    # 定期項目で分割の場合、説明に「(月分)」を追加
-                    if split_part and original_year_month:
-                        # 元の年月を「MM月分」形式で追加
-                        original_month = int(original_year_month.split('-')[1])
-                        self.description = f"{default_obj.label} ({original_month}月分)"
-                    else:
-                        self.description = default_obj.label
-                    # 2回払いの場合は金額を分割
-                    if split_part and total_amount is not None:
-                        # 2回目の金額を10の位まで0にする（100で切り捨て）
-                        second_payment = (total_amount // 2) // 100 * 100
-                        if split_part == 2:
-                            self.amount = second_payment
-                        else:
-                            # 1回目: 残り
-                            self.amount = total_amount - second_payment
-                        # 元の合計金額を保持（編集時に使用）
-                        self.original_amount = total_amount
-                    else:
-                        self.amount = override_data.get('amount') if override_data else default_obj.amount
-                        # 元の金額も同じ
-                        self.original_amount = self.amount
+            card_plan = get_card_plan(actual_card_type)
+            card_plan_info = {
+                'is_end_of_month': card_plan.is_end_of_month if card_plan else True,
+                'closing_day': card_plan.closing_day if card_plan else None,
+            } if card_plan else {}
 
-                    # USD情報を追加
-                    if override_data:
-                        self.is_usd = override_data.get('is_usd', False)
-                        self.usd_amount = override_data.get('usd_amount')
-                    else:
-                        self.is_usd = default_obj.is_usd if hasattr(default_obj, 'is_usd') else False
-                        self.usd_amount = default_obj.usd_amount if hasattr(default_obj, 'usd_amount') else None
-
-                    self.is_overridden = override_data is not None # 上書きされているかどうかのフラグ
-                    # due_dateを計算（請求年月 + payment_day）
-                    # entry_year_month は請求月（billing_month）なので、その月のpayment_day日をdue_dateとする
-                    try:
-                        year, month = map(int, entry_year_month.split('-'))
-                        # payment_dayが月の最終日を超える場合は、その月の最終日にする
-                        max_day = calendar.monthrange(year, month)[1]
-                        actual_day = min(default_obj.payment_day, max_day)
-                        self.due_date = date(year, month, actual_day)
-                    except (ValueError, AttributeError):
-                        self.due_date = None
-                    # 上書きデータにis_split_paymentがあればそれを使用、なければFalse
-                    self.is_split_payment = override_data.get('is_split_payment', False) if override_data else False
-                    self.split_payment_part = split_part  # 1 or 2
-                    self.is_bonus_payment = False
-                    self.is_default = True  # デフォルトエントリーであることを示すフラグ
-                    self.default_id = default_obj.id  # デフォルト項目のID
-                    self.payment_day = default_obj.payment_day  # 毎月の利用日
-                    # purchase_dateを計算（上書きがあればそれを使用）
-                    if override_data and override_data.get('purchase_date_override'):
-                        self.purchase_date = override_data.get('purchase_date_override')
-                    else:
-                        # original_year_monthは「利用月」を表す（分割2回目でも同じ）
-                        try:
-                            usage_ym = original_year_month if original_year_month else self.year_month
-                            year, month = map(int, usage_ym.split('-'))
-
-                            if card_plan_info and not card_plan_info.get('is_end_of_month') and card_plan_info.get('closing_day'):
-                                # 指定日締めの場合：payment_dayと締め日を比較
-                                closing_day = card_plan_info['closing_day']
-                                payment_day = default_obj.payment_day
-
-                                if payment_day > closing_day:
-                                    # payment_dayが締め日より大きい：year_monthの月のpayment_day日
-                                    max_day = calendar.monthrange(year, month)[1]
-                                    actual_day = min(payment_day, max_day)
-                                    self.purchase_date = date(year, month, actual_day)
-                                else:
-                                    # payment_dayが締め日以下：year_month+1の月のpayment_day日
-                                    closing_month = month + 1
-                                    closing_year = year
-                                    if closing_month > 12:
-                                        closing_month = 1
-                                        closing_year += 1
-                                    max_day = calendar.monthrange(closing_year, closing_month)[1]
-                                    actual_day = min(payment_day, max_day)
-                                    self.purchase_date = date(closing_year, closing_month, actual_day)
-                            else:
-                                # 月末締めの場合：year_monthのpayment_day日
-                                max_day = calendar.monthrange(year, month)[1]
-                                actual_day = min(default_obj.payment_day, max_day)
-                                self.purchase_date = date(year, month, actual_day)
-                        except (ValueError, AttributeError):
-                            self.purchase_date = None
-
-            # 2回払いの場合は2つのエントリを作成
-            is_split = override_data.get('is_split_payment', False) if override_data else False
             if is_split:
                 total_amount = override_data.get('amount') if override_data else default.amount
 
-                # 1回目の締め日チェック（過去月の場合はスキップ）
-                # 1回目の利用月year_monthの締め日が過ぎていなければ表示
                 first_payment_closed = False
-                current_year_month_str = f"{today.year}-{today.month:02d}"
-
-                # カード情報を取得（2回目の締め日計算でも使用）
-                card_plan = get_card_plan(actual_card_type)
-
-                # payment_dayごとに個別の締め日を判定
                 split_year, split_month = map(int, year_month.split('-'))
                 if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
-                    # 指定日締め: payment_dayが締め日以前→当月締め、以降→翌月締め
                     purchase_day = min(default.payment_day, calendar.monthrange(split_year, split_month)[1])
                     if purchase_day <= card_plan.closing_day:
                         split_closing_month = split_month
@@ -1633,70 +1513,45 @@ def credit_estimate_list(request):
                     split_closing_date = date(split_closing_year, split_closing_month, card_plan.closing_day)
                     first_payment_closed = today.date() > split_closing_date
                 else:
-                    # 月末締め: year_monthの月末が締め日
                     split_last_day = calendar.monthrange(split_year, split_month)[1]
                     split_closing_date = date(split_year, split_month, split_last_day)
                     first_payment_closed = today.date() > split_closing_date
 
-                # 1回目（利用月のbilling_monthに表示）
                 if not first_payment_closed:
-                    plan_info = {}
-                    default_entry_1 = DefaultEntry(default, year_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month, card_plan_info=plan_info)
+                    default_entry_1 = DefaultEntry(default, display_billing_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month, card_plan_info=card_plan_info)
                     card_group['entries'].append(default_entry_1)
                     card_group['total'] += default_entry_1.amount
                     card_group['default_total'] += default_entry_1.amount
 
-                # 2回目の引き落とし月を計算（1回目のbilling_month + 1ヶ月）
-                billing_date = datetime.strptime(billing_month, '%Y-%m')
+                billing_date = datetime.strptime(display_billing_month, '%Y-%m')
                 next_billing_date = (billing_date.replace(day=1) + timedelta(days=32)).replace(day=1)
                 next_billing_month = next_billing_date.strftime('%Y-%m')
 
-                # 2回目の締め日チェック
-                # 2回目も1回目と同じyear_monthなので、締め日チェックも同じ
-                # （引き落とし月だけが異なる）
-
-                # 2回目の表示可否は1回目と同じ締め日チェック結果を使用
                 if not first_payment_closed:
-                    # 2回目の引き落とし月のカードグループを取得または作成
                     next_month_group = summary.setdefault(next_billing_month, OrderedDict())
-
-                    # 2回目のラベル作成（土日祝考慮）
-                    next_label = get_card_label_with_due_day(actual_card_type, is_bonus=False, year_month=next_billing_month)
-
+                    next_label = get_card_label_with_due_day(actual_card_type, card_labels, card_due_days, is_bonus=False, year_month=next_billing_month)
                     next_card_group = next_month_group.setdefault(actual_card_type, {
                         'label': next_label,
                         'total': 0,
-                        'manual_total': 0,  # 手動入力の合計
-                        'default_total': 0,  # 定期項目の合計
+                        'manual_total': 0,
+                        'default_total': 0,
                         'entries': [],
                         'year_month': next_billing_month,
                         'is_bonus_section': False,
                     })
-
-                    # 2回目のエントリ（利用月は1回目と同じyear_month、引き落とし月はnext_billing_month）
-                    plan_info = {}
-                    default_entry_2 = DefaultEntry(default, next_billing_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month, card_plan_info=plan_info)
+                    default_entry_2 = DefaultEntry(default, next_billing_month, override_data, actual_card_type, split_part=2, total_amount=total_amount, original_year_month=year_month, card_plan_info=card_plan_info)
                     next_card_group['entries'].append(default_entry_2)
                     next_card_group['total'] += default_entry_2.amount
                     next_card_group['default_total'] += default_entry_2.amount
             else:
-                # 通常の1回払い
-                # 締め日チェック（過去月の場合はスキップ）
                 payment_closed = False
-                current_year_month_str = f"{today.year}-{today.month:02d}"
-
-                # payment_dayごとに個別の締め日を判定
-                card_plan = get_card_plan(actual_card_type)
                 year_val, month_val = map(int, year_month.split('-'))
                 if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
-                    # 指定日締め: payment_dayが締め日以前→当月締め、以降→翌月締め
                     purchase_day = min(default.payment_day, calendar.monthrange(year_val, month_val)[1])
                     if purchase_day <= card_plan.closing_day:
-                        # 当月締め（例: 2/4利用, 5日締め → 2/5締め）
                         closing_month = month_val
                         closing_year = year_val
                     else:
-                        # 翌月締め（例: 2/7利用, 5日締め → 3/5締め）
                         closing_month = month_val + 1
                         closing_year = year_val
                         if closing_month > 12:
@@ -1705,21 +1560,23 @@ def credit_estimate_list(request):
                     this_closing_date = date(closing_year, closing_month, card_plan.closing_day)
                     payment_closed = today.date() > this_closing_date
                 else:
-                    # 月末締め: year_monthの月末が締め日
                     last_day = calendar.monthrange(year_val, month_val)[1]
                     this_closing_date = date(year_val, month_val, last_day)
                     payment_closed = today.date() > this_closing_date
 
-                # 締め日が過ぎていなければ表示（過去月は常に表示）
                 if not payment_closed:
-                    # カード情報を辞書形式で作成
-                    plan_info = {}
-                    default_entry = DefaultEntry(default, year_month, override_data, actual_card_type, card_plan_info=plan_info)
+                    default_entry = DefaultEntry(default, display_billing_month, override_data, actual_card_type, card_plan_info=card_plan_info)
                     card_group['entries'].append(default_entry)
                     card_group['total'] += default_entry.amount
                     card_group['default_total'] += default_entry.amount
 
-    # 各カードのエントリーを利用日順にソート（日付は降順＝新しい順）
+
+def _sort_and_split_summary(summary, card_due_days, today):
+    """サマリーを日付順にソートし、今月・未来・過去に分割する"""
+    from collections import OrderedDict
+    from datetime import timedelta
+
+    # エントリーを利用日順にソート（新しい順）
     for year_month, month_group in summary.items():
         for card_type, card_data in month_group.items():
             card_data['entries'].sort(key=lambda x: -(
@@ -1727,96 +1584,61 @@ def credit_estimate_list(request):
                 else (x.due_date.toordinal() if (hasattr(x, 'due_date') and x.due_date) else 0)
             ))
 
-    # 各月のカードを支払日順にソート
+    # カードを支払日順にソート
     for year_month, month_group in summary.items():
         def get_card_sort_key(item):
             card_key, card_data = item
-
-            # 支払日をbilling_monthとカード種別から計算
-            # 注意: due_dateは通常払いの場合は利用日、ボーナス払いの場合は支払日を意味するため、
-            #       ソートには使えない。billing_monthとcard_typeから支払日を計算する。
-            from datetime import date
-            import calendar
             due_day = card_due_days.get(card_key)
             if due_day:
                 billing_year, billing_month = map(int, year_month.split('-'))
-                # 月の最終日を取得
                 last_day = calendar.monthrange(billing_year, billing_month)[1]
-                # 支払日が月の日数を超える場合は最終日に調整
                 actual_due_day = min(due_day, last_day)
-                # 営業日調整
                 payment_date = adjust_to_next_business_day(date(billing_year, billing_month, actual_due_day))
             else:
-                # due_dayがない場合は月初
                 billing_year, billing_month = map(int, year_month.split('-'))
                 payment_date = date(billing_year, billing_month, 1)
-
-            # ボーナス払いかどうかをセカンダリキーにする（同じ日付なら通常払いを先に）
             is_bonus = card_data.get('is_bonus_section', False)
             return (payment_date, is_bonus)
 
-        sorted_cards = OrderedDict(sorted(
-            month_group.items(),
-            key=get_card_sort_key
-        ))
-        summary[year_month] = sorted_cards
+        summary[year_month] = OrderedDict(sorted(month_group.items(), key=get_card_sort_key))
 
-    # 空のカードグループ（エントリーが0件のカード）を削除
+    # 空のカードグループと月グループを削除
     for year_month in list(summary.keys()):
         month_group = summary[year_month]
-        # エントリーが空のカードを削除
-        cards_to_remove = [card_type for card_type, card_data in month_group.items() if len(card_data.get('entries', [])) == 0]
-        for card_type in cards_to_remove:
+        for card_type in [k for k, v in month_group.items() if len(v.get('entries', [])) == 0]:
             del month_group[card_type]
-        # 月全体が空になったら削除
         if len(month_group) == 0:
             del summary[year_month]
 
-    # summaryを現在、未来、過去に分割
-    today = timezone.localtime(timezone.now())
     current_month_str = today.strftime('%Y-%m')
     current_day = today.day
     current_month_summary = OrderedDict()
     future_summary = OrderedDict()
     past_summary = OrderedDict()
 
-    # VIEWカードは5日締めなので、5日までは先月の見積りを表示
     view_display_month = current_month_str
     if current_day <= 5:
-        # 先月を計算
         prev_month_date = (today.replace(day=1) - timedelta(days=1))
         view_display_month = prev_month_date.strftime('%Y-%m')
 
     for ym, cards in summary.items():
-        # ymが '2024-08_bonus' のような形式の場合、年月部分を取得
         ym_date_part = ym.split('_')[0]
-
-        # ボーナス払いセクションかどうかを判定
-        # ボーナス払いは支払日（due_date）で判定、通常払いは月で判定
         has_bonus_section = any(card_data.get('is_bonus_section', False) for card_data in cards.values())
 
-
         if has_bonus_section:
-            # ボーナス払いの場合、最初のエントリーのdue_dateを取得
             first_entry = None
             for card_data in cards.values():
                 if card_data.get('entries'):
                     first_entry = card_data['entries'][0]
                     break
-
-            # due_dateで過去/未来を判定
             if first_entry and hasattr(first_entry, 'due_date') and first_entry.due_date:
                 if first_entry.due_date < today.date():
-                    # 支払日が過去
                     past_summary[ym] = cards
                 elif first_entry.due_date.strftime('%Y-%m') == current_month_str:
-                    # 支払日が今月
                     current_month_summary[ym] = cards
                 else:
-                    # 支払日が未来
                     future_summary[ym] = cards
             else:
-                # due_dateがない場合は月で判定（フォールバック）
                 if ym_date_part == current_month_str:
                     current_month_summary[ym] = cards
                 elif ym_date_part > current_month_str:
@@ -1825,8 +1647,6 @@ def credit_estimate_list(request):
                     past_summary[ym] = cards
             continue
 
-        # 締め日が5日のカードの特別処理
-        # MonthlyPlanDefaultから締め日が5日のカードを取得
         cards_with_5th_closing = set()
         for item in get_cards_by_closing_day(5):
             if item.key:
@@ -1834,10 +1654,8 @@ def credit_estimate_list(request):
                 cards_with_5th_closing.add(f"{item.key}_bonus")
 
         if current_day <= 5 and ym_date_part == view_display_month:
-            # 5日までは、先月の締め日5日のカードを当月として扱う
             has_special_closing = any(card_type in cards_with_5th_closing for card_type in cards.keys())
             if has_special_closing:
-                # 締め日5日のカードのみを当月に移動
                 view_cards = OrderedDict()
                 other_cards = OrderedDict()
                 for card_type, card_data in cards.items():
@@ -1845,14 +1663,10 @@ def credit_estimate_list(request):
                         view_cards[card_type] = card_data
                     else:
                         other_cards[card_type] = card_data
-
-                # VIEW/VERMILLIONカードを当月に追加
                 if view_cards:
                     if ym not in current_month_summary:
                         current_month_summary[ym] = OrderedDict()
                     current_month_summary[ym].update(view_cards)
-
-                # その他のカードは過去として扱う
                 if other_cards:
                     if ym not in past_summary:
                         past_summary[ym] = OrderedDict()
@@ -1866,14 +1680,60 @@ def credit_estimate_list(request):
         else:
             past_summary[ym] = cards
 
-    # 過去の見積もりは年月が新しい順に表示
     past_summary = OrderedDict(sorted(past_summary.items(), key=lambda item: item[0].split('_')[0], reverse=True))
-
-    # 未来の見積もりは年月が古い順に表示
     future_summary = OrderedDict(sorted(future_summary.items(), key=lambda item: item[0].split('_')[0]))
-
-    # 今月の見積もりもソート（通常→ボーナスの順）
     current_month_summary = OrderedDict(sorted(current_month_summary.items(), key=lambda item: item[0].split('_')[0]))
+
+    return current_month_summary, future_summary, past_summary, current_month_str
+
+
+def credit_estimate_list(request):
+    """クレカ請求見積り一覧＆追加"""
+    from collections import OrderedDict
+    from django.http import JsonResponse
+
+    # データ取得
+    overrides = DefaultChargeOverride.objects.select_related('default').all()
+    override_map = {(ov.default_id, ov.year_month): {'amount': ov.amount, 'card_type': ov.card_type, 'is_split_payment': ov.is_split_payment, 'purchase_date_override': ov.purchase_date_override, 'is_usd': ov.is_usd, 'usd_amount': ov.usd_amount} for ov in overrides}
+    estimates = list(CreditEstimate.objects.all().order_by('-year_month', 'card_type', 'due_date', 'created_at'))
+    credit_defaults = list(CreditDefault.objects.filter(is_active=True).order_by('payment_day', 'id'))
+
+    card_labels = {}
+    card_due_days = {}
+    card_info = {}
+
+    for item in get_active_card_defaults():
+        if item.card_id:
+            card_labels[item.card_id] = item.title
+            card_labels[item.key] = item.title
+            if item.withdrawal_day:
+                card_due_days[item.card_id] = item.withdrawal_day
+                card_due_days[item.key] = item.withdrawal_day
+            card_info[item.card_id] = {
+                'is_end_of_month': item.is_end_of_month,
+                'closing_day': item.closing_day
+            }
+            card_info[item.key] = card_info[item.card_id]
+
+    config = SimulationConfig.objects.filter(is_active=True).first()
+    today = timezone.localtime(timezone.now())
+    current_year_month = f"{today.year}-{today.month:02d}"
+
+    summary, existing_billing_months = _build_estimate_summary(estimates, card_labels, card_due_days, today)
+
+    candidate_default_month_pairs, candidate_usage_months = _collect_default_candidates(
+        credit_defaults, override_map, existing_billing_months, current_year_month
+    )
+
+    _inject_default_entries_to_summary(
+        summary, credit_defaults, override_map,
+        candidate_default_month_pairs, candidate_usage_months,
+        card_labels, card_due_days, today, current_year_month
+    )
+
+    current_month_summary, future_summary, past_summary, current_month_str = _sort_and_split_summary(
+        summary, card_due_days, today
+    )
 
     if request.method == 'POST':
         is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
