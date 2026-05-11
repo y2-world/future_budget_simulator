@@ -409,6 +409,131 @@ def get_cards_by_closing_day(closing_day):
     return MonthlyPlanDefault.objects.filter(is_active=True, closing_day=closing_day)
 
 
+def _build_plan_transactions(plan, year, month, last_day, carryover_transactions,
+                             savings_amount=0, savings_day=None):
+    """月次プランのトランザクションリストを構築する"""
+    from datetime import date
+
+    def clamp_day(d):
+        return min(max(d, 1), last_day)
+
+    transactions = list(carryover_transactions.pop(plan.year_month, []))
+
+    default_items = MonthlyPlanDefault.objects.all().order_by('order', 'id')
+    for item in default_items:
+        if not item.should_display_for_month(plan.year_month):
+            continue
+        key = item.key
+        if not key:
+            continue
+        amount = plan.get_item(key)
+        if amount == 0:
+            continue
+
+        day = get_day_for_field(key, year, month)
+        item_date = date(year, month, clamp_day(day))
+
+        if item.consider_holidays:
+            if item.payment_type == 'deposit':
+                item_date = adjust_to_previous_business_day(item_date)
+            else:
+                item_date = adjust_to_next_business_day(item_date)
+                if item_date.month != month or item_date.year != year:
+                    next_ym = item_date.strftime('%Y-%m')
+                    carryover_transactions.setdefault(next_ym, []).append({
+                        'date': item_date,
+                        'name': item.title,
+                        'amount': -amount if item.payment_type != 'deposit' else amount,
+                        'is_view_card': (key == 'item_6') and item.is_credit_card(),
+                        'is_excluded': plan.get_exclusion(key) if item.is_credit_card() else False,
+                    })
+                    continue
+
+        is_income = item.payment_type == 'deposit'
+        transactions.append({
+            'date': item_date,
+            'name': item.title,
+            'amount': amount if is_income else -amount,
+            'is_view_card': (key == 'item_6') and item.is_credit_card(),
+            'is_excluded': plan.get_exclusion(key) if item.is_credit_card() else False,
+        })
+
+    for temp_item in plan.get_temporary_items():
+        temp_day = temp_item.get('date', 1)
+        temp_amount = temp_item.get('amount', 0)
+        if temp_amount == 0:
+            continue
+        transactions.append({
+            'date': date(year, month, clamp_day(temp_day)),
+            'name': f"⚡ {temp_item.get('name', '臨時項目')}",
+            'amount': temp_amount,
+            'is_view_card': False,
+            'is_excluded': False,
+            'is_temporary': True,
+        })
+
+    if plan.has_savings and savings_amount > 0 and savings_day:
+        transactions.append({
+            'date': date(year, month, clamp_day(savings_day)),
+            'name': '🏦 定期預金',
+            'amount': -savings_amount,
+            'is_view_card': False,
+            'is_excluded': False,
+            'is_savings': True,
+        })
+
+    return transactions
+
+
+def _build_plan_timeline(plan, transactions, current_balance, cumulative_savings,
+                         savings_amount, today, current_year_month, reached_current_month):
+    """タイムラインエントリと過去明細を構築し、更新後の残高を返す"""
+    timeline = []
+    past_timeline = []
+
+    if reached_current_month and plan.year_month == current_year_month:
+        for t in transactions:
+            if t['amount'] == 0:
+                continue
+            if t['date'] and t['date'] <= today:
+                past_timeline.append({
+                    'date': t['date'],
+                    'name': t['name'],
+                    'amount': t['amount'],
+                    'balance': 0,
+                    'is_income': t['amount'] > 0,
+                    'is_excluded': t.get('is_excluded', False),
+                })
+
+    for t in transactions:
+        if t['amount'] == 0:
+            continue
+        if reached_current_month and plan.year_month == current_year_month:
+            if t['date'] and t['date'] <= today:
+                continue
+
+        if not t.get('is_excluded', False) and not t.get('is_savings', False):
+            current_balance += t['amount']
+
+        if t.get('is_savings', False):
+            cumulative_savings += savings_amount
+
+        main_balance = current_balance - cumulative_savings if plan.has_savings else current_balance
+        total_balance = main_balance + cumulative_savings if plan.has_savings else None
+
+        timeline.append({
+            'date': t['date'],
+            'name': t['name'],
+            'amount': t['amount'],
+            'balance': main_balance,
+            'is_income': t['amount'] > 0,
+            'is_excluded': t.get('is_excluded', False),
+            'is_savings': t.get('is_savings', False),
+            'savings_cumulative': cumulative_savings if plan.has_savings else None,
+            'total_balance': total_balance,
+        })
+
+    return timeline, past_timeline, current_balance, cumulative_savings
 
 
 def plan_list(request):
@@ -475,112 +600,17 @@ def plan_list(request):
         year, month = map(int, plan.year_month.split('-'))
         last_day = calendar.monthrange(year, month)[1]
 
-        timeline = []
-
         # 現在月の場合、現在残高（今日時点の残高）から開始
         if plan.year_month == current_year_month:
             reached_current_month = True
             current_balance = initial_balance
 
         plan.start_balance = current_balance
-        view_card_balance = None  # VIEWカード引き落とし後の残高を記録
 
-        def clamp_day(day: int) -> int:
-            return min(max(day, 1), last_day)
-
-        # MonthlyPlanDefaultから動的にトランザクションを生成
-        default_items = MonthlyPlanDefault.objects.all().order_by('order', 'id')
-        # 前月から持ち越されたトランザクションを追加
-        transactions = list(carryover_transactions.pop(plan.year_month, []))
-
-        for item in default_items:
-            # この月に表示すべき項目かチェック
-            if not item.should_display_for_month(plan.year_month):
-                continue
-
-            key = item.key
-            if not key:
-                continue
-
-            # 金額を取得
-            amount = plan.get_item(key)
-            if amount == 0:
-                continue
-
-            # 引落日 / 振込日を計算
-            day = get_day_for_field(key, year, month)
-            item_date = date(year, month, clamp_day(day))
-
-            # 休日を考慮して日付を調整
-            if item.consider_holidays:
-                if item.payment_type == 'deposit':
-                    # 振込（給与など）: 休日なら前営業日
-                    item_date = adjust_to_previous_business_day(item_date)
-                else:
-                    # 引き落とし: 休日なら翌営業日
-                    item_date = adjust_to_next_business_day(item_date)
-                    # 翌営業日調整で翌月にまたいだ場合は翌月に持ち越し
-                    if item_date.month != month or item_date.year != year:
-                        next_ym = item_date.strftime('%Y-%m')
-                        carryover_transactions.setdefault(next_ym, []).append({
-                            'date': item_date,
-                            'name': item.title,
-                            'amount': -amount if item.payment_type != 'deposit' else amount,
-                            'is_view_card': (key == 'item_6') and item.is_credit_card(),
-                            'is_excluded': plan.get_exclusion(key) if item.is_credit_card() else False,
-                        })
-                        continue
-
-            # 収入か支出かを判定
-            is_income = item.payment_type == 'deposit'
-            transaction_amount = amount if is_income else -amount
-
-            # 繰上げ返済フラグを取得（クレカ項目のみ）
-            is_excluded = plan.get_exclusion(key) if item.is_credit_card() else False
-
-            # VIEWカードかどうかを判定（item_6がVIEWカード）
-            is_view_card = (key == 'item_6') and item.is_credit_card()
-
-            # 項目名を表示用に設定
-            display_name = item.title
-
-            transactions.append({
-                'date': item_date,
-                'name': display_name,
-                'amount': transaction_amount,
-                'is_view_card': is_view_card,
-                'is_excluded': is_excluded
-            })
-
-        # 臨時項目をトランザクションに追加
-        temporary_items = plan.get_temporary_items()
-        for temp_item in temporary_items:
-            temp_day = temp_item.get('date', 1)
-            temp_amount = temp_item.get('amount', 0)
-            if temp_amount == 0:
-                continue
-
-            temp_date = date(year, month, clamp_day(temp_day))
-            transactions.append({
-                'date': temp_date,
-                'name': f"⚡ {temp_item.get('name', '臨時項目')}",
-                'amount': temp_amount,  # 既に正負が設定されている
-                'is_view_card': False,
-                'is_excluded': False,
-                'is_temporary': True
-            })
-
-        # 定期預金トランザクションを追加（savings_dayが設定されている場合のみ）
-        if plan.has_savings and savings_amount > 0 and savings_day:
-            savings_date = date(year, month, clamp_day(savings_day))
-            transactions.append({
-                'date': savings_date,
-                'name': '🏦 定期預金',
-                'amount': -savings_amount,
-                'is_view_card': False,
-                'is_excluded': False,
-                'is_savings': True
-            })
+        transactions = _build_plan_transactions(
+            plan, year, month, last_day, carryover_transactions,
+            savings_amount=savings_amount, savings_day=savings_day,
+        )
 
         # 日付順にソート（日付がNoneの場合は最後、同日の場合は定期預金を最後に、収入を先に）
         transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, 1 if x.get('is_savings') else 0, -x['amount']))
@@ -600,66 +630,13 @@ def plan_list(request):
             current_balance = initial_balance + past_effective_sum
             plan.start_balance = current_balance
 
-        # 過去の明細用のリスト（現在月の今日以前の取引）
-        past_timeline = []
-
-        # 現在月の場合、過去の明細を別途計算
-        if reached_current_month and plan.year_month == current_year_month:
-            past_balance = initial_balance
-            for transaction in transactions:
-                if transaction['amount'] == 0:
-                    continue
-                if transaction['date'] and transaction['date'] <= today:
-                    # 過去の明細として記録（残高は元の累積計算のまま）
-                    # 実際の残高計算は不要なので、ダミー値を入れる
-                    past_timeline.append({
-                        'date': transaction['date'],
-                        'name': transaction['name'],
-                        'amount': transaction['amount'],
-                        'balance': 0,  # テンプレートで表示しないのでダミー
-                        'is_income': transaction['amount'] > 0,
-                        'is_excluded': transaction.get('is_excluded', False)
-                    })
-
-        # タイムライン作成（未来の取引のみ、または過去月の全取引）
-        for transaction in transactions:
-            if transaction['amount'] == 0:
-                continue
-            # 現在月で今日以前の取引はスキップ
-            if reached_current_month and plan.year_month == current_year_month:
-                if transaction['date'] and transaction['date'] <= today:
-                    continue
-
-            # 繰上げ返済・定期預金は残高計算から除外（定期預金は cumulative_savings で別途管理）
-            if not transaction.get('is_excluded', False) and not transaction.get('is_savings', False):
-                current_balance += transaction['amount']
-
-            # 定期預金行の場合、この行を処理した後にcumulative_savingsを加算
-            if transaction.get('is_savings', False):
-                cumulative_savings += savings_amount
-
-            # メイン残高 = 残高 - 定期預金累積（定期預金が開始していれば常に引く）
-            main_balance_for_row = current_balance - cumulative_savings if plan.has_savings else current_balance
-
-            total_balance_for_row = main_balance_for_row + cumulative_savings if plan.has_savings else None
-
-            timeline.append({
-                'date': transaction['date'],
-                'name': transaction['name'],
-                'amount': transaction['amount'],
-                'balance': main_balance_for_row,
-                'is_income': transaction['amount'] > 0,
-                'is_excluded': transaction.get('is_excluded', False),
-                'is_savings': transaction.get('is_savings', False),
-                'savings_cumulative': cumulative_savings if plan.has_savings else None,
-                'total_balance': total_balance_for_row,
-            })
-            # VIEWカード（通常払いまたはボーナス払い）の引き落とし後の残高を記録
-            if transaction.get('is_view_card', False):
-                view_card_balance = current_balance
+        timeline, past_timeline, current_balance, cumulative_savings = _build_plan_timeline(
+            plan, transactions, current_balance, cumulative_savings,
+            savings_amount, today, current_year_month, reached_current_month,
+        )
 
         plan.timeline = timeline
-        plan.past_timeline = past_timeline  # 過去の明細を保存
+        plan.past_timeline = past_timeline
         # 月末残高もメイン残高（定期分を引いた後）で表示
         plan.final_balance = current_balance - cumulative_savings if plan.has_savings else current_balance
         # アーカイブフラグを設定
