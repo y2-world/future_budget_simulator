@@ -27,6 +27,7 @@ from .forms import (
 import logging
 from datetime import date
 import calendar
+from budget_app.utils.date_utils import parse_year_month
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +209,7 @@ def calculate_closing_date(year_month, card_type):
     import calendar
 
     try:
-        year, month = map(int, year_month.split('-'))
+        year, month = parse_year_month(year_month)
     except (ValueError, AttributeError):
         return None
 
@@ -246,7 +247,7 @@ def calculate_billing_month(year_month, card_type, split_part=None):
         str: 引き落とし月（YYYY-MM形式）
     """
     try:
-        year, month = map(int, year_month.split('-'))
+        year, month = parse_year_month(year_month)
     except (ValueError, AttributeError):
         return year_month
 
@@ -294,7 +295,7 @@ def calculate_billing_month_for_purchase(payment_day, year_month, card_type):
     import calendar as cal_module
 
     try:
-        p_year, p_month = map(int, year_month.split('-'))
+        p_year, p_month = parse_year_month(year_month)
     except (ValueError, AttributeError):
         return year_month
 
@@ -599,7 +600,7 @@ def plan_list(request):
         plan.savings_amount_display = cumulative_savings if plan.has_savings else 0
         plan.savings_day_display = savings_day if plan.has_savings else None
 
-        year, month = map(int, plan.year_month.split('-'))
+        year, month = parse_year_month(plan.year_month)
         last_day = calendar.monthrange(year, month)[1]
 
         # 現在月の場合、現在残高（今日時点の残高）から開始
@@ -1243,7 +1244,7 @@ class DefaultEntry:
             self.usd_amount = default_obj.usd_amount if hasattr(default_obj, 'usd_amount') else None
         self.is_overridden = override_data is not None
         try:
-            year, month = map(int, entry_year_month.split('-'))
+            year, month = parse_year_month(entry_year_month)
             max_day = calendar.monthrange(year, month)[1]
             actual_day = min(default_obj.payment_day, max_day)
             self.due_date = date(year, month, actual_day)
@@ -1260,7 +1261,7 @@ class DefaultEntry:
         else:
             try:
                 usage_ym = original_year_month if original_year_month else self.year_month
-                year, month = map(int, usage_ym.split('-'))
+                year, month = parse_year_month(usage_ym)
                 if card_plan_info and not card_plan_info.get('is_end_of_month') and card_plan_info.get('closing_day'):
                     closing_day = card_plan_info['closing_day']
                     payment_day = default_obj.payment_day
@@ -1291,7 +1292,7 @@ def get_card_label_with_due_day(card_type, card_labels, card_due_days, is_bonus=
     due_day = card_due_days.get(card_type, '')
 
     if due_day and year_month:
-        payment_year, payment_month = map(int, year_month.split('-'))
+        payment_year, payment_month = parse_year_month(year_month)
         last_day = calendar.monthrange(payment_year, payment_month)[1]
         actual_due_day = min(due_day, last_day)
         payment_date = adjust_to_next_business_day(date(payment_year, payment_month, actual_due_day))
@@ -1315,7 +1316,7 @@ def _build_estimate_summary(estimates, card_labels, card_due_days, today):
 
     for est in estimates:
         if not est.is_bonus_payment:
-            year, month = map(int, est.year_month.split('-'))
+            year, month = parse_year_month(est.year_month)
             card_default = get_card_plan(est.card_type)
             if card_default:
                 if card_default.is_end_of_month:
@@ -1419,7 +1420,7 @@ def _inject_default_entries_to_summary(summary, credit_defaults, override_map,
     from datetime import datetime, timedelta
 
     for year_month in candidate_usage_months:
-        year, month = map(int, year_month.split('-'))
+        year, month = parse_year_month(year_month)
         is_odd_month_flag = is_odd_month(year_month)
 
         view_closing_month = month + 1
@@ -1498,7 +1499,7 @@ def _inject_default_entries_to_summary(summary, credit_defaults, override_map,
                 total_amount = override_data.get('amount') if override_data else default.amount
 
                 first_payment_closed = False
-                split_year, split_month = map(int, year_month.split('-'))
+                split_year, split_month = parse_year_month(year_month)
                 if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
                     purchase_day = min(default.payment_day, calendar.monthrange(split_year, split_month)[1])
                     if purchase_day <= card_plan.closing_day:
@@ -1545,7 +1546,7 @@ def _inject_default_entries_to_summary(summary, credit_defaults, override_map,
                     next_card_group['default_total'] += default_entry_2.amount
             else:
                 payment_closed = False
-                year_val, month_val = map(int, year_month.split('-'))
+                year_val, month_val = parse_year_month(year_month)
                 if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
                     purchase_day = min(default.payment_day, calendar.monthrange(year_val, month_val)[1])
                     if purchase_day <= card_plan.closing_day:
@@ -1590,12 +1591,12 @@ def _sort_and_split_summary(summary, card_due_days, today):
             card_key, card_data = item
             due_day = card_due_days.get(card_key)
             if due_day:
-                billing_year, billing_month = map(int, year_month.split('-'))
+                billing_year, billing_month = parse_year_month(year_month)
                 last_day = calendar.monthrange(billing_year, billing_month)[1]
                 actual_due_day = min(due_day, last_day)
                 payment_date = adjust_to_next_business_day(date(billing_year, billing_month, actual_due_day))
             else:
-                billing_year, billing_month = map(int, year_month.split('-'))
+                billing_year, billing_month = parse_year_month(year_month)
                 payment_date = date(billing_year, billing_month, 1)
             is_bonus = card_data.get('is_bonus_section', False)
             return (payment_date, is_bonus)
@@ -2102,7 +2103,7 @@ def credit_estimate_list(request):
 
                             if card_plan:
                                 # billing_monthからyear_monthを逆算
-                                billing_year, billing_month_num = map(int, year_month.split('-'))
+                                billing_year, billing_month_num = parse_year_month(year_month)
 
                                 if card_plan.is_end_of_month:
                                     usage_month_num = billing_month_num - 1
@@ -2615,7 +2616,7 @@ def credit_default_list(request):
                 for override in all_overrides:
                     # 利用日（purchase_date）を計算して、今日より後の利用日のみ更新
                     try:
-                        ov_year, ov_month = map(int, override.year_month.split('-'))
+                        ov_year, ov_month = parse_year_month(override.year_month)
                         max_day = calendar.monthrange(ov_year, ov_month)[1]
                         purchase_day = min(instance.payment_day, max_day)
                         purchase_date = date_type(ov_year, ov_month, purchase_day)
@@ -3180,7 +3181,7 @@ def past_transactions_list(request):
             value = current_month_plan.get_item(item.key)
             if value and value != 0:
                 # 引落日 / 振込日を計算
-                year, month = map(int, current_month_plan.year_month.split('-'))
+                year, month = parse_year_month(current_month_plan.year_month)
 
                 if item.is_withdrawal_end_of_month:
                     day = calendar.monthrange(year, month)[1]
@@ -3229,7 +3230,7 @@ def past_transactions_list(request):
             billing_month = est.billing_month if est.billing_month else est.year_month
             if billing_month and billing_month <= future_limit_year_month:
                 # 締め日チェック（MonthlyPlanDefaultから取得）
-                year, month = map(int, est.year_month.split('-'))
+                year, month = parse_year_month(est.year_month)
 
                 card_plan = get_card_plan(est.card_type)
                 if card_plan:
@@ -3269,7 +3270,7 @@ def past_transactions_list(request):
             continue
 
         year_month = override.year_month
-        year, month = map(int, year_month.split('-'))
+        year, month = parse_year_month(year_month)
 
         # 奇数月のみ適用フラグのチェック
         if override.default.apply_odd_months_only and not is_odd_month(year_month):
@@ -3303,7 +3304,7 @@ def past_transactions_list(request):
             # billing_monthをcalculate_billing_month_for_purchaseと同じロジックで計算
             payment_day = override.default.payment_day
             billing_month = calculate_billing_month_for_purchase(payment_day, year_month, override.card_type)
-            billing_year, billing_month_num = map(int, billing_month.split('-'))
+            billing_year, billing_month_num = parse_year_month(billing_month)
 
             # 利用日を計算（purchase_date_overrideがあればそれを使用）
             if override.purchase_date_override:
@@ -3403,7 +3404,7 @@ def past_transactions_list(request):
                 'total_credit': 0
             }
 
-        plan_year, plan_month = map(int, plan.year_month.split('-'))
+        plan_year, plan_month = parse_year_month(plan.year_month)
         last_day = calendar.monthrange(plan_year, plan_month)[1]
 
         # 収入の合計（給与、ボーナス、その他収入）
@@ -3495,7 +3496,7 @@ def past_transactions_list(request):
 
         # 通常払いの場合、締め日が過ぎたかチェック
         if not estimate.is_bonus_payment:
-            year, month = map(int, estimate.year_month.split('-'))
+            year, month = parse_year_month(estimate.year_month)
             import calendar
 
             # MonthlyPlanDefaultから締め日を取得
@@ -3570,7 +3571,7 @@ def past_transactions_list(request):
         # Use card_due_day_value from MonthlyPlanDefault if available, otherwise fall back to legacy mapping
         due_day = card_due_day_value if card_due_day_value else card_due_days.get(estimate.card_type, '')
         if due_day and billing_month:
-            billing_year, billing_month_num = map(int, billing_month.split('-'))
+            billing_year, billing_month_num = parse_year_month(billing_month)
             import calendar
             # 支払月の最終日を取得
             last_day = calendar.monthrange(billing_year, billing_month_num)[1]

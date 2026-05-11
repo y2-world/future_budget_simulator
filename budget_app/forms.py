@@ -2,6 +2,7 @@ from django import forms
 from datetime import datetime, timedelta
 import calendar
 from .models import SimulationConfig, MonthlyPlan, CreditEstimate, CreditDefault, MonthlyPlanDefault
+from budget_app.utils.date_utils import parse_year_month
 
 
 def get_bonus_month_from_date(purchase_date) -> str:
@@ -121,7 +122,7 @@ def get_next_bonus_month(year_month: str) -> str:
     ※編集モーダルで入力される年月は「購入月」を想定
     """
     try:
-        year, month = map(int, year_month.split('-'))
+        year, month = parse_year_month(year_month)
     except (ValueError, AttributeError):
         return year_month
 
@@ -686,7 +687,7 @@ class CreditEstimateForm(forms.ModelForm):
             from .models import MonthlyPlanDefault
             from calendar import monthrange
 
-            year, month = map(int, usage_month.split('-'))
+            year, month = parse_year_month(usage_month)
 
             # MonthlyPlanDefaultからカード情報を取得
             card_default = MonthlyPlanDefault.objects.filter(key=card_type, is_active=True).first()
