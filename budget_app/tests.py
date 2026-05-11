@@ -1108,36 +1108,40 @@ class CreditEstimateListFilterTests(TestCase):
         return _sort_and_split_summary(summary, card_due_days, today_dt)
 
     def test_same_usage_month_different_cards_filtered_separately(self):
-        """同じ利用月でもカード別に billing_month フィルタが適用される
+        """過去の同じ利用月でもカード別に billing_month フィルタが独立して適用される
 
-        2026-03利用:
-        - VIEWカード（payment_day=10 > closing_day=5）→ billing_month=2026-05
-        - 楽天カード（月末締め）→ billing_month=2026-04
+        VIEW締め日（2026-03-05）前のシナリオ（today=2026-03-02）で 2026-02 利用:
+        - VIEWカード（payment_day=10 > closing_day=5）→ billing_month=2026-04
+        - 楽天カード（月末締め）→ billing_month=2026-03
 
         2026-04 にのみ手動入力がある場合:
-        - 楽天の定期（2026-03利用）は 2026-04 に表示される
-        - VIEWの定期（2026-03利用）は 2026-05 に表示されない（手動入力なし）
+        - VIEWの定期（2026-02利用）は 2026-04 に表示される（手動入力あり・締め日未到来）
+        - 楽天の定期（2026-02利用）は表示されない（手動入力なし・過去利用月）
         """
-        today_dt = dt_module.datetime(2026, 3, 8, 12, 0, 0, tzinfo=dt_module.timezone.utc)
+        # VIEW の 2026-02 締め日（2026-03-05）未到来
+        today_dt = dt_module.datetime(2026, 3, 2, 12, 0, 0, tzinfo=dt_module.timezone.utc)
 
         DefaultChargeOverride.objects.create(
-            default=self.default_view, year_month='2026-03', amount=1000, card_type='view_card',
+            default=self.default_view, year_month='2026-02', amount=1000, card_type='view_card',
         )
         DefaultChargeOverride.objects.create(
-            default=self.default_rakuten, year_month='2026-03', amount=2000, card_type='rakuten_card',
+            default=self.default_rakuten, year_month='2026-02', amount=2000, card_type='rakuten_card',
         )
+        # VIEW 2026-02 利用の手動入力（billing_month=2026-04）→ existing_billing_months に 2026-04 を追加
         CreditEstimate.objects.create(
-            description='手動入力', amount=5000, year_month='2026-03',
-            billing_month='2026-04', card_type='rakuten_card', is_bonus_payment=False,
+            description='手動入力', amount=5000, year_month='2026-02',
+            billing_month='2026-04', card_type='view_card', is_bonus_payment=False,
         )
 
-        _, future_summary, _, _ = self._run_pipeline(today_dt)
+        current_summary, future_summary, _, _ = self._run_pipeline(today_dt)
 
-        has_2026_04 = any('2026-04' in key for key in future_summary.keys())
-        self.assertTrue(has_2026_04, '2026-04 は手動入力があるので表示されるべき')
+        # VIEW 2026-02 分は billing_month=2026-04（手動入力あり・締め日前）→ 表示される
+        view_in_2026_04 = 'view_card' in future_summary.get('2026-04', {})
+        self.assertTrue(view_in_2026_04, '2026-04 の VIEW定期は手動入力があるので表示されるべき')
 
-        has_2026_05 = any('2026-05' in key for key in future_summary.keys())
-        self.assertFalse(has_2026_05, '2026-05 は手動入力がないので表示されないべき')
+        # 楽天 2026-02 分は billing_month=2026-03（手動入力なし・過去利用月）→ 表示されない
+        rakuten_in_2026_03 = 'rakuten_card' in current_summary.get('2026-03', {})
+        self.assertFalse(rakuten_in_2026_03, '2026-03 の楽天定期は手動入力がないため表示されないべき')
 
     def test_bonus_payment_does_not_unlock_defaults(self):
         """ボーナス払いの billing_month は定期デフォルト表示のトリガーにならない

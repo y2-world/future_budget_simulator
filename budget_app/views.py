@@ -1387,7 +1387,7 @@ def _collect_default_candidates(credit_defaults, override_map, existing_billing_
             billing_month = calculate_billing_month_for_purchase(
                 default.payment_day, ym, card_type
             )
-            if billing_month in existing_billing_months:
+            if ym == current_year_month or billing_month in existing_billing_months:
                 candidate_default_month_pairs.add((default.id, ym))
     candidate_usage_months = sorted(list(set(ym for (_, ym) in candidate_default_month_pairs)))
     return candidate_default_month_pairs, candidate_usage_months
@@ -1547,7 +1547,7 @@ def _inject_default_entries_to_summary(summary, credit_defaults, override_map,
                     payment_closed = today.date() > this_closing_date
 
                 if not payment_closed:
-                    default_entry = DefaultEntry(default, display_billing_month, override_data, actual_card_type, card_plan_info=card_plan_info)
+                    default_entry = DefaultEntry(default, display_billing_month, override_data, actual_card_type, original_year_month=year_month, card_plan_info=card_plan_info)
                     card_group['entries'].append(default_entry)
                     card_group['total'] += default_entry.amount
                     card_group['default_total'] += default_entry.amount
