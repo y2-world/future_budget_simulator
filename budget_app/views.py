@@ -239,6 +239,15 @@ def calculate_closing_date(year_month, card_type):
     return date(year, month, last_day)
 
 
+def _advance_year_month(year, month, offset):
+    """year/monthにoffset月を加算した 'YYYY-MM' 文字列を返す"""
+    month += offset
+    while month > 12:
+        month -= 12
+        year += 1
+    return f"{year}-{month:02d}"
+
+
 def calculate_billing_month(year_month, card_type, split_part=None):
     """
     利用月から引き落とし月を計算
@@ -258,30 +267,19 @@ def calculate_billing_month(year_month, card_type, split_part=None):
 
     card_plan = get_card_plan(card_type)
 
-    if card_plan:
-        if card_plan.is_end_of_month:
-            # 月末締め: billing_month = year_month + 1
-            billing_month = month + 1
-            billing_year = year
-        else:
-            # 指定日締め: billing_month = year_month + 2
-            billing_month = month + 2
-            billing_year = year
+    # 月末締め: +1、指定日締め/不明: +2（締め日後と仮定）
+    if card_plan and card_plan.is_end_of_month:
+        offset = 1
+    elif card_plan:
+        offset = 2
     else:
-        # デフォルト値（情報がない場合は翌月）
-        billing_month = month + 1
-        billing_year = year
+        offset = 1
 
-    # 分割2回目の場合はさらに+1ヶ月
+    # 分割2回目はさらに+1
     if split_part == 2:
-        billing_month += 1
+        offset += 1
 
-    # 月の繰り上がり処理
-    while billing_month > 12:
-        billing_month -= 12
-        billing_year += 1
-
-    return f"{billing_year}-{billing_month:02d}"
+    return _advance_year_month(year, month, offset)
 
 
 def calculate_billing_month_for_purchase(payment_day, year_month, card_type):
@@ -297,48 +295,26 @@ def calculate_billing_month_for_purchase(payment_day, year_month, card_type):
     Returns:
         str: 引き落とし月（YYYY-MM形式）
     """
-    import calendar as cal_module
-
     try:
-        p_year, p_month = parse_year_month(year_month)
+        year, month = parse_year_month(year_month)
     except (ValueError, AttributeError):
         return year_month
 
-    max_day = cal_module.monthrange(p_year, p_month)[1]
+    max_day = calendar.monthrange(year, month)[1]
     purchase_day = min(payment_day, max_day)
 
     card_plan = get_card_plan(card_type)
 
-    if card_plan:
-        if card_plan.is_end_of_month:
-            # 月末締め: 利用日が含まれる月の月末が締め日 → 翌月払い
-            billing_month_num = p_month + 1
-            billing_year = p_year
-        elif card_plan.closing_day:
-            # 指定日締め（例: VIEWカード 5日締め→翌月4日払い）
-            if purchase_day <= card_plan.closing_day:
-                # 利用日が締め日以前 → 当月締め → 翌月払い
-                # 例: 3/4利用 → 3/5締め → 4/4払い (+1)
-                billing_month_num = p_month + 1
-                billing_year = p_year
-            else:
-                # 利用日が締め日より後 → 翌月締め → 翌々月払い
-                # 例: 3/7利用 → 4/5締め → 5/4払い (+2)
-                billing_month_num = p_month + 2
-                billing_year = p_year
-        else:
-            # closing_dayなし → デフォルトは翌月
-            billing_month_num = p_month + 1
-            billing_year = p_year
+    if card_plan and card_plan.is_end_of_month:
+        # 月末締め → 翌月払い
+        offset = 1
+    elif card_plan and card_plan.closing_day:
+        # 指定日締め: 利用日 ≤ 締め日 → 翌月、それ以降 → 翌々月
+        offset = 1 if purchase_day <= card_plan.closing_day else 2
     else:
-        billing_month_num = p_month + 1
-        billing_year = p_year
+        offset = 1
 
-    while billing_month_num > 12:
-        billing_month_num -= 12
-        billing_year += 1
-
-    return f"{billing_year}-{billing_month_num:02d}"
+    return _advance_year_month(year, month, offset)
 
 
 def is_odd_month(year_month):
