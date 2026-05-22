@@ -596,8 +596,8 @@ def plan_list(request):
             savings_amount=savings_amount, savings_day=savings_day,
         )
 
-        # 日付順にソート（日付がNoneの場合は最後、同日の場合は定期預金を最後に、収入を先に）
-        transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, 1 if x.get('is_savings') else 0, -x['amount']))
+        # 日付順にソート（日付がNoneの場合は最後、同日の場合は定期預金を最後に、収入→支出の順、大きい額が上）
+        transactions.sort(key=lambda x: (x['date'] if x['date'] is not None else date.max, 1 if x.get('is_savings') else 0, 0 if x['amount'] > 0 else 1, -abs(x['amount'])))
 
         # balance_set_date以降〜今日の取引を累積（実効残高の自動計算用）
         if balance_set_date:
