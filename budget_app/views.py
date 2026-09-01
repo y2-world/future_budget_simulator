@@ -359,12 +359,19 @@ def get_card_choices_for_form():
     フォーム用のカード選択肢を取得（key, titleのみ）
 
     Returns:
-        QuerySet: カード選択肢用のMonthlyPlanDefault（card_idがあり、ボーナス払いを除外）
+        list[dict]: カード選択肢用のMonthlyPlanDefault（card_idがあり、ボーナス払いを除外）
     """
-    return MonthlyPlanDefault.objects.filter(
+    from .models import CreditEstimate
+
+    choices = list(MonthlyPlanDefault.objects.filter(
         is_active=True,
         card_id__isnull=False
-    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title', 'linked_bonus_payment_type')
+    ).exclude(card_id='').exclude(is_bonus_payment=True).order_by('order', 'id').values('key', 'title', 'linked_bonus_payment_type'))
+
+    for choice in choices:
+        choice['is_split_allowed'] = choice['key'] in CreditEstimate.SPLIT_PAYMENT_ALLOWED_CARD_TYPES
+
+    return choices
 
 
 def get_card_by_key(card_key):
@@ -1295,27 +1302,40 @@ def _build_estimate_summary(estimates, card_labels, card_due_days, today):
 
     summary = OrderedDict()
 
+    # 分割払いグループの合計額を事前計算して各 estimate に付与
+    group_totals = {}
+    for est in estimates:
+        if est.split_payment_group:
+            group_totals[est.split_payment_group] = group_totals.get(est.split_payment_group, 0) + est.amount
+    for est in estimates:
+        if est.split_payment_group and est.split_payment_group in group_totals:
+            est.original_amount = group_totals[est.split_payment_group]
+        else:
+            est.original_amount = est.amount
+
     for est in estimates:
         if not est.is_bonus_payment:
-            year, month = parse_year_month(est.year_month)
+            # billing_month（請求月＝支払い月）の1ヶ月前が締め月になる
+            billing_month = est.billing_month if est.billing_month else est.year_month
+            billing_year, billing_month_num = parse_year_month(billing_month)
+            closing_month = billing_month_num - 1
+            closing_year = billing_year
+            if closing_month < 1:
+                closing_month = 12
+                closing_year -= 1
             card_default = get_card_plan(est.card_type)
             if card_default:
                 if card_default.is_end_of_month:
-                    last_day = calendar.monthrange(year, month)[1]
-                    closing_date = date(year, month, last_day)
+                    last_day = calendar.monthrange(closing_year, closing_month)[1]
+                    closing_date = date(closing_year, closing_month, last_day)
                 elif card_default.closing_day:
-                    closing_month = month + 1
-                    closing_year = year
-                    if closing_month > 12:
-                        closing_month = 1
-                        closing_year += 1
                     closing_date = date(closing_year, closing_month, card_default.closing_day)
                 else:
-                    last_day = calendar.monthrange(year, month)[1]
-                    closing_date = date(year, month, last_day)
+                    last_day = calendar.monthrange(closing_year, closing_month)[1]
+                    closing_date = date(closing_year, closing_month, last_day)
             else:
-                last_day = calendar.monthrange(year, month)[1]
-                closing_date = date(year, month, last_day)
+                last_day = calendar.monthrange(closing_year, closing_month)[1]
+                closing_date = date(closing_year, closing_month, last_day)
 
             if today.date() > closing_date:
                 continue
@@ -1387,7 +1407,12 @@ def _collect_default_candidates(credit_defaults, override_map, existing_billing_
             billing_month = calculate_billing_month_for_purchase(
                 default.payment_day, ym, card_type
             )
-            if ym == current_year_month or billing_month in existing_billing_months:
+            # 分割払いの場合は2回目の請求月（1回目の1ヶ月後）も判定対象に含める
+            is_split_payment = override_data.get('is_split_payment', False) if override_data else False
+            second_billing_month = _advance_year_month(*parse_year_month(billing_month), 1) if is_split_payment else None
+
+            if (ym == current_year_month or billing_month in existing_billing_months
+                    or (second_billing_month and second_billing_month in existing_billing_months)):
                 candidate_default_month_pairs.add((default.id, ym))
     candidate_usage_months = sorted(list(set(ym for (_, ym) in candidate_default_month_pairs)))
     return candidate_default_month_pairs, candidate_usage_months
@@ -1479,25 +1504,29 @@ def _inject_default_entries_to_summary(summary, credit_defaults, override_map,
             if is_split:
                 total_amount = override_data.get('amount') if override_data else default.amount
 
-                first_payment_closed = False
-                split_year, split_month = parse_year_month(year_month)
+                # 1回目の締め日は display_billing_month（1回目の請求月）の1ヶ月前
+                billing_year_1, billing_month_1 = parse_year_month(display_billing_month)
+                split_closing_month = billing_month_1 - 1
+                split_closing_year = billing_year_1
+                if split_closing_month < 1:
+                    split_closing_month = 12
+                    split_closing_year -= 1
                 if card_plan and card_plan.closing_day and not card_plan.is_end_of_month:
-                    purchase_day = min(default.payment_day, calendar.monthrange(split_year, split_month)[1])
-                    if purchase_day <= card_plan.closing_day:
-                        split_closing_month = split_month
-                        split_closing_year = split_year
-                    else:
-                        split_closing_month = split_month + 1
-                        split_closing_year = split_year
-                        if split_closing_month > 12:
-                            split_closing_month = 1
-                            split_closing_year += 1
                     split_closing_date = date(split_closing_year, split_closing_month, card_plan.closing_day)
-                    first_payment_closed = today.date() > split_closing_date
                 else:
-                    split_last_day = calendar.monthrange(split_year, split_month)[1]
-                    split_closing_date = date(split_year, split_month, split_last_day)
-                    first_payment_closed = today.date() > split_closing_date
+                    split_last_day = calendar.monthrange(split_closing_year, split_closing_month)[1]
+                    split_closing_date = date(split_closing_year, split_closing_month, split_last_day)
+                first_payment_closed = today.date() > split_closing_date
+
+                # 2回目の締め日は1回目の1ヶ月後
+                second_closing_month = split_closing_date.month + 1
+                second_closing_year = split_closing_date.year
+                if second_closing_month > 12:
+                    second_closing_month = 1
+                    second_closing_year += 1
+                second_closing_day = min(split_closing_date.day, calendar.monthrange(second_closing_year, second_closing_month)[1])
+                second_closing_date = date(second_closing_year, second_closing_month, second_closing_day)
+                second_payment_closed = today.date() > second_closing_date
 
                 if not first_payment_closed:
                     default_entry_1 = DefaultEntry(default, display_billing_month, override_data, actual_card_type, split_part=1, total_amount=total_amount, original_year_month=year_month, card_plan_info=card_plan_info)
@@ -1509,7 +1538,7 @@ def _inject_default_entries_to_summary(summary, credit_defaults, override_map,
                 next_billing_date = (billing_date.replace(day=1) + timedelta(days=32)).replace(day=1)
                 next_billing_month = next_billing_date.strftime('%Y-%m')
 
-                if not first_payment_closed:
+                if not second_payment_closed:
                     next_month_group = summary.setdefault(next_billing_month, OrderedDict())
                     next_label = get_card_label_with_due_day(actual_card_type, card_labels, card_due_days, is_bonus=False, year_month=next_billing_month)
                     next_card_group = next_month_group.setdefault(actual_card_type, {
@@ -2180,7 +2209,7 @@ def credit_estimate_list(request):
         elif action == 'create_estimate':
             form = CreditEstimateForm(request.POST)
             if form.is_valid():
-                estimate = form.save(commit=False)
+                estimate = form.instance
 
                 # ドル入力の場合、円に変換
                 is_usd = request.POST.get('is_usd') == 'on'
@@ -2205,7 +2234,7 @@ def credit_estimate_list(request):
                 if estimate.is_bonus_payment:
                     estimate.year_month = get_next_bonus_month(estimate.year_month)
 
-                instance = form.save() # 分割払い対応のためsaveメソッドを使う
+                instance = form.save() # 分割払い対応のためsaveメソッドを使う（ここで初めてDBに保存される）
 
                 # 追加した見積もりが表示される年月を取得
                 target_month = None
@@ -2245,8 +2274,15 @@ def credit_estimate_list(request):
                 else:
                     target_page = 'budget_app:credit_estimates'
 
-                # アンカー付きURLを生成
-                if target_month:
+                # アンカー付きURLを生成（カード種別まで含める）
+                if target_month and instance.card_type:
+                    if instance.is_bonus_payment:
+                        btype = instance.bonus_payment_type or ''
+                        card_key = f"{instance.card_type}_bonus_{btype}" if btype else f"{instance.card_type}_bonus"
+                    else:
+                        card_key = instance.card_type
+                    anchor = f'#estimate-content-{target_month}-{card_key}'
+                elif target_month:
                     anchor = f'#estimate-content-{target_month}'
                 else:
                     anchor = ''
@@ -2369,8 +2405,15 @@ def credit_estimate_edit(request, pk):
             else:
                 target_page = 'budget_app:credit_estimates'
 
-            # アンカー付きURLを生成
-            if target_month:
+            # アンカー付きURLを生成（カード種別まで含める）
+            if target_month and updated_estimate.card_type:
+                if updated_estimate.is_bonus_payment:
+                    btype = updated_estimate.bonus_payment_type or ''
+                    card_key = f"{updated_estimate.card_type}_bonus_{btype}" if btype else f"{updated_estimate.card_type}_bonus"
+                else:
+                    card_key = updated_estimate.card_type
+                anchor = f'#estimate-content-{target_month}-{card_key}'
+            elif target_month:
                 anchor = f'#estimate-content-{target_month}'
             else:
                 anchor = ''
@@ -2904,9 +2947,10 @@ def salary_list(request):
             'count': year_salaries.count(),
         })
 
-    # 登録済みの年月リストを取得（モーダルで除外するため）
+    # 給与が登録済みの年月リストを取得（モーダルで除外するため）
+    # 賞与のみ（gross_salary=0）の場合は未登録扱いにする
     registered_year_months = list(
-        Salary.objects.values_list('year_month', flat=True)
+        Salary.objects.filter(gross_salary__gt=0).values_list('year_month', flat=True)
     )
 
     context = {
@@ -2928,23 +2972,44 @@ def salary_create(request):
         month = request.POST.get('month')
         year_month = f"{year}-{month}"
 
-        # 既に存在する場合はエラー
-        if Salary.objects.filter(year_month=year_month).exists():
+        existing = Salary.objects.filter(year_month=year_month).first()
+
+        # 給与が既に登録済みの場合はエラー
+        if existing and existing.gross_salary > 0:
             return JsonResponse({
                 'status': 'error',
                 'message': f'{year}年{int(month)}月の給与明細は既に登録されています。'
             }, status=400)
 
-        # 給与明細作成
-        salary = Salary.objects.create(
-            year_month=year_month,
-            gross_salary=int(request.POST.get('gross_salary', 0)),
-            deductions=int(request.POST.get('deductions', 0)),
-            transportation=int(request.POST.get('transportation', 0)),
-            has_bonus=request.POST.get('has_bonus') == 'true',
-            bonus_gross_salary=int(request.POST.get('bonus_gross_salary', 0)),
-            bonus_deductions=int(request.POST.get('bonus_deductions', 0)),
-        )
+        gross_salary = int(request.POST.get('gross_salary', 0))
+        deductions = int(request.POST.get('deductions', 0))
+        transportation = int(request.POST.get('transportation', 0))
+        has_bonus = request.POST.get('has_bonus') == 'true'
+        bonus_gross_salary = int(request.POST.get('bonus_gross_salary', 0))
+        bonus_deductions = int(request.POST.get('bonus_deductions', 0))
+
+        if existing:
+            # 賞与のみ登録済みの場合は給与情報を更新
+            existing.gross_salary = gross_salary
+            existing.deductions = deductions
+            existing.transportation = transportation
+            if has_bonus:
+                existing.has_bonus = True
+                existing.bonus_gross_salary = bonus_gross_salary
+                existing.bonus_deductions = bonus_deductions
+            existing.save()
+            salary = existing
+        else:
+            # 給与明細作成
+            salary = Salary.objects.create(
+                year_month=year_month,
+                gross_salary=gross_salary,
+                deductions=deductions,
+                transportation=transportation,
+                has_bonus=has_bonus,
+                bonus_gross_salary=bonus_gross_salary,
+                bonus_deductions=bonus_deductions,
+            )
 
         # モバイル表示時に対象月にスクロールするためのアンカーを追加
         target_url = reverse('budget_app:salary_list') + f'#salary-{year_month}'
@@ -3093,10 +3158,11 @@ def past_transactions_list(request):
             card_type = request.POST.get('card_type')
             amount = request.POST.get('amount')
             purchase_date = request.POST.get('purchase_date')  # 利用日を取得
+            is_split_payment = request.POST.get('is_split_payment') == 'on'
 
             try:
                 # DefaultChargeOverrideを取得または作成
-                defaults_dict = {'card_type': card_type, 'amount': amount}
+                defaults_dict = {'card_type': card_type, 'amount': amount, 'is_split_payment': is_split_payment}
                 if purchase_date:
                     defaults_dict['purchase_date_override'] = purchase_date
 
@@ -3106,9 +3172,10 @@ def past_transactions_list(request):
                     defaults=defaults_dict
                 )
                 if not created:
-                    # 既存の場合は金額、カード種別、利用日を更新
+                    # 既存の場合は金額、カード種別、利用日、分割払いを更新
                     override.amount = amount
                     override.card_type = card_type
+                    override.is_split_payment = is_split_payment
                     if purchase_date:
                         override.purchase_date_override = purchase_date
                     override.save()
@@ -3210,31 +3277,28 @@ def past_transactions_list(request):
         else:
             billing_month = est.billing_month if est.billing_month else est.year_month
             if billing_month and billing_month <= future_limit_year_month:
-                # 締め日チェック（MonthlyPlanDefaultから取得）
-                year, month = parse_year_month(est.year_month)
+                # 締め日チェック：billing_month（請求月＝支払い月）の1ヶ月前が締め月になる
+                billing_year, billing_month_num = parse_year_month(billing_month)
+                closing_month = billing_month_num - 1
+                closing_year = billing_year
+                if closing_month < 1:
+                    closing_month = 12
+                    closing_year -= 1
 
                 card_plan = get_card_plan(est.card_type)
                 if card_plan:
                     if card_plan.is_end_of_month:
-                        # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
-                        last_day = calendar.monthrange(year, month)[1]
-                        closing_date = dt_date(year, month, last_day)
+                        last_day = calendar.monthrange(closing_year, closing_month)[1]
+                        closing_date = dt_date(closing_year, closing_month, last_day)
                     elif card_plan.closing_day:
-                        # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
-                        closing_month = month + 1
-                        closing_year = year
-                        if closing_month > 12:
-                            closing_month = 1
-                            closing_year += 1
                         closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
                     else:
-                        # デフォルト: 月末締め
-                        last_day = calendar.monthrange(year, month)[1]
-                        closing_date = dt_date(year, month, last_day)
+                        last_day = calendar.monthrange(closing_year, closing_month)[1]
+                        closing_date = dt_date(closing_year, closing_month, last_day)
                 else:
                     # デフォルト: 月末締め
-                    last_day = calendar.monthrange(year, month)[1]
-                    closing_date = dt_date(year, month, last_day)
+                    last_day = calendar.monthrange(closing_year, closing_month)[1]
+                    closing_date = dt_date(closing_year, closing_month, last_day)
 
                 # 締め日の翌日以降なら過去の明細に含める
                 if current_date > closing_date:
@@ -3262,30 +3326,44 @@ def past_transactions_list(request):
         if not card_plan:
             continue
 
-        # 締め日を計算
+        # 締め日を計算（1回目の請求月＝calculate_billing_month_for_purchaseの結果を基準にする。
+        # クレカ見積もり側の _inject_default_entries_to_summary と同じ計算方式に統一）
+        first_billing_month = calculate_billing_month_for_purchase(
+            override.default.payment_day, year_month, override.card_type
+        )
+        first_billing_year, first_billing_month_num = parse_year_month(first_billing_month)
+        # 締め月は請求月（支払い月）の1ヶ月前
+        first_closing_month = first_billing_month_num - 1
+        first_closing_year = first_billing_year
+        if first_closing_month < 1:
+            first_closing_month = 12
+            first_closing_year -= 1
         if card_plan.is_end_of_month:
-            # 月末締めの場合：year_month = 利用月 → 締め日 = year_month の月末
-            last_day = calendar.monthrange(year, month)[1]
-            closing_date = dt_date(year, month, last_day)
+            last_day = calendar.monthrange(first_closing_year, first_closing_month)[1]
+            closing_date = dt_date(first_closing_year, first_closing_month, last_day)
         elif card_plan.closing_day:
-            # 指定日締めの場合：year_month = 締め日の前月 → 締め日 = (year_month+1) の closing_day日
-            closing_month = month + 1
-            closing_year = year
-            if closing_month > 12:
-                closing_month = 1
-                closing_year += 1
-            closing_date = dt_date(closing_year, closing_month, card_plan.closing_day)
+            closing_date = dt_date(first_closing_year, first_closing_month, card_plan.closing_day)
         else:
-            # デフォルト: 月末締め
-            last_day = calendar.monthrange(year, month)[1]
-            closing_date = dt_date(year, month, last_day)
+            last_day = calendar.monthrange(first_closing_year, first_closing_month)[1]
+            closing_date = dt_date(first_closing_year, first_closing_month, last_day)
+
+        # 2回目の締め日は1回目の1ヶ月後
+        second_closing_month = closing_date.month + 1
+        second_closing_year = closing_date.year
+        if second_closing_month > 12:
+            second_closing_month = 1
+            second_closing_year += 1
+        second_closing_day = min(closing_date.day, calendar.monthrange(second_closing_year, second_closing_month)[1])
+        second_closing_date = dt_date(second_closing_year, second_closing_month, second_closing_day)
+
+        first_payment_closed = current_date > closing_date
+        second_payment_closed = current_date > second_closing_date
 
         # 締め日の翌日以降なら過去の明細に含める
-        if current_date > closing_date:
-            # billing_monthをcalculate_billing_month_for_purchaseと同じロジックで計算
+        if first_payment_closed or (override.is_split_payment and second_payment_closed):
             payment_day = override.default.payment_day
-            billing_month = calculate_billing_month_for_purchase(payment_day, year_month, override.card_type)
-            billing_year, billing_month_num = parse_year_month(billing_month)
+            billing_month = first_billing_month
+            billing_year, billing_month_num = first_billing_year, first_billing_month_num
 
             # 利用日を計算（purchase_date_overrideがあればそれを使用）
             if override.purchase_date_override:
@@ -3342,30 +3420,43 @@ def past_transactions_list(request):
             # 分割支払いの場合は2回分のエントリを作成
             if override.is_split_payment:
                 total_amount = override.amount
-                # 1回目
-                default_est_1 = DefaultEstimate(override, year_month, billing_month, purchase_date, due_date, override.card_type, split_part=1, total_amount=total_amount)
-                past_credit_estimates.append(default_est_1)
+                # 1回目（締め日を過ぎている場合のみ過去明細に含める）
+                if first_payment_closed:
+                    default_est_1 = DefaultEstimate(override, year_month, billing_month, purchase_date, due_date, override.card_type, split_part=1, total_amount=total_amount)
+                    past_credit_estimates.append(default_est_1)
 
-                # 2回目（翌月引き落とし）
-                billing_month_num_2 = billing_month_num + 1
-                billing_year_2 = billing_year
-                if billing_month_num_2 > 12:
-                    billing_month_num_2 = 1
-                    billing_year_2 += 1
-                billing_month_2 = f"{billing_year_2}-{billing_month_num_2:02d}"
+                # 2回目（翌月引き落とし、自身の締め日を過ぎている場合のみ過去明細に含める）
+                if second_payment_closed:
+                    billing_month_num_2 = billing_month_num + 1
+                    billing_year_2 = billing_year
+                    if billing_month_num_2 > 12:
+                        billing_month_num_2 = 1
+                        billing_year_2 += 1
+                    billing_month_2 = f"{billing_year_2}-{billing_month_num_2:02d}"
 
-                max_day_billing_2 = calendar.monthrange(billing_year_2, billing_month_num_2)[1]
-                actual_day_billing_2 = min(card_plan.withdrawal_day, max_day_billing_2)
-                due_date_2 = dt_date(billing_year_2, billing_month_num_2, actual_day_billing_2)
+                    max_day_billing_2 = calendar.monthrange(billing_year_2, billing_month_num_2)[1]
+                    actual_day_billing_2 = min(card_plan.withdrawal_day, max_day_billing_2)
+                    due_date_2 = dt_date(billing_year_2, billing_month_num_2, actual_day_billing_2)
 
-                default_est_2 = DefaultEstimate(override, year_month, billing_month_2, purchase_date, due_date_2, override.card_type, split_part=2, total_amount=total_amount)
-                past_credit_estimates.append(default_est_2)
+                    default_est_2 = DefaultEstimate(override, year_month, billing_month_2, purchase_date, due_date_2, override.card_type, split_part=2, total_amount=total_amount)
+                    past_credit_estimates.append(default_est_2)
             else:
                 default_est = DefaultEstimate(override, year_month, billing_month, purchase_date, due_date, override.card_type)
                 past_credit_estimates.append(default_est)
 
     # 並び替え（billing_month降順、year_month降順）
     past_credit_estimates.sort(key=lambda x: (x.billing_month if x.billing_month else x.year_month, x.year_month), reverse=True)
+
+    # 分割払いグループの合計額を事前計算して各 estimate に付与
+    _past_group_totals = {}
+    for est in past_credit_estimates:
+        if getattr(est, 'split_payment_group', None):
+            _past_group_totals[est.split_payment_group] = _past_group_totals.get(est.split_payment_group, 0) + est.amount
+    for est in past_credit_estimates:
+        if getattr(est, 'split_payment_group', None) and est.split_payment_group in _past_group_totals:
+            est.original_amount = _past_group_totals[est.split_payment_group]
+        else:
+            est.original_amount = est.amount
 
     # 年ごとにグループ化して、月ごとの収入・支出を集計
     yearly_data = {}

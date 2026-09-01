@@ -32,7 +32,7 @@
                     </thead>
                     <tbody>
                         {% for card_type, data in cards.items %}
-                            <tr class="bg-blue-50 font-semibold">
+                            <tr class="bg-blue-50 font-semibold" id="estimate-content-{{ ym }}-{{ card_type }}">
                                 <td class="px-3 py-2 font-bold whitespace-wrap" colspan="2">{{ data.label }}</td>
                                 <td class="px-3 py-2 text-right whitespace-wrap">{{ data.total|yen }}</td>
                                 <td class="px-3 py-2 text-center">
@@ -83,11 +83,14 @@
                                         <div class="text-xs text-gray-500">({{ item.amount|yen }})</div>
                                     {% else %}
                                         {{ item.amount|yen }}
+                                        {% if item.split_payment_part and item.original_amount != item.amount %}
+                                            <div class="text-xs text-gray-400">(合計 {{ item.original_amount|yen }})</div>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                                 <td class="px-3 py-2 text-center">
                                     {% if not item.is_default %}
-                                        <button type="button" data-pk="{{ item.pk|stringformat:'d' }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.amount|stringformat:'d' }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-purchase-date="{{ item.purchase_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" data-bonus-type="{{ item.bonus_payment_type|default:'' }}" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
+                                        <button type="button" data-pk="{{ item.pk|stringformat:'d' }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.original_amount|stringformat:'d' }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-purchase-date="{{ item.purchase_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" data-bonus-type="{{ item.bonus_payment_type|default:'' }}" class="edit-btn text-blue-600 hover:text-blue-800 mr-2">
                                             <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
@@ -131,7 +134,7 @@
             <div id="estimate-content-mobile-{{ ym }}" class="md:hidden p-4 space-y-6">
                 {% for card_type, data in cards.items %}
                     <!-- カード種別ヘッダー（常に表示） -->
-                    <div>
+                    <div id="estimate-content-mobile-{{ ym }}-{{ card_type }}">
                         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
                             <div class="flex justify-between items-center mb-2">
                                 <div class="font-bold whitespace-wrap">{{ data.label }}</div>
@@ -192,13 +195,16 @@
                                         <div class="text-xs text-gray-500">({{ item.amount|yen }})</div>
                                     {% else %}
                                         <div class="text-xl font-bold text-blue-600">{{ item.amount|yen }}</div>
+                                        {% if item.split_payment_part and item.original_amount != item.amount %}
+                                            <div class="text-xs text-gray-400">(合計 {{ item.original_amount|yen }})</div>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </div>
 
                             <div class="flex gap-2 mt-3">
                                 {% if not item.is_default %}
-                                    <button type="button" data-pk="{{ item.pk|stringformat:'d' }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.amount|stringformat:'d' }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-purchase-date="{{ item.purchase_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" data-bonus-type="{{ item.bonus_payment_type|default:'' }}" class="edit-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium flex items-center justify-center gap-2">
+                                    <button type="button" data-pk="{{ item.pk|stringformat:'d' }}" data-year-month="{{ item.year_month }}" data-card-type="{{ item.card_type }}" data-description="{{ item.description }}" data-amount="{{ item.original_amount|stringformat:'d' }}" data-due-date="{{ item.due_date|date:'Y-m-d'|default:'' }}" data-purchase-date="{{ item.purchase_date|date:'Y-m-d'|default:'' }}" data-split="{{ item.is_split_payment|yesno:'true,false' }}" data-bonus="{{ item.is_bonus_payment|yesno:'true,false' }}" data-bonus-type="{{ item.bonus_payment_type|default:'' }}" class="edit-btn flex-1 bg-blue-500 text-white text-sm px-3 py-2.5 rounded-lg hover:bg-blue-600 font-medium flex items-center justify-center gap-2">
                                         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>

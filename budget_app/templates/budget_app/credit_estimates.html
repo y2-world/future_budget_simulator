@@ -14,10 +14,13 @@
         {% comment %} 登録済み見積もりを表示 {% endcomment %}
 
         <div class="space-y-8">
+            {% if current_month_summary %}
+                {% include 'budget_app/_summary_section.html' with summary_data=current_month_summary title='今月' %}
+            {% endif %}
             {% include 'budget_app/_summary_section.html' with summary_data=future_summary title='未来' %}
         </div>
 
-        {% if not future_summary %}
+        {% if not future_summary and not current_month_summary %}
             <!-- データがない場合のメッセージ -->
             <div class="text-center py-12 bg-gray-50 rounded-lg">
                 <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,7 +56,7 @@
                 <label class="block text-sm font-semibold text-gray-700 mb-1">{{ form.card_type.label }}</label>
                 <select name="card_type" id="create_card_type" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm">
                     {% for card in card_choices %}
-                    <option value="{{ card.key }}" data-linked-bonus="{{ card.linked_bonus_payment_type|default:'' }}"{% if forloop.first %} selected{% endif %}>{{ card.title }}</option>
+                    <option value="{{ card.key }}" data-linked-bonus="{{ card.linked_bonus_payment_type|default:'' }}" data-split-allowed="{{ card.is_split_allowed|yesno:'true,false' }}"{% if forloop.first %} selected{% endif %}>{{ card.title }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -136,7 +139,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     {% for card in card_choices %}
                     <label class="relative cursor-pointer card-type-label" data-value="{{ card.key }}" data-linked-bonus="{{ card.linked_bonus_payment_type|default:'' }}">
-                        <input type="radio" name="card_type" value="{{ card.key }}" data-linked-bonus="{{ card.linked_bonus_payment_type|default:'' }}" class="hidden card-type-radio">
+                        <input type="radio" name="card_type" value="{{ card.key }}" data-linked-bonus="{{ card.linked_bonus_payment_type|default:'' }}" data-split-allowed="{{ card.is_split_allowed|yesno:'true,false' }}" class="hidden card-type-radio">
                         <div class="border-2 border-gray-300 rounded-lg p-2 transition hover:border-blue-400 hover:bg-blue-50 card-type-box">
                             <div class="flex items-center">
                                 <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center mr-2 radio-indicator">
@@ -614,11 +617,24 @@
         // セクションを開く関数（クレカ見積もりページでは初期状態で全て開いているのでスクロールのみ）
         function expandEstimateSection(hash) {
             if (hash && hash.startsWith('#estimate-content-')) {
-                // ハッシュから年月を抽出（例：#estimate-content-2025-12 → 2025-12）
-                const yearMonth = hash.replace('#estimate-content-', '').replace('-mobile', '');
+                // カード種別アンカー（例：#estimate-content-2025-12-item_1）か月アンカーかを判定
+                // estimate-content- を除いた部分：2025-12-item_1 or 2025-12
+                const withoutPrefix = hash.replace('#estimate-content-', '').replace('-mobile', '');
 
-                // ヘッダー要素をスクロール先にする（常に表示されているため）
-                const targetElement = document.querySelector(`[data-toggle-estimate="${yearMonth}"]`);
+                // まずカード種別アンカーの要素を探す（id="estimate-content-{ym}-{card_type}"）
+                let targetElement = document.getElementById(hash.replace('#', ''));
+                if (!targetElement) {
+                    // モバイル用を試す
+                    targetElement = document.getElementById('estimate-content-mobile-' + withoutPrefix);
+                }
+
+                // カード種別 id が見つからない場合は年月のヘッダーにフォールバック
+                if (!targetElement) {
+                    // withoutPrefix から年月部分を抽出（YYYY-MM-xxxxx → YYYY-MM）
+                    const ymMatch = withoutPrefix.match(/^(\d{4}-\d{2})/);
+                    const yearMonth = ymMatch ? ymMatch[1] : withoutPrefix;
+                    targetElement = document.querySelector(`[data-toggle-estimate="${yearMonth}"]`);
+                }
 
                 if (targetElement) {
                     setTimeout(() => {
@@ -671,9 +687,9 @@
         window.toggleCreatePaymentOptions = function() {
             const selectedOption = createCardTypeSelect ? createCardTypeSelect.options[createCardTypeSelect.selectedIndex] : null;
             const linkedBonus = selectedOption ? (selectedOption.getAttribute('data-linked-bonus') || '') : '';
-            const isViewCard = createCardTypeSelect && createCardTypeSelect.value === 'item_6';
+            const isViewCard = selectedOption ? selectedOption.getAttribute('data-split-allowed') === 'true' : false;
 
-            // 分割払いはビックカメラVIEWカードの場合のみ表示
+            // 分割払いはVIEWカード系統の場合のみ表示
             if (createSplitWrapper) {
                 createSplitWrapper.style.display = isViewCard ? 'flex' : 'none';
                 if (!isViewCard && createSplitCheckbox) {
@@ -735,9 +751,9 @@
             // 編集モーダルで選択されているカード種別を取得（ラジオボタン）
             const selectedRadio = document.querySelector('#editModal .card-type-radio:checked');
             const linkedBonus = selectedRadio ? (selectedRadio.getAttribute('data-linked-bonus') || '') : '';
-            const isViewCard = selectedRadio && selectedRadio.value === 'item_6';
+            const isViewCard = selectedRadio ? selectedRadio.getAttribute('data-split-allowed') === 'true' : false;
 
-            // 分割払いはビックカメラVIEWカードの場合のみ表示
+            // 分割払いはVIEWカード系統の場合のみ表示
             if (editSplitWrapper) {
                 editSplitWrapper.style.display = isViewCard ? 'flex' : 'none';
                 if (!isViewCard && editSplitCheckbox) {

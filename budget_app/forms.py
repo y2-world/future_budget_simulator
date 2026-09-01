@@ -539,9 +539,9 @@ class CreditEstimateForm(forms.ModelForm):
         if is_split_payment and is_bonus_payment:
             raise forms.ValidationError('分割払いとボーナス払いは同時に選択できません。')
 
-        # 分割払いはビックカメラVIEWカードのみ
-        if is_split_payment and card_type != 'item_6':
-            raise forms.ValidationError('分割払いはVIEWカード ビックカメラでのみ利用できます。')
+        # 分割払いはVIEWカード系統のみ
+        if is_split_payment and card_type not in CreditEstimate.SPLIT_PAYMENT_ALLOWED_CARD_TYPES:
+            raise forms.ValidationError('分割払いはVIEWカードでのみ利用できます。')
 
         # ボーナス払いはlinked_bonus_payment_typeが設定されているカードのみ
         if is_bonus_payment and not card_linked_bonus:

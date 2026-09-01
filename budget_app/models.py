@@ -242,6 +242,9 @@ class CreditEstimate(models.Model):
         ('olive', 'Olive'),
     ]
 
+    # 分割2回払いが可能なカード種別（ビックカメラSuicaカード、ビューカード スタンダード）
+    SPLIT_PAYMENT_ALLOWED_CARD_TYPES = ['item_6', 'item_117']
+
     @classmethod
     def get_card_choices(cls):
         """MonthlyPlanDefaultから動的にカード選択肢を生成"""

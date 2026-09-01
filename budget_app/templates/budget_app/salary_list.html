@@ -166,14 +166,28 @@
                                     </td>
                                 </tr>
                                 {% endif %}
-                                {% if salary.gross_salary and salary.gross_salary > 0 %}
-                                <tr id="salary-{{ salary.year_month }}" class="border-b hover:bg-gray-50">
-                                    <td class="px-4 py-3 font-medium">{{ salary.year_month|format_year_month }}</td>
-                                    <td class="px-4 py-3 text-right text-green-700 font-semibold">{{ salary.gross_salary|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-blue-700">{{ salary.gross_salary|subtract:salary.transportation|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-purple-700 font-semibold">{{ salary.get_net_salary|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-teal-700">{{ salary.transportation|yen }}</td>
-                                    <td class="px-4 py-3 text-right text-red-700">{{ salary.deductions|yen }}</td>
+                                <tr id="salary-{{ salary.year_month }}" class="border-b hover:bg-gray-50{% if not salary.gross_salary or salary.gross_salary == 0 %} bg-yellow-50{% endif %}">
+                                    <td class="px-4 py-3 font-medium">
+                                        {{ salary.year_month|format_year_month }}
+                                        {% if not salary.gross_salary or salary.gross_salary == 0 %}
+                                        <span class="ml-1 text-xs text-yellow-600 font-normal">（給与未登録）</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-right {% if salary.gross_salary and salary.gross_salary > 0 %}text-green-700 font-semibold{% else %}text-gray-400{% endif %}">
+                                        {% if salary.gross_salary and salary.gross_salary > 0 %}{{ salary.gross_salary|yen }}{% else %}-{% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-blue-700">
+                                        {% if salary.gross_salary and salary.gross_salary > 0 %}{{ salary.gross_salary|subtract:salary.transportation|yen }}{% else %}-{% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-purple-700 font-semibold">
+                                        {% if salary.gross_salary and salary.gross_salary > 0 %}{{ salary.get_net_salary|yen }}{% else %}-{% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-teal-700">
+                                        {% if salary.gross_salary and salary.gross_salary > 0 %}{{ salary.transportation|yen }}{% else %}-{% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-red-700">
+                                        {% if salary.gross_salary and salary.gross_salary > 0 %}{{ salary.deductions|yen }}{% else %}-{% endif %}
+                                    </td>
                                     <td class="px-4 py-3 text-right text-orange-700">
                                         {% if salary.gross_salary and salary.transportation %}
                                             {% widthratio salary.deductions salary.gross_salary|subtract:salary.transportation 100 as deduction_pct %}
@@ -195,7 +209,6 @@
                                         </button>
                                     </td>
                                 </tr>
-                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -260,10 +273,14 @@
                             </div>
                         </div>
                         {% endif %}
-                        {% if salary.gross_salary and salary.gross_salary > 0 %}
-                        <div id="salary-{{ salary.year_month }}" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md overflow-hidden">
-                            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-2 flex justify-between items-center">
-                                <div class="font-bold text-sm">{{ salary.year_month|format_year_month }}</div>
+                        <div id="salary-{{ salary.year_month }}" class="{% if salary.gross_salary and salary.gross_salary > 0 %}bg-gradient-to-br from-blue-50 to-indigo-50{% else %}bg-gradient-to-br from-yellow-50 to-amber-50{% endif %} rounded-lg shadow-md overflow-hidden">
+                            <div class="{% if salary.gross_salary and salary.gross_salary > 0 %}bg-gradient-to-r from-blue-500 to-indigo-500{% else %}bg-gradient-to-r from-yellow-500 to-amber-500{% endif %} text-white px-3 py-2 flex justify-between items-center">
+                                <div class="font-bold text-sm">
+                                    {{ salary.year_month|format_year_month }}
+                                    {% if not salary.gross_salary or salary.gross_salary == 0 %}
+                                    <span class="ml-1 text-xs font-normal opacity-90">（給与未登録）</span>
+                                    {% endif %}
+                                </div>
                                 <div class="flex gap-2">
                                     <button onclick="openEditSalaryModal({{ salary.pk }}, '{{ salary.year_month }}', {{ salary.gross_salary|default:0|stringformat:'d' }}, {{ salary.deductions|default:0|stringformat:'d' }}, {{ salary.transportation|default:0|stringformat:'d' }}, {{ salary.has_bonus|yesno:'true,false' }}, {{ salary.bonus_gross_salary|default:0|stringformat:'d' }}, {{ salary.bonus_deductions|default:0|stringformat:'d' }})" class="text-white hover:text-blue-100">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -280,15 +297,15 @@
                             <div class="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                                 <div class="bg-white rounded p-2">
                                     <div class="text-gray-500 text-xs mb-0.5">総支給額</div>
-                                    <div class="font-bold text-green-700 text-sm">{{ salary.gross_salary|yen }}</div>
+                                    <div class="font-bold text-green-700 text-sm">{% if salary.gross_salary and salary.gross_salary > 0 %}{{ salary.gross_salary|yen }}{% else %}-{% endif %}</div>
                                 </div>
                                 <div class="bg-white rounded p-2">
                                     <div class="text-gray-500 text-xs mb-0.5">差引支給額</div>
-                                    <div class="font-bold text-purple-700 text-sm">{{ salary.get_net_salary|yen }}</div>
+                                    <div class="font-bold text-purple-700 text-sm">{% if salary.gross_salary and salary.gross_salary > 0 %}{{ salary.get_net_salary|yen }}{% else %}-{% endif %}</div>
                                 </div>
                                 <div class="bg-white rounded p-2">
                                     <div class="text-gray-500 text-xs mb-0.5">控除額</div>
-                                    <div class="font-bold text-red-700 text-sm">{{ salary.deductions|yen }}</div>
+                                    <div class="font-bold text-red-700 text-sm">{% if salary.gross_salary and salary.gross_salary > 0 %}{{ salary.deductions|yen }}{% else %}-{% endif %}</div>
                                 </div>
                                 <div class="bg-white rounded p-2">
                                     <div class="text-gray-500 text-xs mb-0.5">控除率</div>
@@ -303,7 +320,6 @@
                                 </div>
                             </div>
                         </div>
-                        {% endif %}
                         {% endfor %}
                     </div>
                     {% else %}
