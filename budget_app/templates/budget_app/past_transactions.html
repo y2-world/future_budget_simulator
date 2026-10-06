@@ -85,7 +85,7 @@
                                                     <div class="bg-white p-2 rounded border border-gray-200 flex justify-between items-center">
                                                         <div class="flex items-center gap-2">
                                                             <span class="text-gray-500">
-                                                                {{ item.year_month|slice:":4" }}/{{ item.year_month|slice:"5:7" }}{% if trans.date %}/{{ trans.date|date:"j" }}{% endif %}
+                                                                {% if trans.date %}{{ trans.date|date:"Y/n/j" }}{% else %}{{ item.year_month|slice:":4" }}/{{ item.year_month|slice:"5:7"|add:"0" }}{% endif %}
                                                             </span>
                                                             <span class="font-medium text-gray-700">{{ trans.name }}</span>
                                                         </div>
@@ -191,7 +191,12 @@
                                                                                     <div class="text-red-600 font-medium">${{ est.estimate.usd_amount }}</div>
                                                                                     <div class="text-xs text-gray-500">({{ est.amount|yen }})</div>
                                                                                 {% else %}
-                                                                                    <span class="text-red-600 font-medium">{{ est.amount|yen }}</span>
+                                                                                    <div class="text-right">
+                                                                                        <div class="text-red-600 font-medium">{{ est.amount|yen }}</div>
+                                                                                        {% if est.estimate.split_payment_part and est.estimate.original_amount != est.amount %}
+                                                                                            <div class="text-xs text-gray-400">(合計 {{ est.estimate.original_amount|yen }})</div>
+                                                                                        {% endif %}
+                                                                                    </div>
                                                                                 {% endif %}
                                                                                 {% if est.estimate.pk %}
                                                                                 <div class="flex gap-1">
@@ -310,7 +315,7 @@
                                                     <span class="text-xl font-bold {% if trans.type == 'income' %}text-green-600{% else %}text-red-600{% endif %}">{{ trans.amount|yen }}</span>
                                                 </div>
                                                 <div class="text-sm text-gray-600">
-                                                    {{ item.year_month|slice:":4" }}/{{ item.year_month|slice:"5:7" }}{% if trans.date %}/{{ trans.date|date:"j" }}{% endif %}
+                                                    {% if trans.date %}{{ trans.date|date:"Y/m/d" }}{% else %}{{ item.year_month|slice:":4" }}/{{ item.year_month|slice:"5:7" }}{% endif %}
                                                 </div>
                                             </div>
                                         </div>
@@ -410,7 +415,12 @@
                                                         <div class="text-xl font-bold text-red-600">${{ est.estimate.usd_amount }}</div>
                                                         <div class="text-xs text-gray-500">({{ est.amount|yen }})</div>
                                                     {% else %}
-                                                        <span class="text-xl font-bold text-red-600">{{ est.amount|yen }}</span>
+                                                        <div class="text-right">
+                                                            <div class="text-xl font-bold text-red-600">{{ est.amount|yen }}</div>
+                                                            {% if est.estimate.split_payment_part and est.estimate.original_amount != est.amount %}
+                                                                <div class="text-xs text-gray-400">(合計 {{ est.estimate.original_amount|yen }})</div>
+                                                            {% endif %}
+                                                        </div>
                                                     {% endif %}
                                                 </div>
 

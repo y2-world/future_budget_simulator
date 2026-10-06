@@ -1394,3 +1394,74 @@ class AdvanceYearMonthTests(TestCase):
 
     def test_offset_zero(self):
         self.assertEqual(_advance_year_month(2026, 6, 0), '2026-06')
+
+
+class SplitPaymentEditTests(TestCase):
+    """分割済み見積りの編集で金額が再分割されないことのテスト"""
+
+    def setUp(self):
+        card = MonthlyPlanDefault(
+            title='VIEWカード', card_id='view_card', is_active=True,
+            closing_day=5, is_end_of_month=False, withdrawal_day=4, order=1
+        )
+        card.save()
+        MonthlyPlanDefault.objects.filter(pk=card.pk).update(key='item_6')
+
+    def _post_data(self, amount, purchase_date):
+        return {
+            'card_type': 'item_6', 'description': 'テスト', 'amount': amount,
+            'purchase_date': purchase_date, 'is_split_payment': 'on',
+        }
+
+    def _create_split(self, amount=10050):
+        from .forms import CreditEstimateForm
+        form = CreditEstimateForm(self._post_data(amount, '2026-01-10'))
+        self.assertTrue(form.is_valid(), form.errors)
+        return form.save()
+
+    def _parts(self, group):
+        return {p.split_payment_part: p for p in CreditEstimate.objects.filter(split_payment_group=group)}
+
+    def test_date_only_edit_keeps_amounts(self):
+        from .forms import CreditEstimateForm
+        first = self._create_split()
+        before = {k: p.amount for k, p in self._parts(first.split_payment_group).items()}
+        self.assertEqual(before, {1: 5050, 2: 5000})
+
+        for part in (1, 2):
+            target = self._parts(first.split_payment_group)[part]
+            form = CreditEstimateForm(self._post_data(10050, '2026-01-20'), instance=target)
+            self.assertTrue(form.is_valid(), form.errors)
+            form.save()
+
+            parts = self._parts(first.split_payment_group)
+            self.assertEqual({k: p.amount for k, p in parts.items()}, before)
+            self.assertEqual(parts[1].purchase_date, date(2026, 1, 20))
+            self.assertEqual(parts[2].purchase_date, date(2026, 1, 20))
+            self.assertEqual(parts[1].billing_month, '2026-03')
+            self.assertEqual(parts[2].billing_month, '2026-04')
+
+    def test_amount_change_resplits(self):
+        from .forms import CreditEstimateForm
+        first = self._create_split()
+        form = CreditEstimateForm(self._post_data(20000, '2026-01-10'), instance=first)
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        parts = self._parts(first.split_payment_group)
+        self.assertEqual({k: p.amount for k, p in parts.items()}, {1: 10000, 2: 10000})
+
+    def test_past_transactions_shows_group_total_when_only_first_part_closed(self):
+        """1回目だけ締め済みでも、過去明細の編集ボタンには分割前の合計額が入る"""
+        today = date.today()
+        month_start = today.replace(day=1)
+        if today.day <= 5:
+            month_start = (month_start - timedelta(days=1)).replace(day=1)
+        from .forms import CreditEstimateForm
+        form = CreditEstimateForm(self._post_data(10050, month_start.isoformat()))
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+
+        response = Client().get(reverse('budget_app:past_transactions'))
+        content = response.content.decode()
+        self.assertIn('data-amount="10050"', content)
+        self.assertNotIn('data-amount="5050"', content)

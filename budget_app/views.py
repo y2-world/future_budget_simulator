@@ -3406,6 +3406,7 @@ def past_transactions_list(request):
                             self.amount = total_amount - second_payment
                     else:
                         self.amount = override_obj.amount
+                    self.total_amount = override_obj.amount
                     self.due_date = due_date  # 引落日
                     self.purchase_date = purchase_date  # 利用日（利用月のpayment_day）
                     self.is_bonus_payment = False
@@ -3447,14 +3448,21 @@ def past_transactions_list(request):
     # 並び替え（billing_month降順、year_month降順）
     past_credit_estimates.sort(key=lambda x: (x.billing_month if x.billing_month else x.year_month, x.year_month), reverse=True)
 
-    # 分割払いグループの合計額を事前計算して各 estimate に付与
-    _past_group_totals = {}
-    for est in past_credit_estimates:
-        if getattr(est, 'split_payment_group', None):
-            _past_group_totals[est.split_payment_group] = _past_group_totals.get(est.split_payment_group, 0) + est.amount
+    # 分割払いグループの合計額を各 estimate に付与
+    # 過去明細には片方（1回目のみ等）しか含まれないことがあるため、DBから全パートを合計する
+    from django.db.models import Sum
+    _past_group_ids = {est.split_payment_group for est in past_credit_estimates if getattr(est, 'split_payment_group', None)}
+    _past_group_totals = dict(
+        CreditEstimate.objects.filter(split_payment_group__in=_past_group_ids)
+        .values_list('split_payment_group')
+        .annotate(total=Sum('amount'))
+    )
     for est in past_credit_estimates:
         if getattr(est, 'split_payment_group', None) and est.split_payment_group in _past_group_totals:
             est.original_amount = _past_group_totals[est.split_payment_group]
+        elif getattr(est, 'is_default', False) and est.split_payment_part:
+            # 定期項目の分割は上書き額そのものが合計額
+            est.original_amount = getattr(est, 'total_amount', est.amount)
         else:
             est.original_amount = est.amount
 

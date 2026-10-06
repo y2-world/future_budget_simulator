@@ -796,12 +796,23 @@ class CreditEstimateForm(forms.ModelForm):
                     split_payment_group=group_id,
                 )
             else:
-                # 既に分割済みのエントリーを編集する場合、2回目のエントリーも更新
+                # 既に分割済みのエントリーを編集する場合
+                # フォームから送信された金額は合計金額。合計が変わっていなければ（日付のみ変更など）
+                # 各回の金額は再計算せず、そのまま維持する
+                group_parts = {
+                    p.split_payment_part: p.amount
+                    for p in CreditEstimate.objects.filter(split_payment_group=instance.split_payment_group)
+                } if instance.split_payment_group else {}
+                amount_changed = instance.amount != sum(group_parts.values())
+
                 if instance.split_payment_part == 1 and instance.split_payment_group:
-                    # フォームから送信された金額は合計金額
                     total_amount = instance.amount
-                    second_payment_amount = (total_amount // 2) // 100 * 100
-                    first_payment_amount = total_amount - second_payment_amount
+                    if amount_changed:
+                        second_payment_amount = (total_amount // 2) // 100 * 100
+                        first_payment_amount = total_amount - second_payment_amount
+                    else:
+                        first_payment_amount = group_parts.get(1, 0)
+                        second_payment_amount = group_parts.get(2, 0)
                     instance.amount = first_payment_amount
 
                     # 1回目のbilling_monthを設定
@@ -825,10 +836,13 @@ class CreditEstimateForm(forms.ModelForm):
                         second_payment.save()
                 elif instance.split_payment_part == 2 and instance.split_payment_group:
                     # 2回目のみ編集する場合
-                    # 金額を再計算
                     total_amount = instance.amount
-                    second_payment_amount = (total_amount // 2) // 100 * 100
-                    first_payment_amount = total_amount - second_payment_amount
+                    if amount_changed:
+                        second_payment_amount = (total_amount // 2) // 100 * 100
+                        first_payment_amount = total_amount - second_payment_amount
+                    else:
+                        first_payment_amount = group_parts.get(1, 0)
+                        second_payment_amount = group_parts.get(2, 0)
                     instance.amount = second_payment_amount
 
                     if not instance.is_bonus_payment:
@@ -841,7 +855,12 @@ class CreditEstimateForm(forms.ModelForm):
                     ).first()
 
                     if first_payment:
+                        first_payment.year_month = instance.year_month  # 利用月・利用日は2回目と同じ
+                        first_payment.description = instance.description
                         first_payment.amount = first_payment_amount
+                        first_payment.purchase_date = instance.purchase_date
+                        first_payment.due_date = instance.due_date
+                        first_payment.billing_month = calculate_billing_month(instance.year_month, instance.card_type, split_part=1)
                         first_payment.save()
         else:
             # 分割払いチェックボックスがオフの場合
